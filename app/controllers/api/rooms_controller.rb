@@ -6,14 +6,13 @@ class Api::RoomsController < ApplicationController
     account_sid = ENV['TWILIO_ACCOUNT_ID']
     api_key = ENV['TWILIO_KEY']
     api_secret = ENV['TWILIO_SECRET']
-    auth_token = ENV['TWILIO_ACCOUNT_SECRET']
     
     identity = params['user_id']
     room_id = params['id']
     room_key = "CoVidChatFor#{room_id}"
     
     # Manually create the room on the backend
-    @client = Twilio::REST::Client.new(account_sid, auth_token)
+    @client = Twilio::REST::Client.new(api_key, api_secret)
     room = @client.video.rooms(room_key).fetch rescue nil
     room ||= @client.video.rooms.create(
                              enable_turn: true,
