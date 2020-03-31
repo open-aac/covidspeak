@@ -72,28 +72,8 @@ var room = {
                 new_order[num].cell = cells[idx];
               }
             }
-            room.on('participantConnected', function(participant) {
-              console.log("A remote Participant connected: " + participant);
-              participant.tracks.forEach(function(publication) {
-                if (publication.isSubscribed) {
-                  var track = publication.track;
-                  if(track.attach) {
-                    console.log("adding track", track);
-                    if(track.kind == 'video' || track.kind == 'audio') {
-                      var priors = document.getElementById('partner').getElementsByTagName(track.kind);
-                      for(var idx = 0; idx < priors.length; idx++) {
-                        priors[idx].parentNode.removeChild(priors[idx]);
-                      }
-                    }
-                    document.getElementById('partner').appendChild(track.attach());
-                  }
-                  track.on('message', function(data) {
-                    got_message(data);
-                  });
-                }
-              });
-  
-              participant.on('trackSubscribed', function(track) {
+            var track_participant = function(participant) {
+              var add_track = function(track) {
                 if(track.attach) {
                   console.log("adding track", track);
                   if(track.kind == 'video' || track.kind == 'audio') {
@@ -107,17 +87,32 @@ var room = {
                 track.on('message', function(data) {
                   got_message(data);
                 });
-            });            
+              };
+              participant.tracks.forEach(function(publication) {
+                if (publication.isSubscribed) {
+                  add_track(publication.track);
+                }
+              });
+  
+              participant.on('trackSubscribed', function(track) {
+                add_track(track);
+              });            
+            }
+            room.participants.forEach(function(participant) {
+              track_participant(participant);
+            });
+            room.on('participantConnected', function(participant) {
+              console.log("A remote Participant connected: " + participant);
+              track_participant(participant);
             });
           }, function(error) {
             console.error("Unable to connect to Room: " + error.message);
           });
         }, function(err) {
-
+          console.error("Unable to create local tracks: ", err);
         });
-
       }, function(err) {
-
+        console.error("Room creation error: ", err);
       });
     };
     if(localStorage.user_id && room_id != localStorage.user_id) {
@@ -127,7 +122,7 @@ var room = {
       }).then(function(res) {
         enter_room();
       }, function(err) {
-
+        console.error("User confirmation error: ", err);
       });
     } else {
       enter_room();
