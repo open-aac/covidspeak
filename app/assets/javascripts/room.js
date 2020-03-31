@@ -33,8 +33,8 @@ var room = {
           video: true
         }).then(function(tracks) {
           tracks.push(local_track);
-          Twilio.Video.connect(res.access_token, { name:res.room.key, tracks: tracks }).then(room => {
-            console.log(`Successfully joined a Room: ${room} as ${res.user_id}`);
+          Twilio.Video.connect(res.access_token, { name:res.room.key, tracks: tracks }).then(function(room) {
+            console.log("Successfully joined a Room: " + room + " as " + res.user_id);
             if(room_id == res.user_id) {
               // Default Order
               var grid = document.getElementsByClassName('grid')[0];
@@ -72,11 +72,11 @@ var room = {
                 new_order[num].cell = cells[idx];
               }
             }
-            room.on('participantConnected', participant => {
-              console.log(`A remote Participant connected: ${participant}`);
-              participant.tracks.forEach(publication => {
+            room.on('participantConnected', function(participant) {
+              console.log("A remote Participant connected: " + participant);
+              participant.tracks.forEach(function(publication) {
                 if (publication.isSubscribed) {
-                  const track = publication.track;
+                  var track = publication.track;
                   if(track.attach) {
                     console.log("adding track", track);
                     if(track.kind == 'video' || track.kind == 'audio') {
@@ -93,7 +93,7 @@ var room = {
                 }
               });
   
-              participant.on('trackSubscribed', track => {
+              participant.on('trackSubscribed', function(track) {
                 if(track.attach) {
                   console.log("adding track", track);
                   if(track.kind == 'video' || track.kind == 'audio') {
@@ -109,8 +109,8 @@ var room = {
                 });
             });            
             });
-          }, error => {
-            console.error(`Unable to connect to Room: ${error.message}`);
+          }, function(error) {
+            console.error("Unable to connect to Room: " + error.message);
           });
         }, function(err) {
 
