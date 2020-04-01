@@ -62,6 +62,7 @@ body {
 }
 
 .grid {
+  touch-action: none;
   display: flex;
   .menu {
     width: 100px;
