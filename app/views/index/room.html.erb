@@ -1,4 +1,21 @@
 <div class='grid'>
+  <div class='menu'>
+    <div class='button' data-action='quick'>
+      Quick
+    </div>
+    <div class='button' data-action='customize'>
+      Customize
+    </div>
+    <div class='button' data-action='load'>
+      Load
+    </div>
+    <div class='button' data-action='send'>
+      React
+    </div>
+    <div class='button' data-action='end'>
+      End
+    </div>
+  </div>
   <div class='col'>
     <div class='cell' data-idx='0'>
     </div>
@@ -13,8 +30,15 @@
     <div class='preview'>
       <div id="partner">
       </div>
+      <div id="communicator">
+      </div>
+      <div id="nav">
+        <button class='zoom' data-direction='in'>+</button>
+        <button class='zoom' data-diration='out'>-</button><br/>
+        <div>drag video to move</div>
+      </div>
     </div>
-    <div class='cell' data-idx='6'>
+    <div class='cell' data-idx='6' style='flex: 3;'>
     </div>
   </div>
   <div class='col'>
@@ -30,10 +54,10 @@
 <script>
   room.buttons = [
     {text: 'a', id: 1},
-    {text: 'b', id: 2},
+    {text: 'Start Over', id: 2},
     {text: 'c', id: 3},
-    {text: 'd', id: 4},
-    {text: 'e', id: 5},
+    {text: 'Yes', id: 4},
+    {text: 'No', id: 5},
     {text: 'f', id: 6},
     {text: 'g', id: 7},
     {text: 'h', id: 8},
