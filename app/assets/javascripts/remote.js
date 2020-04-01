@@ -37,7 +37,7 @@ var remote = {
     // Trigger for each data track message receiveds
     var json = message;
     try {
-      json = JSON.parse(str);
+      json = JSON.parse(json);
     } catch(e) { }
   
     remote.notify('message', {
@@ -109,18 +109,19 @@ remote.twilio = {
         res(room_ref);
         var track_participant = function(participant) {
           var participant_ref = {
-            id: participant.ident
+            id: participant.identity
           };
           remote.user_added(participant_ref);
           var add_track = function(track) {
-            // TODO: can we figure out the video dimensions here?
-            remote.track_added(room_ref, participant_ref, {
+            var track_ref = {
               type: track.kind,
               id: track.name,
               generate_dom: track.attach ? function() { return track.attach(); } : null
-            });
+            };
+            // TODO: can we figure out the video dimensions here?
+            remote.track_added(room_ref, participant_ref, track_ref);
             track.on('message', function(data) {
-              remote.message_recieved(room_ref, participant_ref, track, data);
+              remote.message_recieved(room_ref, participant_ref, track_ref, data);
             });
           };
           participant.tracks.forEach(function(publication) {

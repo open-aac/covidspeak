@@ -281,7 +281,7 @@ var room = {
       } else {
         // show a small version of the image
       }
-      room.show_reaction(json.url, json.text, big_image);
+      room.show_image(json.url, json.text, big_image);
     } else {
       // TODO: if more users in the feed, ensure
       // that everyone else sees the communicator's video feed
@@ -350,7 +350,14 @@ document.addEventListener('click', function(event) {
     if(action == 'end') {
       alert('done!');
     } else if(action == 'send') {
-      room.send_image("https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f339.svg", "rose");
+      var images = [
+        {url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f973.svg", text: "party"},
+        {url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f339.svg", text: "rose"},
+        {url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f602.svg", text: "laugh"},
+        {url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f622.svg", text: "sad"},
+      ];
+      var img = images[Math.floor(Math.random() * images.length)];
+      room.send_image(img.url, img.text);
     }
   } else if($zoom.length > 0) {
     event.preventDefault();
