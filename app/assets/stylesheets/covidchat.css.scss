@@ -34,10 +34,14 @@ abbr, acronym {
 * {
   box-sizing: border-box;
 }
+document {
+  overflow: hidden;
+}
 body {
   padding: 0;
   margin: 0;
   font-family: Arial;
+  overflow: hidden;
 }
 #simple_content {
   width: 400px;
@@ -199,6 +203,7 @@ body {
         height: 30%;
         border: 2px solid #888;
         box-shadow: 0 0 5px #000;
+        min-width: 20px;
         video {
           height: 100%;
         }

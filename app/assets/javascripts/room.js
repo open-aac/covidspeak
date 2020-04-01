@@ -245,6 +245,7 @@ var room = {
   },
   show_grid: function() {
     var for_communicator = room.current_room && room.current_room.for_self;
+    for_communicator = true;
     var fill_cell = function(cell, button) {
       var text = cell.getElementsByClassName('text')[0];
       text.innerText = button.text;
