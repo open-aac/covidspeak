@@ -75,10 +75,60 @@ body {
       margin: 5px 0 5px 5px;
       padding: 5px;
       cursor: pointer;
+      position: relative;
+      .popover {
+        display: none;
+        z-index: 3;
+        border: 2px solid #000; 
+        background: #666; 
+        position: absolute; 
+        left: calc(100% + 10px);
+        transform: translate(0, -50%); 
+        top: 50%; 
+        box-shadow: 5px 5px 10px #000; 
+        border-radius: 10px;
+        &::after {
+          content: "";
+          display: block;
+          width: 0;
+          height: 0;
+          border-top: 13px solid transparent;
+          border-right: 26px solid #666;
+          border-bottom: 13px solid transparent;
+          position: absolute;
+          left: -23px;
+          top: calc(50% - 10px);
+        }
+        &::before {
+          content: "";
+          display: block;
+          width: 0;
+          height: 0;
+          border-top: 13px solid transparent;
+          border-right: 26px solid #000;
+          border-bottom: 13px solid transparent;
+          position: absolute;
+          left: -26px;
+          top: calc(50% - 10px);
+        }
+      }
+      &.with_popover::after {
+        content: "";
+        display: block;
+        position: absolute;
+        top: 20px;
+        right: 5px;
+        bottom: 20px;
+        width: 3px;
+        background: #999;
+      }
       &:hover {
         background: #666;
         border-width: 3px;
         padding: 4px;
+        .popover {
+          margin-left: 1px;
+        }
       }
     }
   }
@@ -90,14 +140,24 @@ body {
     flex: 1;
     .cell {
       text-align: center;
+      font-size: 20px;
       visibility: hidden;
       padding: 5px;
       margin: 5px;
       border: 2px solid #888;
       border-radius: 10px;
       flex: 1;
+      height: 30%;
       transition: background 0.25s ease-in;
       cursor: pointer;
+      img {
+        visibility: hidden;
+        width: 100%;
+        height: calc(100% - 25px);
+        margin-top: 5px;
+        object-fit: contain;
+        object-position: center;
+      }
       &:hover {
         background: #eee;
         border-width: 3px;
@@ -191,5 +251,46 @@ body {
   }
   .mid {
     flex: 2;
+  }
+}
+.reactions {
+  width: 350px;
+  img {
+    width: 50px;
+    height: 50px;
+    margin: 5px 10px;
+    padding: 5px;
+    background: #ccc;
+    border-radius: 5px;
+    &:hover {
+      background: #eee;
+    }
+  }
+}
+.grids {
+  width: 300px;
+  &::after {
+    content: "";
+    display: block;
+    clear: left;
+  }
+  .grid_option {
+    width: 100px;
+    height: 100px;
+    margin: 5px;
+    padding: 5px;
+    background: #ccc;
+    border-radius: 5px;
+    color: #000;
+    float: left;
+    &:hover {
+      background: #eee;
+    }
+    img {
+      width: 100px;
+      height: 80px;
+      object-fit: contain;
+      object-position: center;
+    }
   }
 }

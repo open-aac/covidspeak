@@ -10,25 +10,48 @@ var remote = {
   send_message: function(room_id, message) {
     // Resolves with the following attributes
     // { message: [Message Object] }
-    return remote[remote.backend].send_message(message);
+    var str = message;
+    if(typeof(str) != 'string') { 
+      str.timestamp = (new Date()).getTime();
+      str = JSON.stringify(str); 
+    }
+    return remote[remote.backend].send_message(str);
   },
   connect_to_remote: function(token, room_key) {
     // Resolves an object with the following attributes
     // { id: "", 
-    return remote[remote.backend].connect_to_remote(token, room_key);
+    return new Promise(function(res, rej) {
+      remote[remote.backend].connect_to_remote(token, room_key).then(function(room) {
+        remote.rooms = remote.rooms || {};
+        remote.rooms[room.id] = remote.rooms[room.id] || {};
+        remote.rooms[room.id].room = room;
+        res(room);
+      }, function(err) {
+        rej(err);
+      });
+
+    })
   },
   user_added: function(room, user) {
+    remote.rooms[room.id].users = remote.rooms[room.id].users || {}
+    remote.rooms[room.id].users[user.id] = remote.rooms[room.id].users[user.id] || {};
+    remote.rooms[room.id].users[user.id].user = user;
     // Trigger for each user that joins, or for each
     // user that is already in the session
     remote.notify('user_added', {
       user: user,
+      room: remote.rooms[room.id].room,
       room_id: room.id
     })
   },
   track_added: function(room, user, track) {
+    remote.rooms[room.id].users[user.id].tracks = remote.rooms[room.id].users[user.id].tracks || {};
+    remote.rooms[room.id].users[user.id].tracks[track.id] = track;
     // Trigger for each track that is added for a remote user
     remote.notify('track_added', {
       track: track,
+      user: remote.rooms[room.id].users[user.id].user,
+      room: remote.rooms[room.id].room,
       room_id: room.id,
       user_id: user.id
     });
@@ -36,12 +59,21 @@ var remote = {
   message_recieved: function(room, user, track, message) {
     // Trigger for each data track message receiveds
     var json = message;
+    var user = remote.rooms[room.id].users[user.id].user;
     try {
       json = JSON.parse(json);
+      if(json.timestamp && remote.rooms[room.id] && remote.rooms[room.id].users[user.id]) {
+        var now = (new Date()).getTime();
+        user.ts_offset = (json.timestamp - now);
+        remote.rooms[room.id].users[user.id].ts_offset = (json.timestamp - now);
+      }
     } catch(e) { }
   
     remote.notify('message', {
       message: json,
+      room: remote.rooms[room.id].room,
+      user: user,
+      track: remote.rooms[room.id].users[user.id].tracks[track.id],
       room_id: room.id,
       track_id: track.id,
       user_id: user.id
@@ -111,7 +143,7 @@ remote.twilio = {
           var participant_ref = {
             id: participant.identity
           };
-          remote.user_added(participant_ref);
+          remote.user_added(room_ref, participant_ref);
           var add_track = function(track) {
             var track_ref = {
               type: track.kind,
@@ -126,7 +158,7 @@ remote.twilio = {
           };
           participant.tracks.forEach(function(publication) {
             if (publication.isSubscribed) {
-              add_track(track);
+              add_track(publication.track);
             }
           });
 
@@ -152,7 +184,6 @@ remote.twilio = {
     return new Promise(function(res, rej) {
       if(remote.twilio.data_track) {
         var str = message;
-        if(typeof(str) != 'string') { str = JSON.stringify(str); }
         remote.twilio.data_track.send(str);
         res({sent: message});
       } else {

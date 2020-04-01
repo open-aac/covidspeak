@@ -21,6 +21,9 @@ remote.addEventListener('track_added', function(data) {
 remote.addEventListener('user_added', function(data) {
   // TODO: keep a rotation of helpers for the communicator,
   // and keep communicators on everyone else's view
+  setTimeout(function() {
+    room.send_update();
+  }, 500);
 });
 remote.addEventListener('user_removed', function(data) {
 });
@@ -28,6 +31,50 @@ remote.addEventListener('message', function(data) {
   room.handle_message(data);
 });
 var zoom_factor = 1.1;
+var reactions = [
+  {text: "laugh", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f602.svg"},
+  {text: "sad", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f622.svg"},
+  {text: "kiss", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f618.svg"},
+  {text: "heart eyes", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f60d.svg"},
+  {text: "barf", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f92e.svg"},
+  {text: "thumbs up", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f44d.svg"},
+  {text: "party", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f973.svg"},
+  {text: "rose", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f339.svg"},
+  {text: "heart", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/2764.svg"},
+  {text: "pray", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f64f-1f3fe.svg"},
+];
+var default_buttons = [
+  {text: 'hi', id: 1, image_url: "https://lessonpix.com/drawings/858816/150x150/858816.png"},
+  {text: 'Start Over', id: 2},
+  {text: 'goodbye', id: 3, image_url: "https://lessonpix.com/drawings/44246/150x150/44246.png"},
+  {text: 'yes', id: 4, image_url: "https://lessonpix.com/drawings/13097/150x150/13097.png"},
+  {text: 'no', id: 5, image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
+  {text: 'what\'s up', id: 6, image_url: "https://lessonpix.com/drawings/9560/150x150/9560.png"},
+  {text: 'tell me more', id: 7, image_url: "https://lessonpix.com/drawings/34535/150x150/34535.png"},
+  {text: 'I\'m tired', id: 8, image_url: "https://lessonpix.com/drawings/509/150x150/509.png"},
+];
+var grids = [
+  {id: 'feelings', name: 'feelings', image_url: "https://lessonpix.com/drawings/4720/150x150/4720.png", buttons: [
+    {id: 1, text: "tired", image_url: "https://lessonpix.com/drawings/509/150x150/509.png"},
+    {id: 2, text: "Start Over", image_url: ""},
+    {id: 3, text: "hungry", image_url: "https://lessonpix.com/drawings/1813/150x150/1813.png"},
+    {id: 4, text: "happy", image_url: "https://lessonpix.com/drawings/18080/150x150/18080.png"},
+    {id: 5, text: "sad", image_url: "https://lessonpix.com/drawings/1695/150x150/1695.png"},
+    {id: 6, text: "excited", image_url: "https://lessonpix.com/drawings/1689/150x150/1689.png"},
+    {id: 7, text: "bored", image_url: "https://lessonpix.com/drawings/713417/150x150/713417.png"},
+    {id: 8, text: "frustrated", image_url: "https://lessonpix.com/drawings/113206/150x150/113206.png"}
+  ]},
+  {id: 'body', name: 'body', image_url: "https://lessonpix.com/drawings/1354/150x150/1354.png", buttons: [
+    {id: 1, text: "head", image_url: "https://lessonpix.com/drawings/6844/150x150/6844.png"},
+    {id: 2, text: "Start Over", image_url: ""},
+    {id: 3, text: "higher", image_url: "https://lessonpix.com/drawings/812/150x150/812.png"},
+    {id: 4, text: "yes", image_url: "https://lessonpix.com/drawings/13097/150x150/13097.png"},
+    {id: 5, text: "no", image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
+    {id: 6, text: "torso", image_url: "https://lessonpix.com/drawings/515/150x150/515.png"},
+    {id: 7, text: "limbs", image_url: "https://lessonpix.com/drawings/9729/150x150/9729.png"},
+    {id: 8, text: "lower", image_url: "https://lessonpix.com/drawings/816/150x150/816.png"}
+  ]},
+];
 var room = {
   size_video: function() {
     var box = document.getElementById('partner');
@@ -39,6 +86,7 @@ var room = {
       var zoom = room.zoom_level || 1.0;
       var vw = elem.videoWidth;
       var vh = elem.videoHeight;  
+      if(!vw || !vh) { return; }
       var xscale = bw / vw;
       var yscale = bh / vh;
       if(vw * zoom < bw && vh * zoom < bh) {
@@ -72,6 +120,19 @@ var room = {
     }
     room.size_video();
   },
+  assert_grid: function(buttons) {
+    var now = (new Date()).getTime();
+    room.buttons = buttons.map(function(b) {
+      return {text: b.text, id: b.id, image_url: b.image_url};
+    });
+    room.buttons.set_at = now;
+    room.asserted_buttons = {
+      set_at: now,
+      buttons: room.buttons
+    };
+    room.send_update();
+    room.show_grid();
+  },
   send_image: function(image_url, alt) {
     if(!room.current_room) { return; }
     remote.send_message(room.current_room.id, {
@@ -91,16 +152,53 @@ var room = {
     for(var idx = 0; idx < (room.local_tracks || []).length; idx++) {
       track_ids.push(room.local_tracks[idx].id);
     }
-    remote.send_message(room.current_room.id, {
+    var message = {
+      action: 'update',
       user_id: room.current_room.user_id,
       tracks: track_ids
-    });
+    }
+    if(room.asserted_buttons) {
+      room.asserted_buttons.buttons = room.asserted_buttons.buttons.map(function(b) { return {id: b.id, text: b.text, image_url: b.image_url }});
+      message.asserted_buttons = room.asserted_buttons
+    }
+    remote.send_message(room.current_room.id, message);
     room.update_timeout = setTimeout(function() {
       room.send_update();
     }, 5000);
   },
+  populate_reactions: function() {
+    var container = document.getElementsByClassName('reactions')[0];
+    if(container) {
+      container.innerHTML = "";
+      reactions.forEach(function(reaction) {
+        var img = document.createElement("img");
+        img.src = reaction.url;
+        img.alt = reaction.text;
+        container.appendChild(img);
+      });  
+    }  
+  },
+  populate_grids: function() {
+    var container = document.getElementsByClassName('grids')[0];
+    if(container) {
+      container.innerHTML = "";
+      grids.forEach(function(grid) {
+        var div = document.createElement('div');
+        div.classList.add('grid_option');
+        div.innerText = grid.name;
+        var img = document.createElement('img');
+        img.src = grid.image_url;
+        img.alt = '';
+        div.setAttribute('data-id', grid.id);
+        div.appendChild(img)
+        container.appendChild(div);
+      });  
+    }  
+  },
   start: function() {
     var room_id = (location.pathname.match(/\/rooms\/(\w+)/) || {})[1];
+    room.populate_grids();
+    room.populate_reactions();
     var enter_room = function() {
       session.ajax('/api/v1/rooms/' + room_id, {
         method: 'PUT',
@@ -121,7 +219,7 @@ var room = {
             room.current_room = room_session;
             room.local_tracks = tracks;
             room.send_update();
-            room.show_grid(room_session.for_self);
+            room.show_grid();
           }, function(error) {
             console.error("Unable to connect to Room: " + error.message);
           });
@@ -145,17 +243,34 @@ var room = {
       enter_room();
     }
   },
-  show_grid: function(for_communicator) {
+  show_grid: function() {
+    var for_communicator = room.current_room && room.current_room.for_self;
+    var fill_cell = function(cell, button) {
+      var text = cell.getElementsByClassName('text')[0];
+      text.innerText = button.text;
+      cell.style.visibility = 'visible';
+      var img = cell.getElementsByTagName('img')[0];
+      if(img) {
+        if(button.image_url) {
+          img.style.visibility = 'visible';
+          img.src = "/blank.gif";
+          setTimeout(function() {
+            img.src = button.image_url;
+          }, 10);
+        } else {
+          img.style.visibility = 'hidden';
+        }
+      }
+      cell.button = button;
+      button.cell = cell;
+    };
     if(for_communicator) {
       // Default Order
       var grid = document.getElementsByClassName('grid')[0];
       var cells = grid.getElementsByClassName('cell');
       for(var idx = 0; idx < cells.length; idx++) {
         var num = parseInt(cells[idx].getAttribute('data-idx'), 10);
-        cells[idx].innerText = room.buttons[num].text;
-        cells[idx].style.visibility = 'visible';
-        cells[idx].button = room.buttons[num];
-        room.buttons[num].cell = cells[idx];
+        fill_cell(cells[idx], room.buttons[num]);
       }
     } else {
       // Reverse Order
@@ -170,10 +285,7 @@ var room = {
       new_order[7] = room.buttons[5];
       for(var idx = 0; idx < cells.length; idx++) {
         var num = parseInt(cells[idx].getAttribute('data-idx'), 10);
-        cells[idx].innerText = new_order[num].text;
-        cells[idx].style.visibility = 'visible';
-        cells[idx].button = new_order[num];
-        new_order[num].cell = cells[idx];
+        fill_cell(cells[idx], new_order[num]);
       }
     }
   },
@@ -282,6 +394,19 @@ var room = {
         // show a small version of the image
       }
       room.show_image(json.url, json.text, big_image);
+    } else if(json && json.action == 'update') {
+      if(data.user && data.user.ts_offset != null && json.asserted_buttons) {
+        // accept the other user's butttons if they were updated
+        // more recently than your own
+        var ts = json.asserted_buttons.set_at - data.user.ts_offset;
+        if(room.buttons && (!room.buttons.set_at || room.buttons.set_at < ts)) {
+          room.asserted_buttons = json.asserted_buttons;
+          room.asserted_buttons.set_at = ts - 1000;
+          room.buttons = json.asserted_buttons.buttons;
+          room.buttons.set_at = ts - 1000;
+          room.show_grid();
+        }
+      }
     } else {
       // TODO: if more users in the feed, ensure
       // that everyone else sees the communicator's video feed
@@ -304,9 +429,13 @@ var drag = function(event) {
   room.drag_y = event.clientY - (room.shift_y || 0);
 };
 document.addEventListener('mousemove', function(event) {
-  if($(event.target).closest('#partner').length > 0 && event.buttons == 1) {
-    event.preventDefault();
-    shift(event);
+  if($(event.target).closest('#partner').length > 0) {
+    if(event.buttons == 1) {
+      event.preventDefault();
+      shift(event);
+    } else {
+      room.toggle_zoom(true);
+    }
   }
 });
 document.addEventListener('touchmove', function(event) {
@@ -314,7 +443,6 @@ document.addEventListener('touchmove', function(event) {
     event.preventDefault();
     shift(event);
   }
-
 });
 document.addEventListener('mousedown', function(event) {
   if($(event.target).closest('#partner').length > 0) {
@@ -340,24 +468,46 @@ document.addEventListener('click', function(event) {
   if($partner.length > 0) {
     room.toggle_zoom();
   } else if($cell.length > 0) {
-    remote.send_message({action: 'click', button: {id: $cell[0].button.id }});
+    remote.send_message(room.current_room.id, {action: 'click', button: {id: $cell[0].button.id }});
     $cell.addClass('my_highlight');
     setTimeout(function() {
       $cell.removeClass('my_highlight');
     }, 1000);
   } else if($button.length > 0) {
+    event.preventDefault();
+    if($button.hasClass('with_popover')) {
+      if($button.find(".popover").css('display') != 'block') {
+        $button.find(".popover").css('display', 'block');
+        return;
+      } else if($(event.target).closest(".popover").length == 0) {
+        $button.find(".popover").css('display', 'none');
+        return;
+      }
+    }
     var action = $button.attr('data-action');
     if(action == 'end') {
       alert('done!');
+    } else if(action == 'customize') {
+      alert('not implemented');
+    } else if(action == 'quick') {
+      room.assert_grid(room.default_buttons);
+    } else if(action == 'load') {
+      var id = $(event.target).closest('.grid_option').attr('data-id');
+      if(id) {
+        var grid = grids.find(function(g) { return g.id == id; });
+        if(grid) {
+          room.assert_grid(grid.buttons);
+        }
+      }
+      $button.find(".popover").css('display', 'none');
     } else if(action == 'send') {
-      var images = [
-        {url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f973.svg", text: "party"},
-        {url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f339.svg", text: "rose"},
-        {url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f602.svg", text: "laugh"},
-        {url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f622.svg", text: "sad"},
-      ];
-      var img = images[Math.floor(Math.random() * images.length)];
-      room.send_image(img.url, img.text);
+      var container = document.getElementsByClassName('reactions')[0];
+      if($(event.target).closest(".reactions").length > 0 && event.target.tagName == 'IMG') {
+        container.parentNode.style.display = 'none';
+        room.send_image(event.target.src, event.target.alt);
+      } else {
+        container.parentNode.style.display = 'none';
+      }
     }
   } else if($zoom.length > 0) {
     event.preventDefault();
@@ -371,3 +521,4 @@ document.addEventListener('click', function(event) {
     }
   }
 });
+room.default_buttons = default_buttons;

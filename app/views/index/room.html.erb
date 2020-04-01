@@ -3,14 +3,22 @@
     <div class='button' data-action='quick'>
       Quick
     </div>
-    <div class='button' data-action='load'>
+    <div class='button with_popover' data-action='load'>
       Load
+      <div class='popover'>
+        <div class='grids'>
+        </div>
+      </div>
     </div>
     <div class='button' data-action='customize'>
       Customize
     </div>
-    <div class='button' data-action='send'>
+    <div class='button with_popover' data-action='send'>
       React
+      <div class='popover'>
+        <div class='reactions'>
+        </div>
+      </div>
     </div>
     <div class='button' data-action='end'>
       End
@@ -18,14 +26,18 @@
   </div>
   <div class='col'>
     <div class='cell' data-idx='0'>
+      <div class='text'></div><img />
     </div>
     <div class='cell' data-idx='3'>
+      <div class='text'></div><img />
     </div>
     <div class='cell' data-idx='5'>
+      <div class='text'></div><img />
     </div>
   </div>
   <div class='mid'>
     <div class='cell' data-idx='1'>
+      <div class='text'></div><img />
     </div>
     <div class='preview'>
       <div id="partner">
@@ -39,28 +51,23 @@
       </div>
     </div>
     <div class='cell' data-idx='6' style='flex: 3;'>
+      <div class='text'></div><img />
     </div>
   </div>
   <div class='col'>
     <div class='cell' data-idx='2'>
+      <div class='text'></div><img />
     </div>
     <div class='cell' data-idx='4'>
+      <div class='text'></div><img />
     </div>
     <div class='cell' data-idx='7'>
+      <div class='text'></div><img />
     </div>
   </div>
 </div>
 
 <script>
-  room.buttons = [
-    {text: 'a', id: 1},
-    {text: 'Start Over', id: 2},
-    {text: 'c', id: 3},
-    {text: 'Yes', id: 4},
-    {text: 'No', id: 5},
-    {text: 'f', id: 6},
-    {text: 'g', id: 7},
-    {text: 'h', id: 8},
-  ];
+  room.buttons = room.default_buttons;
   room.start();
 </script>
