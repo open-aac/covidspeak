@@ -45,6 +45,7 @@ var remote = {
     })
   },
   track_added: function(room, user, track) {
+    track.added = (new Date()).getTime();
     remote.rooms[room.id].users[user.id].tracks = remote.rooms[room.id].users[user.id].tracks || {};
     remote.rooms[room.id].users[user.id].tracks[track.id] = track;
     // Trigger for each track that is added for a remote user
@@ -55,6 +56,20 @@ var remote = {
       room_id: room.id,
       user_id: user.id
     });
+  },
+  track_removed: function(room, user, track) {
+    track.added = (new Date()).getTime();
+    remote.rooms[room.id].users[user.id].tracks = remote.rooms[room.id].users[user.id].tracks || {};
+    delete remote.rooms[room.id].users[user.id].tracks[track.id];
+    // Trigger for each track that is added for a remote user
+    remote.notify('track_removed', {
+      track: track,
+      user: remote.rooms[room.id].users[user.id].user,
+      room: remote.rooms[room.id].room,
+      room_id: room.id,
+      user_id: user.id
+    });
+
   },
   message_recieved: function(room, user, track, message) {
     // Trigger for each data track message receiveds
@@ -165,6 +180,13 @@ remote.twilio = {
           participant.on('trackSubscribed', function(track) {
             add_track(track);
           });  
+          participant.on('trackUnsubscribed', function(track) {
+            var track_ref = {
+              type: track.kind,
+              id: track.name
+            };
+            remote.track_removed(room_ref, participant_ref, track_ref);
+          });
         };
         setTimeout(function() {
           room.participants.forEach(function(participant) {

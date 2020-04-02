@@ -70,6 +70,8 @@ body {
     margin-right: 10px;
     box-shadow: 5px -5px 7px #222, 5px 5px 7px #222;
     .button {
+      -webkit-tap-highlight-color: rgba(0,0,0,0);
+      -webkit-tap-highlight-color: transparent;
       background: #444;
       color: #fff;
       text-align: center;
@@ -81,6 +83,14 @@ body {
       padding: 5px;
       cursor: pointer;
       position: relative;
+      img.icon {
+        display: block;
+        filter: invert(100%);
+        opacity: 0.7;
+        margin-top: 10px;
+        height: calc(100% - 40px);
+        width: 100%;
+      }
       .popover {
         display: none;
         z-index: 3;
@@ -92,29 +102,31 @@ body {
         top: 50%; 
         box-shadow: 5px 5px 10px #000; 
         border-radius: 10px;
-        &::after {
-          content: "";
-          display: block;
-          width: 0;
-          height: 0;
-          border-top: 13px solid transparent;
-          border-right: 26px solid #666;
-          border-bottom: 13px solid transparent;
-          position: absolute;
-          left: -23px;
-          top: calc(50% - 10px);
-        }
-        &::before {
-          content: "";
-          display: block;
-          width: 0;
-          height: 0;
-          border-top: 13px solid transparent;
-          border-right: 26px solid #000;
-          border-bottom: 13px solid transparent;
-          position: absolute;
-          left: -26px;
-          top: calc(50% - 10px);
+        .popover_carat {
+          &::after {
+            content: "";
+            display: block;
+            width: 0;
+            height: 0;
+            border-top: 13px solid transparent;
+            border-right: 26px solid #666;
+            border-bottom: 13px solid transparent;
+            position: absolute;
+            left: -23px;
+            top: calc(50% - 10px);
+          }
+          &::before {
+            content: "";
+            display: block;
+            width: 0;
+            height: 0;
+            border-top: 13px solid transparent;
+            border-right: 26px solid #000;
+            border-bottom: 13px solid transparent;
+            position: absolute;
+            left: -26px;
+            top: calc(50% - 10px);
+          }
         }
       }
       &.with_popover::after {
@@ -144,21 +156,26 @@ body {
     flex-direction: column;
     flex: 1;
     .cell {
+      -webkit-tap-highlight-color: rgba(0,0,0,0);
+      -webkit-tap-highlight-color: transparent;
       text-align: center;
-      font-size: 20px;
+      font-size: 24px;
       visibility: hidden;
       padding: 5px;
       margin: 5px;
       border: 2px solid #888;
       border-radius: 10px;
       flex: 1;
-      height: 30%;
+      height: calc(33vh - 10px);
       transition: background 0.25s ease-in;
       cursor: pointer;
+      &.skinny {
+        height: calc(12vh - 10px);
+      }
       img {
         visibility: hidden;
         width: 100%;
-        height: calc(100% - 25px);
+        height: calc(100% - 30px);
         margin-top: 5px;
         object-fit: contain;
         object-position: center;
@@ -166,17 +183,17 @@ body {
       &:hover {
         background: #eee;
         border-width: 3px;
-        margin: 4px;
+        margin: 5px;
       }
       &.my_highlight {
         background: #ffffcc;
         border-width: 3px;
-        margin: 4px;
+        margin: 5px;
       }
       &.highlight {
         background: #ffff00;
         border-width: 3px;
-        margin: 4px;
+        margin: 5px;
       }
     }
     .preview {
@@ -260,11 +277,25 @@ body {
     flex: 2;
   }
 }
+.extras {
+  width: 321px;
+  .button {
+    height: 80px;
+    width: 100px;
+    float: left;
+  }
+  &::after {
+    content: "";
+    clear: left;
+  }
+}
 .reactions {
-  width: 350px;
+  width: 475px;
+  max-width: calc(100vw - 150px);
+  text-align: left;
   img {
-    width: 50px;
-    height: 50px;
+    width: 75px;
+    height: 75px;
     margin: 5px 10px;
     padding: 5px;
     background: #ccc;
@@ -275,13 +306,16 @@ body {
   }
 }
 .grids {
-  width: 300px;
+  width: 330px;
+  max-width: calc(100vw - 150px);
+  text-align: left;
   &::after {
     content: "";
     display: block;
     clear: left;
   }
   .grid_option {
+    text-align: center;
     width: 100px;
     height: 100px;
     margin: 5px;
@@ -294,8 +328,9 @@ body {
       background: #eee;
     }
     img {
-      width: 100px;
-      height: 80px;
+      width: calc(100% - 12px);
+      height: calc(100% - 22px);
+      margin-top: 5px;
       object-fit: contain;
       object-position: center;
     }

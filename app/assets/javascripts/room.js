@@ -1,14 +1,37 @@
+var audio_analysers = [];
 remote.addEventListener('track_added', function(data) {
   var track = data.track;
   if(track.generate_dom) {
     console.log("adding track", track);
     if(track.type == 'video' || track.type == 'audio') {
+      // TODO: track one video feed per user
       var priors = document.getElementById('partner').getElementsByTagName(track.type);
       for(var idx = 0; idx < priors.length; idx++) {
         priors[idx].parentNode.removeChild(priors[idx]);
       }
     }
     var elem = track.generate_dom();
+    if(elem.tagName == 'AUDIO') {
+      if(true) { // if I'm the communicator, analyze, otherwise it doesn't matter
+        var context = new (window.AudioContext || window.webkitAudioContext)();
+        var analyser = context.createAnalyser();
+        var source = context.createMediaElementSource(audio);
+        source.connect(analyser);
+        audio_analysers.push({
+          user: data.user, 
+          analyser: analyser, 
+          audio_track: data.track,
+          bins: ana.frequencyBinCount,
+          frequency_array: new Uint8Array(ana.frequencyBinCount)
+        });
+        analyser.connect(context.destination);
+        if(!audio_loop.running) {
+          audio_loop.running = true;
+          audio_loop();
+        }
+      }
+    }
+    elem.setAttribute('data-track-id', track.id);
     document.getElementById('partner').appendChild(elem);
     if(track.type == 'video') {
       setTimeout(function() {
@@ -16,6 +39,31 @@ remote.addEventListener('track_added', function(data) {
       }, 500);
       room.current_video_id = track.id;
     }
+  }
+});
+var audio_loop = function() {
+  if(audio_analysers.length > 0) {
+    var biggest = null;
+    audio_analysers.forEach(function(ana) {
+      analyser.getByteFrequencyData(ana.frequency_array);
+      var tally = 0;
+      for(var i = 0; i < ana.bins; i++){
+        tally = tally + ana.frequency_array[i];
+      }
+      ana.output = (tally / ana.bins);
+      if(!biggest || ana.output > biggest.output) {
+        biggest = ana;
+      }
+    });
+    // set user as loudest, update display
+  }
+  window.requestAnimationFrame(audio_loop);
+};
+remote.addEventListener('track_removed', function(data) {
+  var track = data.track;
+  var elem = null;
+  if(elem && elem.getAttribute('data-track-id') == track.id) {
+    elem.parentNode.removeChild(elem);
   }
 });
 remote.addEventListener('user_added', function(data) {
@@ -30,6 +78,7 @@ remote.addEventListener('user_removed', function(data) {
 remote.addEventListener('message', function(data) {
   room.handle_message(data);
 });
+// TODO: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/captureStream
 var zoom_factor = 1.1;
 var reactions = [
   {text: "laugh", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f602.svg"},
@@ -49,11 +98,14 @@ var default_buttons = [
   {text: 'goodbye', id: 3, image_url: "https://lessonpix.com/drawings/44246/150x150/44246.png"},
   {text: 'yes', id: 4, image_url: "https://lessonpix.com/drawings/13097/150x150/13097.png"},
   {text: 'no', id: 5, image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
-  {text: 'what\'s up', id: 6, image_url: "https://lessonpix.com/drawings/9560/150x150/9560.png"},
+  {text: 'How are things?', id: 6, image_url: "https://lessonpix.com/drawings/9560/150x150/9560.png"},
   {text: 'tell me more', id: 7, image_url: "https://lessonpix.com/drawings/34535/150x150/34535.png"},
   {text: 'I\'m tired', id: 8, image_url: "https://lessonpix.com/drawings/509/150x150/509.png"},
 ];
+// sharing photos/videos
+// love it, that's awesome, so cute, no way
 var grids = [
+  // afraid, confused
   {id: 'feelings', name: 'feelings', image_url: "https://lessonpix.com/drawings/4720/150x150/4720.png", buttons: [
     {id: 1, text: "tired", image_url: "https://lessonpix.com/drawings/509/150x150/509.png"},
     {id: 2, text: "Start Over", image_url: ""},
@@ -64,6 +116,16 @@ var grids = [
     {id: 7, text: "bored", image_url: "https://lessonpix.com/drawings/713417/150x150/713417.png"},
     {id: 8, text: "frustrated", image_url: "https://lessonpix.com/drawings/113206/150x150/113206.png"}
   ]},
+  // head, eye, throat, mouth, ear, chest, stomach, back, arm, leg, tongue
+  // pain scale
+  // likert scale
+  // medical requests (nurse, suction, temperature, adjust, uncomfortable)
+  // pillow, bed, up, down, on stomach, on side, head, arms, pain, okay, itchy, out of bed, uncomfortable, IV, massage, rub, sit up, lay down
+  // swab mouth, dry lips, light on/off, washcloth on head, clean glasses, cold, hot, open/close curtain, bathroom, when tube out of mouth
+  // leave me alone, listen to music, read book
+  // dull, sharp, everywhere, itch, sting, hurts, aches, burns, stuck
+  // how am I doing?
+  // prayer, don't leave, wash hair, brush teeth, brush hair
   {id: 'body', name: 'body', image_url: "https://lessonpix.com/drawings/1354/150x150/1354.png", buttons: [
     {id: 1, text: "head", image_url: "https://lessonpix.com/drawings/6844/150x150/6844.png"},
     {id: 2, text: "Start Over", image_url: ""},
@@ -74,9 +136,29 @@ var grids = [
     {id: 7, text: "limbs", image_url: "https://lessonpix.com/drawings/9729/150x150/9729.png"},
     {id: 8, text: "lower", image_url: "https://lessonpix.com/drawings/816/150x150/816.png"}
   ]},
+  {id: 'requests', name: 'requests', image_url: "https://lessonpix.com/drawings/234158/150x150/234158.png", buttons: [
+    {id: 1, text: "Tell me a Story", image_url: "https://lessonpix.com/drawings/7369/150x150/7369.png"},
+    {id: 2, text: "Start Over", image_url: ""},
+    {id: 3, text: "Read to Me", image_url: "https://lessonpix.com/drawings/6012/150x150/6012.png"},
+    {id: 4, text: "more", image_url: "https://lessonpix.com/drawings/850/150x150/850.png"},
+    {id: 5, text: "done", image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
+    {id: 6, text: "Sing to Me", image_url: "https://lessonpix.com/drawings/1090436/150x150/1090436.png"},
+    {id: 7, text: "How was Your Day?", image_url: "https://lessonpix.com/drawings/211740/150x150/211740.png"},
+    {id: 8, text: "Play Me a Song", image_url: "https://lessonpix.com/drawings/58722/150x150/58722.png"}
+  ]},
 ];
 var room = {
   size_video: function() {
+    var height = window.innerHeight - 30;
+    var grid = document.getElementsByClassName('grid')[0];
+    var buttons = grid.getElementsByClassName('button');
+    for(var idx = 0; idx < buttons.length; idx++) {
+      if(height / 5 < 100) {
+        buttons[idx].style.height = (height / 5) + 'px';
+      } else {
+        buttons[idx].style.height = '';
+      }
+    }
     var box = document.getElementById('partner');
     var elem = box && box.getElementsByTagName('VIDEO')[0];
     if(box && elem) {
@@ -123,7 +205,7 @@ var room = {
   assert_grid: function(buttons) {
     var now = (new Date()).getTime();
     room.buttons = buttons.map(function(b) {
-      return {text: b.text, id: b.id, image_url: b.image_url};
+      return room.simple_button(b);
     });
     room.buttons.set_at = now;
     room.asserted_buttons = {
@@ -134,13 +216,13 @@ var room = {
     room.show_grid();
   },
   send_image: function(image_url, alt) {
+    room.show_image(image_url, alt, false);
     if(!room.current_room) { return; }
     remote.send_message(room.current_room.id, {
       action: 'image',
       url: image_url,
       text: alt
     })
-    room.show_image(image_url, alt, false);
   },
   send_update: function() {
     if(room.update_timeout) {
@@ -158,7 +240,7 @@ var room = {
       tracks: track_ids
     }
     if(room.asserted_buttons) {
-      room.asserted_buttons.buttons = room.asserted_buttons.buttons.map(function(b) { return {id: b.id, text: b.text, image_url: b.image_url }});
+      room.asserted_buttons.buttons = room.asserted_buttons.buttons.map(function(b) { return room.simple_button(b)});
       message.asserted_buttons = room.asserted_buttons
     }
     remote.send_message(room.current_room.id, message);
@@ -196,9 +278,12 @@ var room = {
     }  
   },
   start: function() {
+    // TODO: if not over https and not on localhost, pre-empt error
+    // TODO: show loading message
     var room_id = (location.pathname.match(/\/rooms\/(\w+)/) || {})[1];
     room.populate_grids();
     room.populate_reactions();
+    room.size_video();
     var enter_room = function() {
       session.ajax('/api/v1/rooms/' + room_id, {
         method: 'PUT',
@@ -245,11 +330,18 @@ var room = {
   },
   show_grid: function() {
     var for_communicator = room.current_room && room.current_room.for_self;
-    for_communicator = true;
+    var window_height = window.innerHeight;
+    var video_height = window_height - ((window_height / 3) - 7) - (window_height * .12) - 21;
+    document.getElementById('partner').parentNode.style.height = video_height + "px";
     var fill_cell = function(cell, button) {
       var text = cell.getElementsByClassName('text')[0];
       text.innerText = button.text;
       cell.style.visibility = 'visible';
+      cell.style.height = ((window_height / 3) - 7) + "px";
+      if(cell.classList.contains('skinny')) {
+        cell.style.height = (window_height * .12) + "px";
+      }
+      cell.parentNode.style.display = 'block';
       var img = cell.getElementsByTagName('img')[0];
       if(img) {
         if(button.image_url) {
@@ -401,11 +493,19 @@ var room = {
         // more recently than your own
         var ts = json.asserted_buttons.set_at - data.user.ts_offset;
         if(room.buttons && (!room.buttons.set_at || room.buttons.set_at < ts)) {
-          room.asserted_buttons = json.asserted_buttons;
-          room.asserted_buttons.set_at = ts - 1000;
-          room.buttons = json.asserted_buttons.buttons;
-          room.buttons.set_at = ts - 1000;
-          room.show_grid();
+          var changed = false;
+          room.buttons.forEach(function(btn, idx) {
+            if(!room.simple_button(btn, json.asserted_buttons.buttons[idx]).same) {
+              changed = true;
+            }
+          });
+          if(changed) {
+            room.asserted_buttons = json.asserted_buttons;
+            room.asserted_buttons.set_at = ts - 1000;
+            room.buttons = json.asserted_buttons.buttons;
+            room.buttons.set_at = ts - 1000;
+            room.show_grid();
+          }
         }
       }
     } else {
@@ -413,10 +513,23 @@ var room = {
       // that everyone else sees the communicator's video feed
       console.log("MESSAGE:", json);
     }  
+  },
+  simple_button: function(btn, comp) {
+    if(!btn) { return {}; }
+    var res = {
+      id: btn.id,
+      text: btn.text,
+      image_url: btn.image_url
+    };
+    if(comp) {
+      res.same = comp.id == btn.id && comp.text == btn.textt && comp.image_url == btn.image_url;
+    }
+    return res;
   }
 };
 window.addEventListener('resize', function() {
   room.size_video();
+  room.show_grid();
 });
 var shift = function(event) {
   room.shift_x = event.clientX - (room.drag_x || event.clientX);
@@ -446,15 +559,29 @@ document.addEventListener('touchmove', function(event) {
   }
 });
 document.addEventListener('mousedown', function(event) {
+  if($(".popover:visible").length > 0) {
+    if($(event.target).closest('.button:not(.sub_button)').find(".popover:visible").length == 0) {
+      $(".popover:visible").css('display', 'none');
+    }
+  }
   if($(event.target).closest('#partner').length > 0) {
     event.preventDefault();
     drag(event);
+  } else if(true) {
+    event.preventDefault();
   }
 });
 document.addEventListener('touchstart', function(event) {
+  if($(".popover:visible").length > 0) {
+    if($(event.target).closest('.button:not(.sub_button)').find(".popover:visible").length == 0) {
+      $(".popover:visible").css('display', 'none');
+    }
+  }
   if($(event.target).closest('#partner').length > 0) {
     event.preventDefault();
     drag(event);
+  } else if(true) {
+    event.preventDefault();
   }
 });
 document.addEventListener('click', function(event) {
@@ -469,8 +596,11 @@ document.addEventListener('click', function(event) {
   if($partner.length > 0) {
     room.toggle_zoom();
   } else if($cell.length > 0) {
-    remote.send_message(room.current_room.id, {action: 'click', button: {id: $cell[0].button.id }});
+    if(room.current_room) {
+      remote.send_message(room.current_room.id, {action: 'click', button: {id: $cell[0].button.id }});
+    }
     $cell.addClass('my_highlight');
+    $cell.blur();
     setTimeout(function() {
       $cell.removeClass('my_highlight');
     }, 1000);
@@ -485,6 +615,7 @@ document.addEventListener('click', function(event) {
         return;
       }
     }
+    $(".popover:visible").css('display', 'none');
     var action = $button.attr('data-action');
     if(action == 'end') {
       alert('done!');
