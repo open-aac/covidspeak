@@ -1,0 +1,16 @@
+<div id='middle' class='join'>
+  <h2>Thank you!</h2>
+  <div id='goback' style='margin-top: 50px;'>
+    <button id='back' style='width: 100%;'>Back to Main Page</button>
+  </div>
+</div>
+
+<script>
+document.querySelector('#back').addEventListener('click', function(event) {
+  event.preventDefault();
+  location.href = '/';
+});
+if(localStorage.room_id) {
+  document.querySelector('goback').style.display = 'block';
+}
+</script>

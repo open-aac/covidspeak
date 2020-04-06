@@ -5,4 +5,7 @@ class IndexController < ApplicationController
   def room
     render :layout => 'minimal'
   end
+
+  def join
+  end
 end

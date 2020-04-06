@@ -1,0 +1,46 @@
+<div id='middle' class='join'>
+  <a class="join_link" style="position: absolute; left: -1000px;"><%= request.url %></a>
+  Ready to chat? 
+  <div class='preview'>
+  </div>
+  <a class='join' href="/rooms/<%= params['room_id'] %>">Join the Room</a>
+  <div class='buttons'>
+    <button id='copy' style='width: 50%;'>Copy Link to Share</button>
+    <button id='share' style='width: calc(50% - 10px); float: right; margin-right: 0; display: xnone;'>
+      <img class='icon' src='/icons/reply.svg' alt='' style='height: 25px; vertical-align: bottom;'/>
+      Share Link
+    </button>
+  </div>
+</div>
+<script>
+if(navigator.canShare && navigator.canShare()) {
+  document.querySelector("#share").style.display = 'inline';
+}
+document.addEventListener('click', function(event) {
+  var url = document.querySelector('.join_link').innerText;
+  if(event.target.classList.contains('join')) {
+    localStorage.terms_accepted = 'true';    
+  }
+  if(event.target.id ==  'copy') {
+    extras.copy(url);
+  } else if(event.target.id == 'share') {
+    if(navigator.share) {
+      navigator.share({url: url});
+    }
+  }
+});
+async function getMedia() {
+  var stream = await navigator.mediaDevices.getUserMedia({video: true}).then(function(stream) {
+    var video = document.createElement('video');
+    video.srcObject = stream;
+    video.onloadedmetadata = function(e) {
+      video.play();
+    };
+    document.querySelector('#middle .preview').appendChild(video);
+  }, function(err) {
+    
+  });
+};
+getMedia();
+
+</script>

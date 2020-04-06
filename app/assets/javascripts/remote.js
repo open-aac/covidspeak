@@ -45,7 +45,7 @@ var remote = {
     })
   },
   track_added: function(room, user, track) {
-    track.added = (new Date()).getTime();
+    track.added_at = (new Date()).getTime();
     remote.rooms[room.id].users[user.id].tracks = remote.rooms[room.id].users[user.id].tracks || {};
     remote.rooms[room.id].users[user.id].tracks[track.id] = track;
     // Trigger for each track that is added for a remote user
@@ -58,12 +58,21 @@ var remote = {
     });
   },
   track_removed: function(room, user, track) {
-    track.added = (new Date()).getTime();
     remote.rooms[room.id].users[user.id].tracks = remote.rooms[room.id].users[user.id].tracks || {};
     delete remote.rooms[room.id].users[user.id].tracks[track.id];
+    var tracks = remote.rooms[room.id].users[user.id].tracks || {};
+    var newest = null;
+    for(var key in tracks) {
+      if(tracks[key].type == track.type) {
+        if(!max || tracks[key].added_at > newest.added_at) {
+          newest = tracks[key];
+        }
+      }
+    }
     // Trigger for each track that is added for a remote user
     remote.notify('track_removed', {
       track: track,
+      newest_other: newest,
       user: remote.rooms[room.id].users[user.id].user,
       room: remote.rooms[room.id].room,
       room_id: room.id,

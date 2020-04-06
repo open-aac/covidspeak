@@ -1,51 +1,56 @@
 var audio_analysers = [];
+var add_dom = function(elem, track, user) {
+  if(elem.tagName == 'AUDIO') {
+    if(true) { // if I'm the communicator, analyze, otherwise it should only add for communicator
+      var context = new (window.AudioContext || window.webkitAudioContext)();
+      var analyser = context.createAnalyser();
+      var source = context.createMediaElementSource(elem);
+      source.connect(analyser);
+      audio_analysers.push({
+        user: user, 
+        analyser: analyser, 
+        audio_track: track,
+        bins: analyser.frequencyBinCount,
+        frequency_array: new Uint8Array(analyser.frequencyBinCount)
+      });
+      analyser.connect(context.destination);
+      if(!audio_loop.running) {
+        audio_loop.running = true;
+        audio_loop();
+      }
+    }
+  }
+  elem.classList.add("room-" + track.type);
+  elem.setAttribute('data-track-id', track.id);
+  elem.setAttribute('data-user-id', user.id);
+  document.getElementById('partner').appendChild(elem);
+  if(track.type == 'video') {
+    setTimeout(function() {
+      room.size_video();
+    }, 500);
+    room.current_video_id = track.id;
+  }
+}
 remote.addEventListener('track_added', function(data) {
   var track = data.track;
   if(track.generate_dom) {
     console.log("adding track", track);
     if(track.type == 'video' || track.type == 'audio') {
-      // TODO: track one video feed per user
-      var priors = document.getElementById('partner').getElementsByTagName(track.type);
+      var priors = document.getElementById('partner').getElementsByClassName("room-" + track.type);
       for(var idx = 0; idx < priors.length; idx++) {
-        priors[idx].parentNode.removeChild(priors[idx]);
-      }
-    }
-    var elem = track.generate_dom();
-    if(elem.tagName == 'AUDIO') {
-      if(true) { // if I'm the communicator, analyze, otherwise it doesn't matter
-        var context = new (window.AudioContext || window.webkitAudioContext)();
-        var analyser = context.createAnalyser();
-        var source = context.createMediaElementSource(audio);
-        source.connect(analyser);
-        audio_analysers.push({
-          user: data.user, 
-          analyser: analyser, 
-          audio_track: data.track,
-          bins: ana.frequencyBinCount,
-          frequency_array: new Uint8Array(ana.frequencyBinCount)
-        });
-        analyser.connect(context.destination);
-        if(!audio_loop.running) {
-          audio_loop.running = true;
-          audio_loop();
+        if(priors.getAttribute('data-user_id') == data.user_id) {
+          priors[idx].parentNode.removeChild(priors[idx]);
         }
       }
     }
-    elem.setAttribute('data-track-id', track.id);
-    document.getElementById('partner').appendChild(elem);
-    if(track.type == 'video') {
-      setTimeout(function() {
-        room.size_video();
-      }, 500);
-      room.current_video_id = track.id;
-    }
+    add_dom(track.generate_dom(), data.track, data.user);
   }
 });
 var audio_loop = function() {
   if(audio_analysers.length > 0) {
     var biggest = null;
     audio_analysers.forEach(function(ana) {
-      analyser.getByteFrequencyData(ana.frequency_array);
+      ana.analyser.getByteFrequencyData(ana.frequency_array);
       var tally = 0;
       for(var i = 0; i < ana.bins; i++){
         tally = tally + ana.frequency_array[i];
@@ -61,9 +66,16 @@ var audio_loop = function() {
 };
 remote.addEventListener('track_removed', function(data) {
   var track = data.track;
-  var elem = null;
-  if(elem && elem.getAttribute('data-track-id') == track.id) {
-    elem.parentNode.removeChild(elem);
+  if(track.type == 'video' || track.type == 'audio') {
+    var priors = document.getElementById('partner').getElementsByClassName("room-" + track.type);
+    for(var idx = 0; idx < priors.length; idx++) {
+      if(priors.getAttribute('data-user_id') == data.user_id) {
+        priors[idx].parentNode.removeChild(priors[idx]);
+      }
+    }
+    if(data.newest_other) {
+      add_dom(data.newest_other, data.track, data.user);
+    }
   }
 });
 remote.addEventListener('user_added', function(data) {
@@ -85,12 +97,17 @@ var reactions = [
   {text: "sad", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f622.svg"},
   {text: "kiss", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f618.svg"},
   {text: "heart eyes", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f60d.svg"},
-  {text: "barf", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f92e.svg"},
-  {text: "thumbs up", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f44d.svg"},
   {text: "party", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f973.svg"},
+  {text: "thumbs up", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f44d.svg"},
   {text: "rose", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f339.svg"},
   {text: "heart", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/2764.svg"},
   {text: "pray", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f64f-1f3fe.svg"},
+  {text: "clap", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f44f-1f3fd.svg"},
+  {text: "tired", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f634.svg"},
+  {text: "mad", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f621.svg"},
+  {text: "barf", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f92e.svg"},
+  {text: "rolling eyes", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f644.svg"},
+  {text: "shrug", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f937-200d-2640-fe0f.svg"},
 ];
 var default_buttons = [
   {text: 'hi', id: 1, image_url: "https://lessonpix.com/drawings/858816/150x150/858816.png"},
@@ -151,6 +168,7 @@ var room = {
   size_video: function() {
     var height = window.innerHeight - 30;
     var grid = document.getElementsByClassName('grid')[0];
+    if(!grid) { return; }
     var buttons = grid.getElementsByClassName('button');
     for(var idx = 0; idx < buttons.length; idx++) {
       if(height / 5 < 100) {
@@ -172,7 +190,7 @@ var room = {
       var xscale = bw / vw;
       var yscale = bh / vh;
       if(vw * zoom < bw && vh * zoom < bh) {
-        room.zoom_level = room.zoom_level * zoom_factor;
+        room.zoom_level = zoom * zoom_factor;
         return room.size_video();
       }
       var scale = Math.max(xscale, yscale);
@@ -192,6 +210,29 @@ var room = {
       elem.style.marginLeft = (fudge_x + shift_x) + "px";
       elem.style.marginTop = (fudge_y + shift_y) + "px";
     }
+  },
+  confirm_exit: function() {
+    // TODO: confirmation of exit
+  },
+  show_invite: function() {
+    // TODO: invite popup
+  },
+  flip_video: function() {
+    // TODO: transform: scaleX(-1);
+  },
+  mute_self: function() {
+    // TODO: unpublish the audio feed
+  },
+  share_screen: function() {
+    // TODO: publish screen share stream
+  },
+  share_image: function() {
+    // TODO: publish stream canvas
+  },
+  share_video: function() {
+    // TODO: is this possible?
+    // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Manipulating_video_using_canvas
+    // https://developers.google.com/web/updates/2016/10/capture-stream
   },
   zoom: function(zoom_in) {
     room.zoom_level = (room.zoom_level || 1.0);
@@ -219,6 +260,7 @@ var room = {
     room.show_image(image_url, alt, false);
     if(!room.current_room) { return; }
     remote.send_message(room.current_room.id, {
+      from_communicator: room.current_room.for_self,
       action: 'image',
       url: image_url,
       text: alt
@@ -278,16 +320,22 @@ var room = {
     }  
   },
   start: function() {
+    // TODO: if the user hasn't accepted terms, pop them up
+    // TODO: show an intro video option (always for communicator, once for visitors)
     // TODO: if not over https and not on localhost, pre-empt error
     // TODO: show loading message
-    var room_id = (location.pathname.match(/\/rooms\/(\w+)/) || {})[1];
+    var room_id = (location.pathname.match(/\/rooms\/([\w:]+)/) || {})[1];
     room.populate_grids();
     room.populate_reactions();
     room.size_video();
+    var user_id = localStorage.user_id;
+    if(!user_id) {
+      user_id = (new Date()).getTime() + ":" + Math.round(Math.random() * 9999999);
+    }
     var enter_room = function() {
       session.ajax('/api/v1/rooms/' + room_id, {
         method: 'PUT',
-        data: {user_id: localStorage.user_id || room_id} 
+        data: {user_id: user_id, type: remote.backend} 
       }).then(function(res) {
         remote.start_local_tracks().then(function(tracks) {
           for(var idx = 0; idx < tracks.length; idx++) {
@@ -299,8 +347,8 @@ var room = {
           remote.connect_to_remote(res.access_token, res.room.key).then(function(room_session) {
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
             room_session.user_id = res.user_id;
-            room_session.communicator_id = room_id;
-            room_session.for_self = room_id == res.user_id;
+            room_session.for_self = room_id == localStorage.room_id;
+            $(".grid").toggleClass('communicator', room_session.for_self)
             room.current_room = room_session;
             room.local_tracks = tracks;
             room.send_update();
@@ -312,13 +360,16 @@ var room = {
           console.error("Unable to create local tracks: ", err);
         });
       }, function(err) {
+        // TODO: alert the user, this will happen if the
+        // communicator is no longer in the room
         console.error("Room creation error: ", err);
       });
     };
-    if(localStorage.user_id && room_id != localStorage.user_id) {
+    if(localStorage.user_id && room_id == localStorage.room_id) {
+      // We check user auth here to make sure the user/room hasn't expired
       session.ajax('/api/v1/users', {
         method: 'POST',
-        data: {user_id: localStorage.user_id}
+        data: {user_id: localStorage.user_id, type: remote.backend}
       }).then(function(res) {
         enter_room();
       }, function(err) {
@@ -332,16 +383,17 @@ var room = {
     var for_communicator = room.current_room && room.current_room.for_self;
     var window_height = window.innerHeight;
     var video_height = window_height - ((window_height / 3) - 7) - (window_height * .12) - 21;
-    document.getElementById('partner').parentNode.style.height = video_height + "px";
+    // document.getElementById('partner').parentNode.style.height = video_height + "px";
     var fill_cell = function(cell, button) {
       var text = cell.getElementsByClassName('text')[0];
       text.innerText = button.text;
       cell.style.visibility = 'visible';
-      cell.style.height = ((window_height / 3) - 7) + "px";
+//      cell.style.height = ((window_height / 3) - 7) + "px";
       if(cell.classList.contains('skinny')) {
-        cell.style.height = (window_height * .12) + "px";
+        // cell.style.height = (window_height * .12) + "px";
       }
-      cell.parentNode.style.display = 'block';
+      cell.parentNode.style.height = window_height + "px";
+      // cell.parentNode.style.display = 'block';
       var img = cell.getElementsByTagName('img')[0];
       if(img) {
         if(button.image_url) {
@@ -474,12 +526,13 @@ var room = {
   
       });
     } else if(json && json.action == 'image') {
+      debugger
       var big_image = false;
-      if(data.user_id == room.current_room.communicator_id && !room.current_room.for_self) {
+      if(data.message.from_communicator && !room.current_room.for_self) {
         // if sent by the communicator, who is not you
         // show a big version of the image
         big_image = true;
-      } else if(data.user_id != room.current_room.communicator_id && room.current_room.for_self) {
+      } else if(!data.message.from_communicator && room.current_room.for_self) {
         // or if sent by someone else and you are the communicator
         // show a big version of the image
         big_image = true;
@@ -543,6 +596,7 @@ var drag = function(event) {
   room.drag_y = event.clientY - (room.shift_y || 0);
 };
 document.addEventListener('mousemove', function(event) {
+  if($(event.target).closest('.grid').length == 0) { return; }
   if($(event.target).closest('#partner').length > 0) {
     if(event.buttons == 1) {
       event.preventDefault();
@@ -553,12 +607,14 @@ document.addEventListener('mousemove', function(event) {
   }
 });
 document.addEventListener('touchmove', function(event) {
+  if($(event.target).closest('.grid').length == 0) { return; }
   if($(event.target).closest('#partner').length > 0) {
     event.preventDefault();
     shift(event);
   }
 });
 document.addEventListener('mousedown', function(event) {
+  if($(event.target).closest('.grid').length == 0) { return; }
   if($(".popover:visible").length > 0) {
     if($(event.target).closest('.button:not(.sub_button)').find(".popover:visible").length == 0) {
       $(".popover:visible").css('display', 'none');
@@ -572,6 +628,7 @@ document.addEventListener('mousedown', function(event) {
   }
 });
 document.addEventListener('touchstart', function(event) {
+  if($(event.target).closest('.grid').length == 0) { return; }
   if($(".popover:visible").length > 0) {
     if($(event.target).closest('.button:not(.sub_button)').find(".popover:visible").length == 0) {
       $(".popover:visible").css('display', 'none');
@@ -585,6 +642,7 @@ document.addEventListener('touchstart', function(event) {
   }
 });
 document.addEventListener('click', function(event) {
+  if($(event.target).closest('.grid').length == 0) { return; }
   var $cell = $(event.target).closest('.cell');
   var $button = $(event.target).closest('.button');
   var $partner = $(event.target).closest('#partner');
@@ -618,9 +676,41 @@ document.addEventListener('click', function(event) {
     $(".popover:visible").css('display', 'none');
     var action = $button.attr('data-action');
     if(action == 'end') {
-      alert('done!');
+      modal.open("Leave Room?", document.getElementById('confirm_exit'), [
+        {label: "Leave Room", action: "leave", callback: function() {
+          modal.close();
+          location.href = "/thanks";
+        }},
+        {label: "Cancel", action: "close"}
+      ]);
     } else if(action == 'customize') {
       alert('not implemented');
+    } else if(action == 'info' || action == 'invite') {
+      var url = location.href + "/join";
+      document.querySelector('#invite_modal .link').innerText = url;
+      var actions = [
+        {action: 'copy', label: "Copy Link", callback: function() {
+          // Select the link anchor text  
+          extras.copy(url).then(function(res) {
+            if(res.copied) {
+              alert('copied!');  
+            }
+          });
+          modal.close();
+        }}
+      ];
+      if(navigator.canShare && navigator.canShare()) {
+        actions.push({action: 'share', label: "Share", callback: function() {
+          if(navigator.share) {
+            navigator.share({url: url});
+          }
+          modal.close();
+        }})
+      }
+      modal.open("Invite a Visitor", document.getElementById('invite_modal'), actions);
+      if(window.QRCode) {
+        var qr = new window.QRCode(document.querySelector('.modal #invite_modal .qr_code'), url);
+      }
     } else if(action == 'quick') {
       room.assert_grid(room.default_buttons);
     } else if(action == 'load') {

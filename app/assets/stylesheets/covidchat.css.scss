@@ -43,6 +43,75 @@ body {
   font-family: Arial;
   overflow: hidden;
 }
+h1 {
+  font-size: 25px;
+}
+h2 {
+  font-size: 20px;
+}
+header {
+  position: fixed;
+  top: 0;
+  height: 30px;
+}
+#simple_content #contents {
+  height: 100vh;
+  margin-top: 30px;
+}
+footer {
+  position: fixed;
+  bottom: 0;
+  height: 20px;
+}
+
+button {
+  background: #fff;
+  border: 1px solid #ccc;
+  height: 50px;
+  color: #666;
+  padding: 10px 15px;
+  font-size: 20px;
+  border-radius: 5px;
+  margin-right: 10px;
+  cursor: pointer;
+  &:hover {
+    background: #eee;
+    color: #222;
+  }
+  &:active {
+    background: #bbb;
+  }
+  &.primary {
+    border-color: #222;
+    background: #2469a6;
+    color: #eee;
+    &:hover {
+      color: #fff;
+    }
+    &:active {
+      background: #0d477a;
+    }
+  }
+}
+input {
+  border: 1px solid #ccc;
+  height: 50px;
+  color: #222;
+  padding: 10px 15px;
+  font-size: 20px;
+  border-radius: 5px;
+}
+p.error {
+  color: #a00;
+  margin: 5px 0;
+}
+a {
+  color: #888;
+  text-decoration: none;
+  &:hover {
+    text-decoration: underline;
+  }
+}
 #simple_content {
   width: 400px;
   margin: 0 auto;
@@ -64,6 +133,20 @@ body {
 .grid {
   touch-action: none;
   display: flex;
+  .for_communicator {
+    display: none;
+  }
+  .for_visitor {
+    display: block;
+  }
+  &.communicator {
+    .for_communicator {
+      display: block;
+    }
+    .for_visitor {
+      display: none;
+    }
+  }
   .menu {
     width: 100px;
     background: #222;
@@ -224,6 +307,7 @@ body {
         min-width: 20px;
         video {
           height: 100%;
+          display: block;
         }
       }
       #nav {
@@ -333,6 +417,103 @@ body {
       margin-top: 5px;
       object-fit: contain;
       object-position: center;
+    }
+  }
+}
+.content {
+  display: none;
+}
+.modal {
+  position: fixed;
+  margin: 0 auto;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+/*  max-height: 80vh;
+  max-width: 600px;
+  min-height: 100px; */
+  z-index: 99;
+  .modal_content {
+    background: #fff;
+    position: absolute;
+    top: 10vh;
+    left: 10vw;
+    overflow: hidden;
+    box-shadow: 0 0 10px #000;
+    margin: 0 auto;
+    right: 10vw;
+    max-height: 90vh;
+    max-width: 600px;
+    min-height: 100px;
+    border-radius: 10px;
+    .title {
+      font-size: 30px;
+      padding: 10px 20px;
+      position: relative;
+      border-bottom: 1px solid #888;
+      background: #eee;
+      .close {
+        position: absolute;
+        top: -6px;
+        right: 10px;
+        font-size: 60px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+    }
+    .content {
+      display: block;
+      max-height: calc(90vh - 55px - 60px);
+      padding: 20px;
+      overflow: auto;
+    }  
+    .modal_footer {
+      border-top: 1px solid #ccc;
+      padding: 5px 20px;
+      text-align: right;
+    }
+  }
+}
+#invite_modal .qr_code {
+  text-align: center;
+  margin: 10px;
+  img, canvas {
+    margin: 0 auto;
+    width: 500px;
+    height: 500px;
+    max-width: 48vh;
+    max-height: 48vh;
+  }
+}
+#middle.join {
+  text-align: center;
+  .join {
+    padding-top: 20px;
+    border-radius: 10px;
+    color: #444;
+    border: 1px solid #ccc;
+    text-align: center;
+    height: 90px;
+    vertical-align: middle;
+    font-size: 30px;
+    margin-bottom: 10px;
+    &:hover {
+      text-decoration: none;
+      background: #eee;
+      color: #222;
+    }
+  }
+  .preview {
+    max-height: 50vh;
+    width: 100%;
+    overflow: hidden;
+    video {
+      width: 100%;
+      height: calc(100% - 10px);
+      border: 1px solid #888;
+      background: #000;
     }
   }
 }

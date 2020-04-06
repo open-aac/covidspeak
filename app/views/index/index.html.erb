@@ -1,14 +1,57 @@
 <div id='middle'>
-  <div>
+  <div style='display: none;'>
     <img src="https://api.adorable.io/avatars/face/eyes9/nose9/mouth9/ffff00" alt="user avatar" style='width: 50px; border-radius: 10px; border: 1px solid #888; box-shadow: 0 0 2px #000; vertical-align: middle; margin-right: 10px;'/>
     <input type="text" placeholder="Display Name" value=""/>
   </div>
+  <div id='existing_room' style='display: none; margin-bottom: 50px;'>
+    <h2>Re-Join Previous Room</h2>
+    <div>
+      <button id='rejoin' class='primary' style='width: 100%; height: 80px; font-size: 25px;'>Re-Join Room</button>
+    </div>
+  </div>
+  <h2>Start a New Room</h2>
+  <div>
+    <form id='join'>
+      <input type='text' style='width: calc(100% - 155px);' placeholder='Join Code' id='join_code'/>
+      <button type='submit' class='primary' style='width: 150px; margin-right: 0;'>Start Room</button>
+      <p class='error'></p>
+    </form>
+  </div>
   <ul>
-    <li>Start a New Room</li>
-    <li>Join a Room</li>
-    <li>Log Out</li>
-  </ul>
 </div>
 <!-- TODO: https://api.adorable.io/avatars/face/eyes9/nose9/mouth9/ffff00 -->
 <!-- TODO: do this ^ through a CDN proxy -->
-<% add_script '/api.js' %>
+
+<script>
+var ts = parseInt(localStorage.room_set_at || "0", 10);
+// Allow re-joining the last room for a max of 30 minutes
+if(ts > ((new Date()).getTime() - (30 * 60 * 1000)) && localStorage.room_id && localStorage.user_id) {
+  document.querySelector('#existing_room').style.display = 'block';
+}
+document.querySelector('#rejoin').addEventListener('click', function(event) {
+  event.preventDefault();
+  if(localStorage.user_id && localStorage.room_id) {
+    location.href = '/rooms/' + localStorage.room_id;
+  }
+});
+document.querySelector('#join').addEventListener('submit', function(event) {
+  event.preventDefault();
+  var code = document.querySelector('#join_code').value;
+  document.querySelector('#join button').innerText = "Starting...";
+  var error = document.querySelector('#join .error');
+  error.innerText = '';
+  session.ajax('/api/v1/users', {
+    method: 'POST',
+    data: {join_code: code, type: remote.backend}
+  }).then(function(res) {
+    localStorage.user_id = res.user.id;
+    localStorage.room_id = res.user.room_id;
+    localStorage.room_set_at = (new Date()).getTime();
+    location.href = '/rooms/' + res.user.room_id;
+  }, function(err) {
+    document.querySelector('#join button').innerText = "Start Room";
+    error.innerText = "Please re-check your join code";
+    console.error("User confirmation error: ", err);
+  });
+});
+</script>

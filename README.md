@@ -22,3 +22,12 @@ Things you may want to cover:
 * Deployment instructions
 
 * ...
+
+
+## HIPAA
+
+As long as the application and its hosting services, etc. requests no user information, stores no user information (other than transiently) including IP address and URL-based identifiers, photos, etc.
+Then it can leverage the conduit exception rule, and does not need to enter into a Business Asssociate Agreement with
+the health provider.
+
+https://www.hipaajournal.com/hipaa-conduit-exception-rule/

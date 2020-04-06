@@ -3,21 +3,21 @@ require 'twilio-ruby'
 class Api::UsersController < ApplicationController
   def create
     # Required for any Twilio Access Token
-    account_sid = ENV['TWILIO_ACCOUNT_ID']
-    api_key = ENV['TWILIO_KEY']
-    api_secret = ENV['TWILIO_SECRET']
+    return api_error(400, {error: "unrecognized type: #{params['type']}"}) unless params['type'] == 'twilio'
     
-    identity = params['user_id']
-    
-    # Create an Access Token
-    token = Twilio::JWT::AccessToken.new(account_sid, api_key, api_secret, [], identity: identity);
-    
-    # Create Video grant for our token
-    grant = Twilio::JWT::AccessToken::VideoGrant.new
-    grant.room = "RoomFor#{identity}"
-    token.add_grant(grant)
+    identity = nil
+    if params['user_id']
+      identity = params['user_id']
+    elsif params['join_code']
+      if Account.valid_code?(params['join_code'])
+        identity = Account.generate_user
+      end
+    end
+    identity = nil unless Account.valid_user_id?(identity)
+    return api_error(400, {error: "no user generated"}) unless identity
+    room_id = Account.generate_room(identity)
     
     # Generate the token
-    render :json => {:user => {id: identity}, access_token: token.to_jwt}
+    render :json => {:user => {id: identity, room_id: room_id}}
   end
 end

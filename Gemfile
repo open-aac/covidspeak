@@ -30,6 +30,7 @@ gem 'redis', '~> 4.0'
 gem 'twilio-ruby'
 gem 'redis-namespace'
 gem 'pg'
+gem 'go_secure'
 
 # Use ActiveStorage variant
 # gem 'mini_magick', '~> 4.8'
