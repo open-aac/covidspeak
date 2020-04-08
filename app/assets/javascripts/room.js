@@ -638,7 +638,7 @@ var room = {
       if(cell.classList.contains('skinny')) {
         // cell.style.height = (window_height * .12) + "px";
       }
-      cell.parentNode.style.height = window_height + "px";
+      // cell.parentNode.style.height = window_height + "px";
       // cell.parentNode.style.display = 'block';
       var img = cell.getElementsByTagName('img')[0];
       if(img) {
@@ -798,7 +798,6 @@ var room = {
   
       });
     } else if(json && json.action == 'image') {
-      debugger
       var big_image = false;
       if(data.message.from_communicator && !room.current_room.for_self) {
         // if sent by the communicator, who is not you

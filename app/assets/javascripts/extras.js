@@ -5,7 +5,7 @@ var extras = {
       if(!link) {
         link = document.createElement('a');
         link.style.position = 'absolute';
-        link.style.left = '-1000px';
+        link.style.left = '-2000px';
         document.body.appendChild(link);
       }
       link.innerText = url;
