@@ -782,6 +782,9 @@ var room = {
       return;
     }
     $nav.css('opacity', force ? 1 : 0);
+    if(!room.current_room.for_self) {
+      document.querySelector('#eyes').style.opacity = force ? 1 : 0;
+    }
     $nav[0].shown_at = now;
     $nav[0].hide_at = now + 5000;
     if(!room.nav_interval) {
@@ -790,6 +793,7 @@ var room = {
         var hide_at = ($("#nav")[0] || {}).hide_at;
         if(hide_at && hide_at < now) {
           $("#nav").css('opacity', 0);
+          document.querySelector('#eyes').style.opacity = 0;
           $("#nav")[0].hide_at = null;
         }
       }, 500);

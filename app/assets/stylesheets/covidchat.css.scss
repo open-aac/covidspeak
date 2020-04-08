@@ -463,6 +463,28 @@ a {
   }
   .mid {
     flex: 2;
+    #eyes {
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+      position: fixed;
+      top: 33vh;
+      border: 2px dashed rgba(255, 255, 255, 0.5);
+      width: 46vw;
+      text-align: center;
+      height: 0;
+      div {
+        opacity: 1.0;
+        background: #ccc;
+        height: auto;
+        padding: 5px;
+        position: absolute;
+        left: 10px;
+        margin-top: -15px;
+        border-radius: 5px;
+        border: 2px solid #aaa;
+        box-shadow: 0 0 10px #fff;
+      }
+    }
   }
 }
 .extras {
