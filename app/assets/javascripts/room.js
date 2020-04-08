@@ -321,6 +321,26 @@ var room = {
         div.appendChild(file);  
         file.onchange = function(event) {
           var file = event.target && event.target.files && event.target.files[0];
+          var draw_img = function(img) {
+            if(room.share_tracks.img && room.share_tracks.img != img) {
+              return;
+            }
+            room.share_tracks.img = img;
+            var cw = canvas.width;
+            var ch = canvas.height;
+            var iw = img.width;
+            var ih = img.height;  
+            var xscale = cw / iw;
+            var yscale = ch / ih;
+            var scale = Math.max(xscale, yscale);
+            context.fillStyle = 'black';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(img, 0, 0, iw * scale, ih * scale);
+            // Sometimes it doesn't show up on the first load for remote users
+            setTimeout(function() {
+              draw_img(img);
+            }, 1000);
+          };
           var draw = function() {
             context.fillStyle = 'black';
             context.fillRect(0, 0, canvas.width, canvas.height);
@@ -330,16 +350,7 @@ var room = {
                 file.value = null;
                 var img = new Image();
                 img.onload = function() {
-                  var cw = canvas.width;
-                  var ch = canvas.height;
-                  var iw = img.width;
-                  var ih = img.height;  
-                  var xscale = cw / iw;
-                  var yscale = ch / ih;
-                  var scale = Math.max(xscale, yscale);
-                  context.fillStyle = 'black';
-                  context.fillRect(0, 0, canvas.width, canvas.height);
-                  context.drawImage(img, 0, 0, iw * scale, ih * scale);
+                  draw_img(img);
                 };
                 img.src = reader.result;
               });
