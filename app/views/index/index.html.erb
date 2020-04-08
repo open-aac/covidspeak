@@ -47,6 +47,7 @@ document.querySelector('#join').addEventListener('submit', function(event) {
     localStorage.user_id = res.user.id;
     localStorage.room_id = res.user.room_id;
     localStorage.room_set_at = (new Date()).getTime();
+    localStorage.terms_accepted = 'true';
     location.href = '/rooms/' + res.user.room_id;
   }, function(err) {
     document.querySelector('#join button').innerText = "Start Room";

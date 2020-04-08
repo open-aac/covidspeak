@@ -41,6 +41,11 @@ var modal = {
         var elem = document.createElement('button');
         elem.classList.add('modal_button');
         elem.innerText = action.label;
+        if(action.icon) {
+          var img = document.createElement('img');
+          img.src = "/icons/" + action.icon + ".svg";
+          elem.prepend(img);
+        }
         elem.action = action;
         footer.appendChild(elem);
       });

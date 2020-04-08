@@ -73,7 +73,10 @@
       </div>
       <div id="communicator">
       </div>
+      <div id="end_preview"></div>
       <div id="nav">
+        <button class='mute'><img src="/icons/mic-mute.svg" alt="mute"/></button>
+        <button class='unmute'><img src="/icons/mic.svg" alt="unmute"/></button>
         <button class='zoom' data-direction='in'>+</button>
         <button class='zoom' data-diration='out'>-</button><br/>
         <div>drag video to move</div>
@@ -94,6 +97,60 @@
       <div class='text'></div><img />
     </div>
   </div>
+</div>
+<div id="share_modal" class="content">
+  <p>
+    <img src="/icons/images.svg" style='float: left; height: 50px; margin: 0 15px 4px 0;'/>
+    Sharing photos, videos, or even things from your screen
+    can be a great distraction, or can help spur a
+    conversation. Some devices don't support all sharing
+    types, so if you don't see any sharing options, try
+    accessing from a different device.
+  </p>
+</div>
+<div id="info_modal" class="content">
+  <p>
+    This app was created to provide simple communication
+    supports for isolated individuals who may not be in 
+    a situation to speak out loud, but can still benefit
+    from emotional connection from those who cannot be
+    physically present.
+  </p>
+  <p>
+    [ Link to Training Video ]
+  </p>
+</div>
+<div id="customize_modal" class="content">
+  <div style='margin-bottom: 10px; text-align: center;'>
+  Choose a button layout and fill it out!
+  </div>
+  <div style='display: flex; flex-direction: row;'>
+    <button style='flex: 1;' class='size' data-size='4'>4 Buttons</button>
+    <button style='flex: 1;' class='size' data-size='6'>6 Buttons</button>
+    <button class='size primary' data-size='8' style='flex: 1; margin-right: 0;'>8 Buttons</button>
+  </div>
+  <div id='layouts'>
+    <div class='layout'>
+      <div class='layout_container'>
+        <div class='layout_column'>
+          <div class='layout_button'><input type='text' name='l1' placeholder="[button text]"/></div>
+          <div class='layout_button'><input type='text' name='l2' placeholder="[button text]"/></div>
+          <div class='layout_button'><input type='text' name='l3' placeholder="[button text]"/></div>
+        </div>
+        <div class='layout_column'>
+          <div class='layout_button'><input type='text' name='m1' placeholder="[button text]"/></div>
+          <div class='layout_button preview' style='flex: 6;'><img src='/icons/person.svg'/></div>
+          <div class='layout_button' style='flex: 3;'><input type='text' name='m2' placeholder="[button text]"/></div>
+        </div>
+        <div class='layout_column'>
+          <div class='layout_button'><input type='text' name='r1' placeholder="[button text]"/></div>
+          <div class='layout_button'><input type='text' name='r2' placeholder="[button text]"/></div>
+          <div class='layout_button'><input type='text' name='r3' placeholder="[button text]"/></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 <div id="invite_modal" class="content">
   <a class="link" style='position: absolute; left: -1000px;'>http://www.example.com</a>

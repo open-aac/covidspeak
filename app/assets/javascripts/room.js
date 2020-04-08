@@ -1,25 +1,28 @@
 var audio_analysers = [];
 var add_dom = function(elem, track, user) {
   if(elem.tagName == 'AUDIO') {
-    if(true) { // if I'm the communicator, analyze, otherwise it should only add for communicator
+    if(window.AudioContext || window.webkitAudioContext) { // if I'm the communicator, analyze, otherwise it should only add for communicator
       var context = new (window.AudioContext || window.webkitAudioContext)();
-      var analyser = context.createAnalyser();
-      var source = context.createMediaElementSource(elem);
-      source.connect(analyser);
-      audio_analysers.push({
-        user: user, 
-        analyser: analyser, 
-        audio_track: track,
-        bins: analyser.frequencyBinCount,
-        frequency_array: new Uint8Array(analyser.frequencyBinCount)
-      });
-      analyser.connect(context.destination);
-      if(!audio_loop.running) {
-        audio_loop.running = true;
-        audio_loop();
+      if(context) {
+        var analyser = context.createAnalyser();
+        var source = context.createMediaElementSource(elem);
+        source.connect(analyser);
+        audio_analysers.push({
+          user: user, 
+          analyser: analyser, 
+          audio_track: track,
+          bins: analyser.frequencyBinCount,
+          frequency_array: new Uint8Array(analyser.frequencyBinCount)
+        });
+        analyser.connect(context.destination);
+        if(!audio_loop.running) {
+          audio_loop.running = true;
+          audio_loop();
+        }
       }
     }
   }
+  if(!elem.classList) { debugger }
   elem.classList.add("room-" + track.type);
   elem.setAttribute('data-track-id', track.id);
   elem.setAttribute('data-user-id', user.id);
@@ -38,7 +41,7 @@ remote.addEventListener('track_added', function(data) {
     if(track.type == 'video' || track.type == 'audio') {
       var priors = document.getElementById('partner').getElementsByClassName("room-" + track.type);
       for(var idx = 0; idx < priors.length; idx++) {
-        if(priors.getAttribute('data-user_id') == data.user_id) {
+        if(priors[idx].getAttribute('data-user-id') == data.user_id) {
           priors[idx].parentNode.removeChild(priors[idx]);
         }
       }
@@ -69,12 +72,12 @@ remote.addEventListener('track_removed', function(data) {
   if(track.type == 'video' || track.type == 'audio') {
     var priors = document.getElementById('partner').getElementsByClassName("room-" + track.type);
     for(var idx = 0; idx < priors.length; idx++) {
-      if(priors.getAttribute('data-user_id') == data.user_id) {
+      if(priors[idx].getAttribute('data-user-id') == data.user_id) {
         priors[idx].parentNode.removeChild(priors[idx]);
       }
     }
     if(data.newest_other) {
-      add_dom(data.newest_other, data.track, data.user);
+      add_dom(data.newest_other.generate_dom(), data.track, data.user);
     }
   }
 });
@@ -126,7 +129,7 @@ var grids = [
   {id: 'feelings', name: 'feelings', image_url: "https://lessonpix.com/drawings/4720/150x150/4720.png", buttons: [
     {id: 1, text: "tired", image_url: "https://lessonpix.com/drawings/509/150x150/509.png"},
     {id: 2, text: "Start Over", image_url: ""},
-    {id: 3, text: "hungry", image_url: "https://lessonpix.com/drawings/1813/150x150/1813.png"},
+    {id: 3, text: "hungry / thirsty", image_url: "https://lessonpix.com/drawings/1813/150x150/1813.png"},
     {id: 4, text: "happy", image_url: "https://lessonpix.com/drawings/18080/150x150/18080.png"},
     {id: 5, text: "sad", image_url: "https://lessonpix.com/drawings/1695/150x150/1695.png"},
     {id: 6, text: "excited", image_url: "https://lessonpix.com/drawings/1689/150x150/1689.png"},
@@ -160,8 +163,28 @@ var grids = [
     {id: 4, text: "more", image_url: "https://lessonpix.com/drawings/850/150x150/850.png"},
     {id: 5, text: "done", image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
     {id: 6, text: "Sing to Me", image_url: "https://lessonpix.com/drawings/1090436/150x150/1090436.png"},
-    {id: 7, text: "How was Your Day?", image_url: "https://lessonpix.com/drawings/211740/150x150/211740.png"},
-    {id: 8, text: "Play Me a Song", image_url: "https://lessonpix.com/drawings/58722/150x150/58722.png"}
+    {id: 7, text: "How was your Day?", image_url: "https://lessonpix.com/drawings/211740/150x150/211740.png"},
+    {id: 8, text: "Look at Photos", image_url: "https://lessonpix.com/drawings/9320/100x100/9320.png"}
+  ]},
+  {id: 'religious', name: 'religious', image_url: "https://lessonpix.com/drawings/6968/150x150/6968.png", buttons: [
+    {id: 1, text: "Pray for me", image_url: "https://lessonpix.com/drawings/36126/150x150/36126.png"},
+    {id: 2, text: "Start Over", image_url: ""},
+    {id: 3, text: "Read Scripture", image_url: "https://lessonpix.com/drawings/111111/150x150/111111.png"},
+    {id: 4, text: "faith", image_url: "https://lessonpix.com/drawings/10646/150x150/10646.png"},
+    {id: 5, text: "God", image_url: "https://lessonpix.com/drawings/113650/150x150/113650.png"},
+    {id: 6, text: "Sing me a Hymn", image_url: "https://lessonpix.com/drawings/1090434/150x150/1090434.png"},
+    {id: 7, text: "How was Meeting?", image_url: "https://lessonpix.com/drawings/44810/150x150/44810.png"},
+    {id: 8, text: "Study Together", image_url: "https://lessonpix.com/drawings/6937/150x150/6937.png"}
+  ]},
+  {id: 'comments', name: 'comments', image_url: "https://lessonpix.com/drawings/130397/150x150/130397.png", buttons: [
+    {id: 1, text: "I miss you", image_url: "https://lessonpix.com/drawings/33676/150x150/33676.png"},
+    {id: 2, text: "Start Over", image_url: ""},
+    {id: 3, text: "I can't wait to come Home", image_url: "https://lessonpix.com/drawings/126/150x150/126.png"},
+    {id: 4, text: "I am Scared", image_url: "https://lessonpix.com/drawings/33516/150x150/33516.png"},
+    {id: 5, text: "I am Bored", image_url: "https://lessonpix.com/drawings/65820/150x150/65820.png"},
+    {id: 6, text: "I need a Distraction", image_url: "https://lessonpix.com/drawings/94963/150x150/94963.png"},
+    {id: 7, text: "I'm Tired of This", image_url: "https://lessonpix.com/drawings/6576/150x150/6576.png"},
+    {id: 8, text: "What Happens Next?", image_url: "https://lessonpix.com/drawings/11213/150x150/11213.png"}
   ]},
 ];
 var room = {
@@ -206,33 +229,250 @@ var room = {
       if(room.shift_y && fudge_y < 0) {
         shift_y = Math.max(Math.min(room.shift_y || 0, -1 * fudge_y), fudge_y);  
       }
-      console.log("SCALE", fudge_x, fudge_y, shift_x, shift_y);
       elem.style.marginLeft = (fudge_x + shift_x) + "px";
       elem.style.marginTop = (fudge_y + shift_y) + "px";
     }
   },
-  confirm_exit: function() {
-    // TODO: confirmation of exit
-  },
-  show_invite: function() {
-    // TODO: invite popup
-  },
   flip_video: function() {
     // TODO: transform: scaleX(-1);
   },
-  mute_self: function() {
-    // TODO: unpublish the audio feed
+  toggle_self_mute: function(mute) {
+    var previous_mute = !!room.mute_audio;
+    room.mute_audio = !previous_mute;
+    if(mute === false || mute === true) {
+      room.mute_audio = mute;
+    }
+    var audio_track = room.local_tracks.find(function(t) { return t.type == 'audio'; });
+    if(previous_mute != room.mute_audio && audio_track) {
+      if(room.mute_audio) {
+        remote.remove_local_track(room.current_room.id, audio_track, true);
+        document.querySelector('#nav').classList.add('muted');
+        document.querySelector('#communicator').classList.add('muted');
+      } else {
+        remote.add_local_tracks(room.current_room.id, audio_track);
+        document.querySelector('#nav').classList.remove('muted');
+        document.querySelector('#communicator').classList.remove('muted');
+      }
+    }
+    room.send_update();
+  },
+  send_key: function(char) {
+    // keyboard entry state should be shared, should allow keyboard entry
+  },
+  end_share: function() {
+    if(room.share_tracks) {
+      if(room.share_tracks.container && room.share_tracks.container.parentNode) {
+        room.share_tracks.container.parentNode.removeChild(room.share_tracks.container);
+      }
+      var track_ids = {};
+      room.share_tracks.forEach(function(track) {
+        track_ids[track.id] = true;
+        remote.remove_local_track(room.current_room.id, track);
+      });
+      room.local_tracks = (room.local_tracks || []).filter(function(t) { return !track_ids[t.id]; });
+      room.share_tracks = null;
+      room.update_preview();
+    }
   },
   share_screen: function() {
+    room.end_share();
+    if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+      navigator.mediaDevices.getDisplayMedia({
+        cursor: 'motion',
+        displaySurface: 'monitor'
+      }).then(function(stream) {
+        remote.add_local_tracks(room.current_room.id, stream).then(function(tracks) {
+          var track = tracks.find(function(t) { return t.type == 'video'; });
+          if(track.generate_dom) {
+            var elem = track.generate_dom();
+            room.update_preview(elem);
+          }
+          room.share_tracks = tracks;
+          room.local_tracks.push(track);
+        });
+
+      }, function(err) {
+        console.error("screen share failed", err);
+      });
+    }
     // TODO: publish screen share stream
   },
   share_image: function() {
-    // TODO: publish stream canvas
+    if(room.share_tracks && room.share_tracks.share_pic) {
+      return room.share_tracks.share_pic();
+    }
+    room.end_share();
+    var div = document.createElement('div');
+    var canvas = document.createElement('canvas');
+    var video = document.querySelector('#communicator video');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    div.appendChild(canvas);
+    var context = canvas.getContext('2d');
+    context.fillStyle = 'black';
+    var initialized = false;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    var find_pic = function() {
+      var file = div.querySelector('input');
+      if(!file) {
+        file = document.createElement('input');
+        file.type = 'file';
+        file.accept = "image/*";
+        div.appendChild(file);  
+        file.onchange = function(event) {
+          var file = event.target && event.target.files && event.target.files[0];
+          var draw = function() {
+            context.fillStyle = 'black';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            if(file && file.type.match(/^image/)) {
+              var reader = new FileReader();
+              reader.addEventListener('load', function() {
+                file.value = null;
+                var img = new Image();
+                img.onload = function() {
+                  var cw = canvas.width;
+                  var ch = canvas.height;
+                  var iw = img.width;
+                  var ih = img.height;  
+                  var xscale = cw / iw;
+                  var yscale = ch / ih;
+                  var scale = Math.max(xscale, yscale);
+                  context.fillStyle = 'black';
+                  context.fillRect(0, 0, canvas.width, canvas.height);
+                  context.drawImage(img, 0, 0, iw * scale, ih * scale);
+                };
+                img.src = reader.result;
+              });
+              reader.readAsDataURL(file);
+            }
+          };
+          if(!initialized) {
+            initialized = true;
+            document.body.appendChild(div);
+            var stream = canvas.captureStream();
+            remote.add_local_tracks(room.current_room.id, stream).then(function(tracks) {
+              var track = tracks.find(function(t) { return t.type == 'video'; });
+              track.canvas = canvas;
+              track.share_pic = find_pic;
+              if(track.generate_dom) {
+                var elem = track.generate_dom();
+                room.update_preview(elem);
+              }
+              room.share_tracks = tracks;
+              tracks.share_pic = find_pic;
+              tracks.container = div;
+              room.local_tracks.push(track);
+              setTimeout(function() {
+                draw();
+              }, 1000);
+            });
+          } else {
+            draw();
+          }
+        };
+      }
+      file.click();
+    };
+    find_pic();
+  },
+  update_preview: function(elem, playable) {
+    var $communicator = document.querySelector('#communicator')
+    communicator.innerHTML = '';
+    if(elem) {
+      $communicator.appendChild(elem);
+      var end_share = document.createElement('div');
+      end_share.classList.add('end_share');
+      $communicator.appendChild(end_share);
+      $communicator.classList.add('preview');
+      if(playable) {
+        $communicator.classList.add('playable');
+        $communicator.classList.remove('paused');
+      }
+    } else {
+      $communicator.classList.remove('preview');
+      $communicator.classList.remove('playable');
+      $communicator.classList.remove('paused');
+      var vid = room.local_tracks.find(function(t) { return t.type == 'video'; });
+      if(vid && vid.generate_dom) {
+        $communicator.appendChild(vid.generate_dom());
+      }
+    }
+  },
+  toggle_video: function(rewind) {
+    var video = room.share_tracks && room.share_tracks.video;
+    if(video) {
+      if(rewind) {
+        video.currentTime = 0;
+        video.play();
+      } else if(!video.ended) {
+        if(video.paused && video.currentTime > 0) {
+          video.play();
+          document.querySelector('#communicator').classList.remove('paused');
+        } else {
+          video.pause();
+          document.querySelector('#communicator').classList.add('paused');
+        }
+      }
+    }
   },
   share_video: function() {
     // TODO: is this possible?
     // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Manipulating_video_using_canvas
     // https://developers.google.com/web/updates/2016/10/capture-stream
+    room.end_share();
+    var div = document.createElement('div');
+    var video_elem = document.createElement('video');
+    if(!(video_elem.captureStream || video_elem.mozCaptureStream)) {
+      alert('not supported');
+      return;  
+    }
+    var video = document.querySelector('#communicator video');
+    div.appendChild(video_elem);
+    var find_vid = function() {
+      var file = div.querySelector('input');
+      if(!file) {
+        file = document.createElement('input');
+        file.type = 'file';
+        file.accept = "video/*";
+        div.appendChild(file);  
+        file.onchange = function(event) {
+          var file = event.target && event.target.files && event.target.files[0];
+          if(file && file.type.match(/^video/)) {
+            video_elem.onloadeddata = function() {
+              var stream = null;
+              if(video_elem.captureStream) {
+                stream = video_elem.captureStream();
+              } else if(video_elem.mozCaptureStream) {
+                stream = video_elem.mozCaptureStream();
+              }
+              remote.add_local_tracks(room.current_room.id, stream).then(function(tracks) {
+                var track = tracks.find(function(t) { return t.type == 'video'; });
+                track.container = div;
+                track.share_vid = find_vid;
+                if(track.generate_dom) {
+                  var elem = track.generate_dom();
+                  room.update_preview(elem, true);
+                }
+                room.share_tracks = tracks;
+                tracks.container = div;
+                tracks.video = video_elem;
+                room.local_tracks.push(track);
+                setTimeout(function() {
+                  video_elem.play();
+                }, 1000);
+              });
+            };
+            var url = URL.createObjectURL(file);
+            video_elem.src = url;
+            file.value = null;
+            video_elem.load();
+          }
+          document.body.appendChild(div);
+        };
+      }
+      file.click();
+    };
+    find_vid();
   },
   zoom: function(zoom_in) {
     room.zoom_level = (room.zoom_level || 1.0);
@@ -276,6 +516,7 @@ var room = {
     for(var idx = 0; idx < (room.local_tracks || []).length; idx++) {
       track_ids.push(room.local_tracks[idx].id);
     }
+    // TODO: send muted state
     var message = {
       action: 'update',
       user_id: room.current_room.user_id,
@@ -337,7 +578,7 @@ var room = {
         method: 'PUT',
         data: {user_id: user_id, type: remote.backend} 
       }).then(function(res) {
-        remote.start_local_tracks().then(function(tracks) {
+        remote.start_local_tracks({audio: true, video: true, data: true}).then(function(tracks) {
           for(var idx = 0; idx < tracks.length; idx++) {
             if(tracks[idx].type == 'video') {
               document.getElementById('communicator').innerHTML = "";
@@ -385,8 +626,13 @@ var room = {
     var video_height = window_height - ((window_height / 3) - 7) - (window_height * .12) - 21;
     // document.getElementById('partner').parentNode.style.height = video_height + "px";
     var fill_cell = function(cell, button) {
+      if(!button) {
+        cell.style.display = 'none';
+        return;
+      }
       var text = cell.getElementsByClassName('text')[0];
       text.innerText = button.text;
+      cell.style.display = '';
       cell.style.visibility = 'visible';
 //      cell.style.height = ((window_height / 3) - 7) + "px";
       if(cell.classList.contains('skinny')) {
@@ -402,32 +648,58 @@ var room = {
           setTimeout(function() {
             img.src = button.image_url;
           }, 10);
+          cell.classList.remove('text_only');
         } else {
           img.style.visibility = 'hidden';
+          cell.classList.add('text_only');
         }
       }
       cell.button = button;
       button.cell = cell;
     };
+    var lookups = room.buttons;
+    if(lookups.length == 6) {
+      lookups = [
+        room.buttons[0], 
+        room.buttons[1], 
+        room.buttons[2], 
+        room.buttons[3], 
+        room.buttons[5], 
+        null, 
+        room.buttons[4],
+        null
+      ];
+    } else if(lookups.length == 4) {
+      lookups = [
+        room.buttons[0], 
+        room.buttons[1], 
+        room.buttons[2], 
+        null, 
+        null, 
+        null, 
+        room.buttons[3],
+        null
+      ];
+    }
     if(for_communicator) {
       // Default Order
       var grid = document.getElementsByClassName('grid')[0];
       var cells = grid.getElementsByClassName('cell');
       for(var idx = 0; idx < cells.length; idx++) {
         var num = parseInt(cells[idx].getAttribute('data-idx'), 10);
-        fill_cell(cells[idx], room.buttons[num]);
+        fill_cell(cells[idx], lookups[num]);
       }
     } else {
       // Reverse Order
       var grid = document.getElementsByClassName('grid')[0];
       var cells = grid.getElementsByClassName('cell');
-      var new_order = [].concat(room.buttons);
-      new_order[0] = room.buttons[2];
-      new_order[2] = room.buttons[0];
-      new_order[3] = room.buttons[4];
-      new_order[4] = room.buttons[3];
-      new_order[5] = room.buttons[7];
-      new_order[7] = room.buttons[5];
+      var new_order = [].concat(lookups);
+      new_order[0] = lookups[2];
+      new_order[2] = lookups[0];
+      new_order[3] = lookups[4];
+      new_order[4] = lookups[3];
+      new_order[5] = lookups[7];
+      new_order[7] = lookups[5];
       for(var idx = 0; idx < cells.length; idx++) {
         var num = parseInt(cells[idx].getAttribute('data-idx'), 10);
         fill_cell(cells[idx], new_order[num]);
@@ -542,6 +814,8 @@ var room = {
       room.show_image(json.url, json.text, big_image);
     } else if(json && json.action == 'update') {
       if(data.user && data.user.ts_offset != null && json.asserted_buttons) {
+        // TODO: check for audio track, show MUTED icon if none available
+
         // accept the other user's butttons if they were updated
         // more recently than your own
         var ts = json.asserted_buttons.set_at - data.user.ts_offset;
@@ -646,12 +920,19 @@ document.addEventListener('click', function(event) {
   var $cell = $(event.target).closest('.cell');
   var $button = $(event.target).closest('.button');
   var $partner = $(event.target).closest('#partner');
+  var $communicator = $(event.target).closest('#communicator');
   var $zoom = $(event.target).closest('.zoom');
   if($(event.target).closest("#nav").css('opacity') == '0') {
     $partner = $("#partner");
     $zoom.blur();
   }
-  if($partner.length > 0) {
+  if($communicator.length > 0) {
+    if(event.target.closest('.end_share') != null) {
+      room.end_share();
+    } else {
+      room.toggle_video();
+    }
+  } else if($partner.length > 0) {
     room.toggle_zoom();
   } else if($cell.length > 0) {
     if(room.current_room) {
@@ -684,8 +965,103 @@ document.addEventListener('click', function(event) {
         {label: "Cancel", action: "close"}
       ]);
     } else if(action == 'customize') {
-      alert('not implemented');
-    } else if(action == 'info' || action == 'invite') {
+      var size = (room.buttons || {}).length || 8;
+      var content = null;
+      modal.open('Customize Buttons', document.getElementById('customize_modal'), [
+        {action: 'accept', label: "Ok", callback: function() {
+          var image_urls = {};
+          document.querySelectorAll('.grid .cell').forEach(function(cell) {
+            var img = cell.querySelector('img');
+            if(img && img.style.visibility == 'visible' && img.src) {
+              image_urls[cell.querySelector('.text').innerText] = img.src;
+            }
+          });
+          var ref = {};
+          content.querySelectorAll('.layout_button').forEach(function(btn) {
+            var input = btn.querySelector('input');
+            if(input && input.name) {
+              ref[input.name] = input.value;
+            }
+          });
+          var grid = [];
+          if(size == 8) {
+            grid = [
+              {id: 1, text: ref['l1']},
+              {id: 2, text: ref['m1']},
+              {id: 3, text: ref['r1']},
+              {id: 4, text: ref['l2']},
+              {id: 5, text: ref['r2']},
+              {id: 6, text: ref['l3']},
+              {id: 7, text: ref['m2']},
+              {id: 8, text: ref['r3']}
+            ];
+          } else if(size == 6) {
+            grid = [
+              {id: 1, text: ref['l1']},
+              {id: 2, text: ref['m1']},
+              {id: 3, text: ref['r1']},
+              {id: 4, text: ref['l2']},
+              {id: 5, text: ref['m2']},
+              {id: 6, text: ref['r2']}
+            ];
+          } else if(size == 4) {
+            grid = [
+              {id: 1, text: ref['l2']},
+              {id: 2, text: ref['m1']},
+              {id: 3, text: ref['r2']},
+              {id: 4, text: ref['m2']}
+            ];
+          }
+          grid.forEach(function(i) {
+            if(image_urls[i.text]) {
+              i.image_url = image_urls[i.text];
+            }
+          });
+          room.assert_grid(grid);
+          modal.close();
+        }}
+      ]);
+      content = document.querySelector('.modal .content');
+      content.addEventListener('click', function(event) {
+        if(event.target.classList.contains('size')) {
+          size = parseInt(event.target.getAttribute('data-size'), 10);
+          content.querySelectorAll('button.size').forEach(function(btn) {
+            if(btn == event.target) {
+              btn.classList.add('primary');
+            } else {
+              btn.classList.remove('primary');
+            }
+          });
+          content.querySelectorAll('.layout_button').forEach(function(btn) {
+            var input = btn.querySelector('input');
+            if(input) {
+              btn.style.display = 'none';
+              if(['l2', 'm1', 'm2', 'r2'].indexOf(input.name) != -1) {
+                btn.style.display = 'flex';
+              } else if(size > 4 && ['l1', 'r1'].indexOf(input.name) != -1) {
+                btn.style.display = 'flex';
+              } else if(size > 6 && ['l3', 'r3'].indexOf(input.name) != -1) {
+                btn.style.display = 'flex';  
+              }  
+            }
+          });
+        }
+      });
+      content.querySelector("button.size[data-size='" + size + "']").click();
+      var buttons = content.querySelectorAll('.layout .layout_button:not(.preview)');
+      var cells = document.querySelectorAll('.grid .cell');
+      buttons.forEach(function(btn, idx) {
+        var input = btn.querySelector('input');
+        if(input && cells[idx]) {
+          if(cells[idx].style.display != 'none') {
+            var text = cells[idx].querySelector('.text').innerText;
+            input.value = text;
+          }
+        }
+      })
+    } else if(action == 'info') {
+      modal.open("About Co-VidChat", document.getElementById('info_modal'), []);
+    } else if(action == 'invite') {
       var url = location.href + "/join";
       document.querySelector('#invite_modal .link').innerText = url;
       var actions = [
@@ -693,10 +1069,14 @@ document.addEventListener('click', function(event) {
           // Select the link anchor text  
           extras.copy(url).then(function(res) {
             if(res.copied) {
-              alert('copied!');  
+              document.querySelector('.modal .modal_footer .modal_button').innerText = 'Copied!';
+              setTimeout(function() {
+                modal.close();
+              }, 2000);
             }
+          }, function() {
+
           });
-          modal.close();
         }}
       ];
       if(navigator.canShare && navigator.canShare()) {
@@ -722,6 +1102,21 @@ document.addEventListener('click', function(event) {
         }
       }
       $button.find(".popover").css('display', 'none');
+    } else if(action == 'share') {
+      var actions = [];
+      if(room.share_tracks) {
+        actions.push({action: 'cancel', label: "End Share", callback: function() { room.end_share(); modal.close(); }});
+      }
+      if(room.image_sharing) {
+        actions.push({action: 'image', label: "Picture", icon: 'image', callback: function() { room.share_image(); modal.close(); }});
+      }
+      if(room.video_sharing) {
+        actions.push({action: 'video', label: "Video", icon: 'camera-video', callback: function() { room.share_video(); modal.close(); }});
+      }
+      if(room.screen_sharing) {
+        actions.push({action: 'screen', label: "Screen", icon: 'fullscreen', callback: function() { room.share_screen(); modal.close(); }});
+      }
+      modal.open("Share Content", document.getElementById('share_modal'), actions);
     } else if(action == 'send') {
       var container = document.getElementsByClassName('reactions')[0];
       if($(event.target).closest(".reactions").length > 0 && event.target.tagName == 'IMG') {
@@ -741,6 +1136,20 @@ document.addEventListener('click', function(event) {
     } else {
       room.zoom(false);
     }
+  } else if(event.target.closest('.unmute,.mute') != null) {
+    room.toggle_self_mute();
   }
 });
+var canvas_elem = document.createElement('canvas');
+if(canvas_elem.captureStream) {
+  room.image_sharing = true;  
+}
+var video_elem = document.createElement('video');
+if(video_elem.captureStream || video_elem.mozCaptureStream) {
+  room.video_sharing = true;
+}
+if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+  room.screen_sharing = true;
+}
+
 room.default_buttons = default_buttons;

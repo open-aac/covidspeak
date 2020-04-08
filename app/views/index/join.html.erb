@@ -36,6 +36,7 @@ async function getMedia() {
     video.onloadedmetadata = function(e) {
       video.play();
     };
+    document.querySelector('#middle .preview').innerText = "";
     document.querySelector('#middle .preview').appendChild(video);
   }, function(err) {
     
