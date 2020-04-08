@@ -252,6 +252,9 @@ a {
       height: calc(33vh - 10px);
       transition: background 0.25s ease-in, box-shadow 0.25s ease-in;
       cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
       &.text_only {
         display: flex;
         flex-direction: row;

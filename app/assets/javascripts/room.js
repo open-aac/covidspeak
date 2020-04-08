@@ -621,6 +621,7 @@ var room = {
     }
   },
   show_grid: function() {
+    if(!room.buttons) { return; }
     var for_communicator = room.current_room && room.current_room.for_self;
     var window_height = window.innerHeight;
     var video_height = window_height - ((window_height / 3) - 7) - (window_height * .12) - 21;
@@ -638,7 +639,7 @@ var room = {
       if(cell.classList.contains('skinny')) {
         // cell.style.height = (window_height * .12) + "px";
       }
-      // cell.parentNode.style.height = window_height + "px";
+      cell.parentNode.style.height = window_height + "px";
       // cell.parentNode.style.display = 'block';
       var img = cell.getElementsByTagName('img')[0];
       if(img) {
