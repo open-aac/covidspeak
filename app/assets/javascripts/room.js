@@ -631,6 +631,44 @@ var room = {
       enter_room();
     }
   },
+  filled_grid: function(lookups, transpose) {
+    if(lookups.length == 6) {
+      lookups = [
+        room.buttons[0], 
+        room.buttons[1], 
+        room.buttons[2], 
+        room.buttons[3], 
+        room.buttons[5], 
+        null, 
+        room.buttons[4],
+        null
+      ];
+    } else if(lookups.length == 4) {
+      lookups = [
+        null, 
+        room.buttons[1], 
+        null, 
+        room.buttons[0], 
+        room.buttons[2], 
+        null, 
+        room.buttons[3],
+        null
+      ];
+    }
+    if(transpose) {
+      lookups = [
+        lookups[0],
+        lookups[3],
+        lookups[5],
+        lookups[1],
+        lookups[6],
+        lookups[2],
+        lookups[4],
+        lookups[7]
+      ];
+    }
+    return lookups;
+  },
   show_grid: function() {
     if(!room.buttons) { return; }
     var for_communicator = room.current_room && room.current_room.for_self;
@@ -669,30 +707,7 @@ var room = {
       cell.button = button;
       button.cell = cell;
     };
-    var lookups = room.buttons;
-    if(lookups.length == 6) {
-      lookups = [
-        room.buttons[0], 
-        room.buttons[1], 
-        room.buttons[2], 
-        room.buttons[3], 
-        room.buttons[5], 
-        null, 
-        room.buttons[4],
-        null
-      ];
-    } else if(lookups.length == 4) {
-      lookups = [
-        room.buttons[0], 
-        room.buttons[1], 
-        room.buttons[2], 
-        null, 
-        null, 
-        null, 
-        room.buttons[3],
-        null
-      ];
-    }
+    var lookups = room.filled_grid(room.buttons);
     if(for_communicator) {
       // Default Order
       var grid = document.getElementsByClassName('grid')[0];
@@ -1064,16 +1079,15 @@ document.addEventListener('click', function(event) {
       });
       content.querySelector("button.size[data-size='" + size + "']").click();
       var buttons = content.querySelectorAll('.layout .layout_button:not(.preview)');
-      var cells = document.querySelectorAll('.grid .cell');
+
+      var lookups = room.filled_grid(room.buttons, true);
       buttons.forEach(function(btn, idx) {
         var input = btn.querySelector('input');
-        if(input && cells[idx]) {
-          if(cells[idx].style.display != 'none') {
-            var text = cells[idx].querySelector('.text').innerText;
-            input.value = text;
-          }
+        if(input && lookups[idx]) {
+          var text = lookups[idx].text;
+          input.value = text;
         }
-      })
+      });
     } else if(action == 'info') {
       modal.open("About Co-VidChat", document.getElementById('info_modal'), []);
     } else if(action == 'invite') {
