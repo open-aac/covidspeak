@@ -38,7 +38,9 @@ remote.addEventListener('track_added', function(data) {
   var track = data.track;
   if(track.generate_dom) {
     console.log("adding track", track);
-    if(track.type == 'video' || track.type == 'audio') {
+    if(track.type == 'video') { //} || track.type == 'audio') {
+      // Right now we allow multiple audio tracks, so you
+      // can talk to someone while showing them a video
       var priors = document.getElementById('partner').getElementsByClassName("room-" + track.type);
       for(var idx = 0; idx < priors.length; idx++) {
         if(priors[idx].getAttribute('data-user-id') == data.user_id) {
@@ -114,7 +116,7 @@ var reactions = [
 ];
 var default_buttons = [
   {text: 'hi', id: 1, image_url: "https://lessonpix.com/drawings/858816/150x150/858816.png"},
-  {text: 'Start Over', id: 2},
+  {text: 'Start Over', load_id: 'root', id: 2},
   {text: 'goodbye', id: 3, image_url: "https://lessonpix.com/drawings/44246/150x150/44246.png"},
   {text: 'yes', id: 4, image_url: "https://lessonpix.com/drawings/13097/150x150/13097.png"},
   {text: 'no', id: 5, image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
@@ -128,11 +130,11 @@ var grids = [
   // afraid, confused
   {id: 'feelings', name: 'feelings', image_url: "https://lessonpix.com/drawings/4720/150x150/4720.png", buttons: [
     {id: 1, text: "tired", image_url: "https://lessonpix.com/drawings/509/150x150/509.png"},
-    {id: 2, text: "Start Over", image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
     {id: 3, text: "hungry / thirsty", image_url: "https://lessonpix.com/drawings/1813/150x150/1813.png"},
     {id: 4, text: "happy", image_url: "https://lessonpix.com/drawings/18080/150x150/18080.png"},
     {id: 5, text: "sad", image_url: "https://lessonpix.com/drawings/1695/150x150/1695.png"},
-    {id: 6, text: "excited", image_url: "https://lessonpix.com/drawings/1689/150x150/1689.png"},
+    {id: 6, text: "hurt", image_url: "https://lessonpix.com/drawings/84399/100x100/84399.png"},
     {id: 7, text: "bored", image_url: "https://lessonpix.com/drawings/713417/150x150/713417.png"},
     {id: 8, text: "frustrated", image_url: "https://lessonpix.com/drawings/113206/150x150/113206.png"}
   ]},
@@ -148,7 +150,7 @@ var grids = [
   // prayer, don't leave, wash hair, brush teeth, brush hair
   {id: 'body', name: 'body', image_url: "https://lessonpix.com/drawings/1354/150x150/1354.png", buttons: [
     {id: 1, text: "head", image_url: "https://lessonpix.com/drawings/6844/150x150/6844.png"},
-    {id: 2, text: "Start Over", image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
     {id: 3, text: "higher", image_url: "https://lessonpix.com/drawings/812/150x150/812.png"},
     {id: 4, text: "yes", image_url: "https://lessonpix.com/drawings/13097/150x150/13097.png"},
     {id: 5, text: "no", image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
@@ -158,7 +160,7 @@ var grids = [
   ]},
   {id: 'requests', name: 'requests', image_url: "https://lessonpix.com/drawings/234158/150x150/234158.png", buttons: [
     {id: 1, text: "Tell me a Story", image_url: "https://lessonpix.com/drawings/7369/150x150/7369.png"},
-    {id: 2, text: "Start Over", image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
     {id: 3, text: "Read to Me", image_url: "https://lessonpix.com/drawings/6012/150x150/6012.png"},
     {id: 4, text: "more", image_url: "https://lessonpix.com/drawings/850/150x150/850.png"},
     {id: 5, text: "done", image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
@@ -168,7 +170,7 @@ var grids = [
   ]},
   {id: 'religious', name: 'religious', image_url: "https://lessonpix.com/drawings/6968/150x150/6968.png", buttons: [
     {id: 1, text: "Pray for me", image_url: "https://lessonpix.com/drawings/36126/150x150/36126.png"},
-    {id: 2, text: "Start Over", image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
     {id: 3, text: "Read Scripture", image_url: "https://lessonpix.com/drawings/111111/150x150/111111.png"},
     {id: 4, text: "faith", image_url: "https://lessonpix.com/drawings/10646/150x150/10646.png"},
     {id: 5, text: "God", image_url: "https://lessonpix.com/drawings/113650/150x150/113650.png"},
@@ -178,15 +180,28 @@ var grids = [
   ]},
   {id: 'comments', name: 'comments', image_url: "https://lessonpix.com/drawings/130397/150x150/130397.png", buttons: [
     {id: 1, text: "I miss you", image_url: "https://lessonpix.com/drawings/33676/150x150/33676.png"},
-    {id: 2, text: "Start Over", image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
     {id: 3, text: "I can't wait to come Home", image_url: "https://lessonpix.com/drawings/126/150x150/126.png"},
     {id: 4, text: "I am Scared", image_url: "https://lessonpix.com/drawings/33516/150x150/33516.png"},
-    {id: 5, text: "I am Bored", image_url: "https://lessonpix.com/drawings/65820/150x150/65820.png"},
+    {id: 5, text: "Something Hurts", image_url: "https://lessonpix.com/drawings/84399/100x100/84399.png"},
     {id: 6, text: "I need a Distraction", image_url: "https://lessonpix.com/drawings/94963/150x150/94963.png"},
     {id: 7, text: "I'm Tired of This", image_url: "https://lessonpix.com/drawings/6576/150x150/6576.png"},
     {id: 8, text: "What Happens Next?", image_url: "https://lessonpix.com/drawings/11213/150x150/11213.png"}
   ]},
+  {id: 'nav', name: 'multi-level', image_url: "https://lessonpix.com/drawings/44259/100x100/44259.png", buttons: [
+    {id: 1, text: "requests", load_id: 'requests', image_url: "https://lessonpix.com/drawings/234158/150x150/234158.png"},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
+    {id: 3, text: "comments", load_id: 'comments', image_url: "https://lessonpix.com/drawings/130397/150x150/130397.png"},
+    {id: 4, text: "yes", image_url: "https://lessonpix.com/drawings/13097/150x150/13097.png"},
+    {id: 5, text: "no", image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
+    {id: 6, text: "feelings", load_id: 'feelings', image_url: "https://lessonpix.com/drawings/4720/150x150/4720.png"},
+    {id: 7, text: "body", load_id: 'body', image_url: "https://lessonpix.com/drawings/1354/150x150/1354.png"},
+    {id: 8, text: "quick", load_id: 'quick', image_url: "https://lessonpix.com/drawings/1680702/150x150/1680702.png"}
+  ]},
 ];
+grids.push({
+  id: 'quick', name: 'quick', skip: true, buttons: default_buttons
+});
 var room = {
   size_video: function() {
     var height = window.innerHeight - 30;
@@ -427,7 +442,6 @@ var room = {
     }
   },
   share_video: function() {
-    // TODO: is this possible?
     // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Manipulating_video_using_canvas
     // https://developers.google.com/web/updates/2016/10/capture-stream
     room.end_share();
@@ -494,14 +508,21 @@ var room = {
     }
     room.size_video();
   },
-  assert_grid: function(buttons) {
+  assert_grid: function(buttons, id, root) {
     var now = (new Date()).getTime();
     room.buttons = buttons.map(function(b) {
       return room.simple_button(b);
     });
+    room.grid_id = id;
     room.buttons.set_at = now;
+    if(root) {
+      room.root_id = room.grid_id;
+    }
     room.asserted_buttons = {
       set_at: now,
+      grid_id: id,
+      root_id: room.root_id,
+      show_images: localStorage.show_images != 'false',
       buttons: room.buttons
     };
     room.send_update();
@@ -559,6 +580,7 @@ var room = {
     if(container) {
       container.innerHTML = "";
       grids.forEach(function(grid) {
+        if(grid.skip) { return; }
         var div = document.createElement('div');
         div.classList.add('grid_option');
         div.innerText = grid.name;
@@ -688,11 +710,25 @@ var room = {
       if(cell.classList.contains('skinny')) {
         // cell.style.height = (window_height * .12) + "px";
       }
+      if(button.load_id && (button.load_id != 'root' || room.root_id)) {
+        if(button.load_id != 'root' || room.root_id) {
+          if(button.load_id == 'root' && room.root_id == room.grid_id) {
+            // don't show as link if already on main page
+            cell.classList.remove('link');
+          } else {
+            cell.classList.add('link');
+          }
+        }
+      } else {
+        cell.classList.remove('link');
+      }
+      cell.classList.remove('my_highlight');
+      cell.classList.remove('highlight');
       cell.parentNode.style.height = window_height + "px";
       // cell.parentNode.style.display = 'block';
       var img = cell.getElementsByTagName('img')[0];
       if(img) {
-        if(button.image_url) {
+        if(button.image_url && localStorage.show_images != 'false') {
           img.style.visibility = 'visible';
           img.src = "/blank.gif";
           setTimeout(function() {
@@ -797,7 +833,7 @@ var room = {
       return;
     }
     $nav.css('opacity', force ? 1 : 0);
-    if(!room.current_room.for_self) {
+    if(room.current_room && !room.current_room.for_self) {
       document.querySelector('#eyes').style.opacity = force ? 1 : 0;
     }
     $nav[0].shown_at = now;
@@ -844,13 +880,11 @@ var room = {
       room.show_image(json.url, json.text, big_image);
     } else if(json && json.action == 'update') {
       if(data.user && data.user.ts_offset != null && json.asserted_buttons) {
-        // TODO: check for audio track, show MUTED icon if none available
-
         // accept the other user's butttons if they were updated
         // more recently than your own
         var ts = json.asserted_buttons.set_at - data.user.ts_offset;
         if(room.buttons && (!room.buttons.set_at || room.buttons.set_at < ts)) {
-          var changed = false;
+          var changed = json.asserted_buttons.show_images != (localStorage.show_images != 'false');
           room.buttons.forEach(function(btn, idx) {
             if(!room.simple_button(btn, json.asserted_buttons.buttons[idx]).same) {
               changed = true;
@@ -859,8 +893,11 @@ var room = {
           if(changed) {
             room.asserted_buttons = json.asserted_buttons;
             room.asserted_buttons.set_at = ts - 1000;
+            localStorage.show_buttons = json.asserted_buttons.show_images.toString();
             room.buttons = json.asserted_buttons.buttons;
             room.buttons.set_at = ts - 1000;
+            room.grid_id = json.asserted_buttons.grid_id;
+            room.root_id = json.asserted_buttons.root_id;
             room.show_grid();
           }
         }
@@ -876,10 +913,11 @@ var room = {
     var res = {
       id: btn.id,
       text: btn.text,
+      load_id: btn.load_id,
       image_url: btn.image_url
     };
     if(comp) {
-      res.same = comp.id == btn.id && comp.text == btn.textt && comp.image_url == btn.image_url;
+      res.same = comp.id == btn.id && comp.text == btn.text && comp.image_url == btn.image_url && comp.load_id == btn.load_id;
     }
     return res;
   }
@@ -971,6 +1009,15 @@ document.addEventListener('click', function(event) {
     $cell.addClass('my_highlight');
     $cell.blur();
     setTimeout(function() {
+      var btn = $cell[0].button;
+      if(btn.load_id) {
+        var load_id = btn.load_id;
+        if(load_id == 'root') { load_id = room.root_id; }
+        var grid = grids.find(function(g) { return g.id == load_id; });
+        if(grid) {
+          room.assert_grid(grid.buttons, grid.id, false);
+        }
+      }
       $cell.removeClass('my_highlight');
     }, 1000);
   } else if($button.length > 0) {
@@ -998,7 +1045,7 @@ document.addEventListener('click', function(event) {
       var size = (room.buttons || {}).length || 8;
       var content = null;
       modal.open('Customize Buttons', document.getElementById('customize_modal'), [
-        {action: 'accept', label: "Ok", callback: function() {
+        {action: 'accept', label: "Update Buttons", callback: function() {
           var image_urls = {};
           document.querySelectorAll('.grid .cell').forEach(function(cell) {
             var img = cell.querySelector('img');
@@ -1006,6 +1053,8 @@ document.addEventListener('click', function(event) {
               image_urls[cell.querySelector('.text').innerText] = img.src;
             }
           });
+          localStorage.show_images = content.querySelector("input[name='show_images']").checked.toString();
+
           var ref = {};
           content.querySelectorAll('.layout_button').forEach(function(btn) {
             var input = btn.querySelector('input');
@@ -1047,11 +1096,15 @@ document.addEventListener('click', function(event) {
               i.image_url = image_urls[i.text];
             }
           });
-          room.assert_grid(grid);
+          room.assert_grid(grid, 'custom_' + (new Date()).getTime + "_" + Math.random(), true);
           modal.close();
         }}
       ]);
       content = document.querySelector('.modal .content');
+      if(!room.current_room.for_self) {
+        content.querySelector('.reverse').style.display = 'inline';
+      }
+      content.querySelector("input[name='show_images']").checked = (localStorage.show_images != 'false');
       content.addEventListener('click', function(event) {
         if(event.target.classList.contains('size')) {
           size = parseInt(event.target.getAttribute('data-size'), 10);
@@ -1121,13 +1174,13 @@ document.addEventListener('click', function(event) {
         var qr = new window.QRCode(document.querySelector('.modal #invite_modal .qr_code'), url);
       }
     } else if(action == 'quick') {
-      room.assert_grid(room.default_buttons);
+      room.assert_grid(room.default_buttons, 'quick', true);
     } else if(action == 'load') {
       var id = $(event.target).closest('.grid_option').attr('data-id');
       if(id) {
         var grid = grids.find(function(g) { return g.id == id; });
         if(grid) {
-          room.assert_grid(grid.buttons);
+          room.assert_grid(grid.buttons, grid.id, true);
         }
       }
       $button.find(".popover").css('display', 'none');

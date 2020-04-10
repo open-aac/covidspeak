@@ -128,11 +128,18 @@
 <div id="customize_modal" class="content">
   <div style='margin-bottom: 10px; text-align: center;'>
   Choose a button layout and fill it out!
+  <span class='reverse' style='display: none;'><span style='color: #800; font-weight: bold;'>NOTE:</span> The buttons you fill out will look reversed from how you enter them, but will show up correctly for the communicator's eyes.</span>
   </div>
   <div style='display: flex; flex-direction: row;'>
     <button style='flex: 1;' class='size' data-size='4'>4 Buttons</button>
     <button style='flex: 1;' class='size' data-size='6'>6 Buttons</button>
     <button class='size primary' data-size='8' style='flex: 1; margin-right: 0;'>8 Buttons</button>
+  </div>
+  <div class='big_checkbox' style='margin: 10px 0;'>
+    <label>
+      <input type='checkbox' name='show_images'/>
+      Show Picture Drawings on User Buttons
+    </label>
   </div>
   <div id='layouts'>
     <div class='layout'>
