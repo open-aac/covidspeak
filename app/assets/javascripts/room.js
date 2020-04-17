@@ -1,24 +1,57 @@
 var audio_analysers = [];
+var volume = null;
+
 var add_dom = function(elem, track, user) {
   if(elem.tagName == 'AUDIO') {
+    var new_list = [];
+    audio_analysers.forEach(function(ana) {
+      if(!ana.audio_element.parentNode || ana.stream.active == false) {
+        console.log("OLD TRACK, STOPPING ANALYSIS");
+        ana.release();
+      } else {
+        new_list.push(ana);
+      }
+    });
+    audio_analysers = new_list;
     if(window.AudioContext || window.webkitAudioContext) { // if I'm the communicator, analyze, otherwise it should only add for communicator
-      var context = new (window.AudioContext || window.webkitAudioContext)();
-      if(context) {
-        var analyser = context.createAnalyser();
-        var source = context.createMediaElementSource(elem);
-        source.connect(analyser);
-        audio_analysers.push({
-          user: user, 
-          analyser: analyser, 
-          audio_track: track,
-          bins: analyser.frequencyBinCount,
-          frequency_array: new Uint8Array(analyser.frequencyBinCount)
+      var AudioContext = window.AudioContext || window.webkitAudioContext;
+      var context = new AudioContext();
+      var stream = user.remote_stream;
+      if(!stream && track.mediaStreamTrack) {
+        stream = new MediaStream();
+        stream.addTrack(track.mediaStreamTrack);
+      }
+      if(context && user && stream) {
+        var found = false;
+        audio_analysers.forEach(function(ana) {
+          if(ana.stream == stream) {
+            found = true;
+          }
         });
-        analyser.connect(context.destination);
+        if(!found) {
+          var analyser = context.createAnalyser();
+          analyser.fftSize = 256;
+          // var source = context.createMediaElementSource(elem);
+          var source = context.createMediaStreamSource(stream);
+          source.connect(analyser).connect(context.destination);
+          var arr = new Uint8Array(analyser.frequencyBinCount);
+          audio_analysers.push({
+            stream: stream,
+            user: user, 
+            audio_element: elem,
+            release: function() { context.close(); },
+            analyser: analyser, 
+            audio_track: track,
+            bins: analyser.frequencyBinCount,
+            frequency_array: arr
+          });
+        }
+  
+        // analyser.connect(context.destination);
         if(!audio_loop.running) {
           audio_loop.running = true;
           audio_loop();
-        }
+        }  
       }
     }
   }
@@ -28,6 +61,9 @@ var add_dom = function(elem, track, user) {
   elem.setAttribute('data-user-id', user.id);
   document.getElementById('partner').appendChild(elem);
   if(track.type == 'video') {
+    elem.addEventListener('resize', function() {
+      room.size_video();
+    })
     setTimeout(function() {
       room.size_video();
     }, 500);
@@ -48,7 +84,9 @@ remote.addEventListener('track_added', function(data) {
         }
       }
     }
-    add_dom(track.generate_dom(), data.track, data.user);
+    var dom = track.generate_dom();
+    dom.classList.add('track-' + track.id);
+    add_dom(dom, data.track, data.user);
   }
 });
 var audio_loop = function() {
@@ -60,18 +98,28 @@ var audio_loop = function() {
       for(var i = 0; i < ana.bins; i++){
         tally = tally + ana.frequency_array[i];
       }
+      if(audio_loop.verbose) {
+        console.log(ana.audio_element, ana.frequency_array);
+      }
       ana.output = (tally / ana.bins);
       if(!biggest || ana.output > biggest.output) {
         biggest = ana;
       }
     });
+    if(biggest != null && volume) {
+      volume.style.width = (biggest.output || 0) + "px";
+    }
     // set user as loudest, update display
   }
   window.requestAnimationFrame(audio_loop);
 };
 remote.addEventListener('track_removed', function(data) {
   var track = data.track;
-  if(track.type == 'video' || track.type == 'audio') {
+  var elems = document.getElementById('partner').getElementsByClassName('track-' + track.id);
+  for(var idx = 0; idx < elems.length; idx++) {
+    elems[idx].parentNode.removeChild(elems[idx]);
+  }
+  if(track.type == 'video') {
     var priors = document.getElementById('partner').getElementsByClassName("room-" + track.type);
     for(var idx = 0; idx < priors.length; idx++) {
       if(priors[idx].getAttribute('data-user-id') == data.user_id) {
@@ -204,6 +252,7 @@ grids.push({
 });
 var room = {
   size_video: function() {
+    // TODO: videos have resize event?!?!
     var height = window.innerHeight - 30;
     var grid = document.getElementsByClassName('grid')[0];
     if(!grid) { return; }
@@ -227,8 +276,10 @@ var room = {
       if(!vw || !vh) { return; }
       var xscale = bw / vw;
       var yscale = bh / vh;
-      if(vw * zoom < bw && vh * zoom < bh) {
+      if(vw > 10 && vh > 10 && vw * zoom < bw && vh * zoom < bh) {
         room.zoom_level = zoom * zoom_factor;
+        // vw or vh is probably zero
+        if(room.zoom_level > 10) { debugger }
         return room.size_video();
       }
       var scale = Math.max(xscale, yscale);
@@ -337,6 +388,7 @@ var room = {
         file.onchange = function(event) {
           var file = event.target && event.target.files && event.target.files[0];
           var draw_img = function(img) {
+            if(!room.share_tracks) { return; }
             if(room.share_tracks.img && room.share_tracks.img != img) {
               return;
             }
@@ -536,7 +588,9 @@ var room = {
       action: 'image',
       url: image_url,
       text: alt
-    })
+    }).then(null, function() { 
+      // send failed...
+    });
   },
   send_update: function() {
     if(room.update_timeout) {
@@ -558,7 +612,9 @@ var room = {
       room.asserted_buttons.buttons = room.asserted_buttons.buttons.map(function(b) { return room.simple_button(b)});
       message.asserted_buttons = room.asserted_buttons
     }
-    remote.send_message(room.current_room.id, message);
+    remote.send_message(room.current_room.id, message).then(null, function() {
+      // prolly not a big deal
+    });
     room.update_timeout = setTimeout(function() {
       room.send_update();
     }, 5000);
@@ -593,12 +649,54 @@ var room = {
       });  
     }  
   },
+  flush: function() {
+    var now = (new Date()).getTime();
+    for(var key in localStorage) {
+      if(key.match(/^room_id_for/)) {
+        try {
+          var json = JSON.parse(localStorage[key]);
+          if(json && (!json.exp || json.exp < now)) {
+            localStorage.removeItem(key);
+          }
+        } catch(e) { localStorage.removeItem(key); }
+      }
+    }
+  },
   start: function() {
     // TODO: if the user hasn't accepted terms, pop them up
+    var room_id = (location.pathname.match(/\/rooms\/([\w:]+)$/) || {})[1];
+    if(room_id && room_id.match(/^x/) && localStorage['room_id_for_' + room_id]) {
+      try {
+        var json = JSON.parse(localStorage['room_id_for_' + room_id]);
+        room_id = json.id;
+      } catch(e) { 
+        // TODO: make this prettier
+        alert('room data has been lost!');
+        return;
+      }
+    } else if(room_id.match(/^x/)) {
+      // TODO: make this prettier
+      alert('room data has been lost!');
+      return;
+    } else {
+      // obfuscate room id in case it shows up in a screen shot
+      var local_id = "x" + btoa((new Date()).getTime() + "-" + Math.round(Math.random()));
+      localStorage['room_id_for_' + local_id] = JSON.stringify({exp: (new Date()).getTime() + (48*60*60*1000), id: room_id});
+      var new_path = location.pathname.replace(room_id, local_id);
+      history.replaceState(null, '', new_path);
+    }
+
+    volume = document.querySelector('#volume_level');
+    if(location.href.match(/localhost/)) {
+      volume.style.display = 'block';
+    }
+
+    room.room_id = localStorage['room_id_for_' + room_id] || room_id;
+    room.flush();
+    
     // TODO: show an intro video option (always for communicator, once for visitors)
     // TODO: if not over https and not on localhost, pre-empt error
     // TODO: show loading message
-    var room_id = (location.pathname.match(/\/rooms\/([\w:]+)/) || {})[1];
     room.populate_grids();
     room.populate_reactions();
     room.size_video();
@@ -607,10 +705,12 @@ var room = {
       user_id = (new Date()).getTime() + ":" + Math.round(Math.random() * 9999999);
     }
     var enter_room = function() {
-      session.ajax('/api/v1/rooms/' + room_id, {
+      session.ajax('/api/v1/rooms/' + room.room_id, {
         method: 'PUT',
-        data: {user_id: user_id, type: remote.backend} 
+        data: {user_id: user_id} 
       }).then(function(res) {
+        room.current_user_id = res.user_id;
+        remote.backend = res.room.type;
         remote.start_local_tracks({audio: true, video: true, data: true}).then(function(tracks) {
           for(var idx = 0; idx < tracks.length; idx++) {
             if(tracks[idx].type == 'video') {
@@ -618,10 +718,10 @@ var room = {
               document.getElementById('communicator').appendChild(tracks[idx].generate_dom());
             }
           }
-          remote.connect_to_remote(res.access_token, res.room.key).then(function(room_session) {
+          remote.connect_to_remote(res.access, res.room.key).then(function(room_session) {
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
             room_session.user_id = res.user_id;
-            room_session.for_self = room_id == localStorage.room_id;
+            room_session.for_self = room.room_id == localStorage.room_id;
             $(".grid").toggleClass('communicator', room_session.for_self)
             room.current_room = room_session;
             room.local_tracks = tracks;
@@ -639,11 +739,11 @@ var room = {
         console.error("Room creation error: ", err);
       });
     };
-    if(localStorage.user_id && room_id == localStorage.room_id) {
+    if(localStorage.user_id && room.room_id == localStorage.room_id) {
       // We check user auth here to make sure the user/room hasn't expired
       session.ajax('/api/v1/users', {
         method: 'POST',
-        data: {user_id: localStorage.user_id, type: remote.backend}
+        data: {user_id: localStorage.user_id, room_id: room.room_id}
       }).then(function(res) {
         enter_room();
       }, function(err) {
@@ -931,7 +1031,7 @@ var shift = function(event) {
   room.shift_y = event.clientY - (room.drag_y || event.clientY);
   room.size_video();
   room.toggle_zoom(true);
-  console.log("drag", room.shift_x, room.shift_y);
+  // console.log("drag", room.shift_x, room.shift_y);
 }
 var drag = function(event) {
   room.drag_x = event.clientX - (room.shift_x || 0);
@@ -1004,7 +1104,9 @@ document.addEventListener('click', function(event) {
     room.toggle_zoom();
   } else if($cell.length > 0) {
     if(room.current_room) {
-      remote.send_message(room.current_room.id, {action: 'click', button: {id: $cell[0].button.id }});
+      remote.send_message(room.current_room.id, {action: 'click', button: {id: $cell[0].button.id }}).then(null, function() {
+        // click failed to deliver
+      });
     }
     $cell.addClass('my_highlight');
     $cell.blur();
@@ -1144,7 +1246,7 @@ document.addEventListener('click', function(event) {
     } else if(action == 'info') {
       modal.open("About Co-VidChat", document.getElementById('info_modal'), []);
     } else if(action == 'invite') {
-      var url = location.href + "/join";
+      var url = location.origin + "/rooms/" + room.room_id + "/join";
       document.querySelector('#invite_modal .link').innerText = url;
       var actions = [
         {action: 'copy', label: "Copy Link", callback: function() {

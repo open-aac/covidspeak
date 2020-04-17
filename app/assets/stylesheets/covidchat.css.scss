@@ -22,8 +22,11 @@ caption, th {
 	}
 h1, h2, h3, h4, h5, h6 {
 	font-weight: normal;
-	font-size: 100%;
-	}
+  font-size: 100%;
+  a {
+    color: #000;
+  }
+}
 q:before, q:after {
 	content: '';
 	}
@@ -52,11 +55,13 @@ h2 {
 header {
   position: fixed;
   top: 0;
+  width: 400px;
   height: 30px;
+  border-bottom: 1px solid #aaa;
 }
 #simple_content #contents {
   height: 100vh;
-  margin-top: 30px;
+  padding-top: 40px;
 }
 footer {
   position: fixed;
@@ -112,6 +117,9 @@ a {
     text-decoration: underline;
   }
 }
+strong {
+  font-weight: bold;
+}
 #simple_content {
   width: 400px;
   margin: 0 auto;
@@ -121,6 +129,16 @@ a {
     flex-direction: column;
     justify-content: center;
     height: calc(100vh - 110px);
+    &.big {
+      display: block;
+      justify-content: normal;
+      overflow: auto;
+      height: calc(100% - 30px);
+      padding-bottom: 50px;
+      p {
+        margin-top: 20px;
+      }
+    }
   }
 }
 #full_content {
@@ -492,7 +510,7 @@ a {
         padding: 5px;
         position: absolute;
         left: 10px;
-        margin-top: -15px;
+        margin-top: -25px;
         border-radius: 5px;
         border: 2px solid #aaa;
         box-shadow: 0 0 10px #fff;
@@ -628,6 +646,9 @@ a {
     max-width: 48vh;
     max-height: 48vh;
   }
+}
+#big {
+
 }
 #middle.join {
   text-align: center;
@@ -768,4 +789,13 @@ a {
   
   left: 2px;
   top: 5px;  
+}
+#volume_level {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #0f0;
+  box-shadow: 0 2px 5px #fff;
+  height: 15px;
+  width: 0;
 }

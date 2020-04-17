@@ -1,8 +1,12 @@
 require 'go_secure'
 
 class Account < ApplicationRecord
-  def self.valid_code?(code)
-    return code == 'test'
+  def backend_type
+    if self.code == 'twilio'
+      'twilio'
+    else
+      'webrtc'
+    end
   end
 
   def self.generate_user(timestamp=nil, nonce=nil)
@@ -21,12 +25,13 @@ class Account < ApplicationRecord
     return ts > 48.hours.ago.to_i && user_id == generate_user(ts, nonce)
   end
 
-  def self.generate_room(user_id_or_hash)
+  def generate_room(user_id_or_hash)
     str = user_id_or_hash
     if !user_id_or_hash.match(/^r/)
       str = "r" + GoSecure.sha512(user_id_or_hash, 'room_id for user')[0, 40]
     end
     str = str + ":" + GoSecure.sha512(str, 'room_id confirmation')[0, 40]
+    Room.find_or_create_by(code: str, account_id: self.id)
   end
 
   def self.valid_room_id?(room_id)

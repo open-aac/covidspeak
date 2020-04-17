@@ -10,18 +10,21 @@
     <script src="//media.twiliocdn.com/sdk/js/video/releases/2.0.0/twilio-video.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="/scripts/qrcode.min.js"></script>
+    <%= action_cable_meta_tag %>
   </head>
 
   <body>
     <div class="container" id="simple_content">
       <header>
-        <h1><span style='color: #888; font-style: italic'>Co</span>-<span style='font-weight: bold;'>VidChat</span></h1>
+        <h1><a href="/"><span style='color: #888; font-style: italic'>Co</span>-<span style='font-weight: bold;'>VidChat</span></a></h1>
       </header>
       <div id="contents">
         <%= yield %>
       </div>
       <footer class="footer">
-        License and terms and stuff
+        <a href="/about">About</a> <span style='color: #aaa;'>|</span>
+        <a href="/terms">Terms</a> <span style='color: #aaa;'>|</span>
+        <a href="/privacy">Privacy</a>
       </footer>
     </div>
     <%= more_scripts %>

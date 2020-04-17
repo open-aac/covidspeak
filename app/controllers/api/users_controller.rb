@@ -2,22 +2,22 @@ require 'twilio-ruby'
 
 class Api::UsersController < ApplicationController
   def create
-    # Required for any Twilio Access Token
-    return api_error(400, {error: "unrecognized type: #{params['type']}"}) unless params['type'] == 'twilio'
-    
     identity = nil
-    if params['user_id']
+    if params['user_id'] && params['room_id']
       identity = params['user_id']
     elsif params['join_code']
-      if Account.valid_code?(params['join_code'])
+      account = Account.find_by(code: params['join_code'])
+      if account
         identity = Account.generate_user
       end
     end
     identity = nil unless Account.valid_user_id?(identity)
     return api_error(400, {error: "no user generated"}) unless identity
-    room_id = Account.generate_room(identity)
+    room = Room.find_by(code: params['room_id'])
+    room ||= account.generate_room(identity) if params['join_code']
+    raise api_error(400, {error: "no room generated"}) unless room
     
     # Generate the token
-    render :json => {:user => {id: identity, room_id: room_id}}
+    render :json => {:user => {id: identity, room_id: room.code}}
   end
 end

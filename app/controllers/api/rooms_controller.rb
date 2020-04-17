@@ -2,50 +2,89 @@ require 'twilio-ruby'
 
 class Api::RoomsController < ApplicationController
   def update
-    return api_error(400, {error: "unrecognized type: #{params['type']}"}) unless params['type'] == 'twilio'
+    # 1. error if the room record isn't present
+    #    (it should have been created by user reg)
+    # 2. push out the room expiration in redis
+    # 3. mark the room as activated
+    # 4. user_id will either be the communicator's id
+    #    or the visitor's randomly-generated id
+    # 5. mark the user_id as allowed to enter the room
+    # 6. when the user joins the room cable/channel,
+    #    verify them and then broadcast to everyone
+    #    else in the room that someone new arrived
+    # 7. send the room joining credentials/settings
+
     # Required for any Twilio Access Token
-    account_sid = ENV['TWILIO_ACCOUNT_ID']
-    api_key = ENV['TWILIO_KEY']
-    api_secret = ENV['TWILIO_SECRET']
     
     identity = params['user_id']
-    room_id = params['id']
-    if !Account.valid_room_id?(room_id)
-      return api_error(400, {error: "invalid room id, #{room_id}"})
+    # Trim identity to exclude verifier, since id get published with room
+    trimmed_identity = identity.split(/:/)[0, 2].join(':')
+    room = Room.find_by(code: params['id'])
+    if !room
+      return api_error(400, {error: "invalid room id, #{params['room_id']}"})
     end
+    room_id = room.code
     # TODO: ensure user matches room id
     room_key = "CoVidChatFor#{room_id}"
-    
-    # Manually create the room on the backend
-    @client = Twilio::REST::Client.new(api_key, api_secret)
-    room = @client.video.rooms(room_key).fetch rescue nil
-    # Only allow creating the room if it's the correct user
-    if !room
-      if !Account.valid_user_id?(identity)
-        return api_error(400, {error: "invalid user id, #{identity}"})
-      elsif room_id != Account.generate_room(identity)
-        return api_error(400, {error: "wrong user id for room"})
+    access = nil
+
+    if room.type == 'twilio'
+      account_sid = ENV['TWILIO_ACCOUNT_ID']
+      api_key = ENV['TWILIO_KEY']
+      api_secret = ENV['TWILIO_SECRET']
+
+      # Manually create the room on the backend
+      @client = Twilio::REST::Client.new(api_key, api_secret)
+      twilio_room = @client.video.rooms(room_key).fetch rescue nil
+      # Only allow creating the room if it's the correct user
+      if !twilio_room
+        account = room.account
+        if !Account.valid_user_id?(identity)
+          return api_error(400, {error: "invalid user id, #{identity}"})
+        elsif room != account.generate_room(identity)
+          return api_error(400, {error: "wrong user id for room"})
+        end
       end
-    end
 
-    # Trim identity to exclude verifier, since id get published with room
-    identity = identity.split(/:/)[0, 2].join(':')
-    # Generate the room if not already there
-    room ||= @client.video.rooms.create(
-                             enable_turn: true,
-                             type: 'peer-to-peer',
-                             unique_name: room_key
-    )
+      # Generate the room if not already there
+      twilio_room ||= @client.video.rooms.create(
+                              enable_turn: true,
+                              type: 'peer-to-peer',
+                              unique_name: room_key
+      )
 
-    # Create an Access Token
-    token = Twilio::JWT::AccessToken.new(account_sid, api_key, api_secret, [], identity: identity);
+      # Create an Access Token
+      token = Twilio::JWT::AccessToken.new(account_sid, api_key, api_secret, [], identity: trimmed_identity);
     
-    # Create Video grant for our token
-    grant = Twilio::JWT::AccessToken::VideoGrant.new
-    grant.room = room_key
-    token.add_grant(grant)
+      # Create Video grant for our token
+      grant = Twilio::JWT::AccessToken::VideoGrant.new
+      grant.room = room_key
+      token.add_grant(grant)
+      access = {token: token.to_jwt}
+    elsif room.type == 'webrtc'
+      account_sid = ENV['TWILIO_ACCOUNT_ID']
+      api_token = ENV['TWILIO_TOKEN']
+
+      # Manually create the room on the backend
+      @client = Twilio::REST::Client.new(account_sid, api_token)
+      token = @client.tokens.create
+      access = {
+        "ice_servers": token.ice_servers,
+        "password": token.password,
+        "ttl": token.ttl,
+        "username": token.username
+      }
+    else
+      return api_error(400, {error: "unrecognized room type, #{room.type}"})
+    end
     
     # Generate the token
-    render :json => {:room => {id: room_id, key: room_key}, user_id: identity, access_token: token.to_jwt}
+    render :json => {:room => {id: room_id, key: room_key, type: room.type}, user_id: trimmed_identity, access: access}
+  end
+
+  def keepalive
+    # if the user_id is a member of the rooom, then,
+    # note that the room is still active, so you can
+    # get an accurate time range for the room
   end
 end
