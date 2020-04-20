@@ -129,6 +129,9 @@ strong {
     flex-direction: column;
     justify-content: center;
     height: calc(100vh - 110px);
+    label a {
+      color: #2955ba;
+    }
     &.big {
       display: block;
       justify-content: normal;
@@ -835,11 +838,12 @@ strong {
   
   transform: rotate(-45deg);
   
-  left: 2px;
+  left: 5px;
   top: 5px;  
 }
 #volume_level {
   position: absolute;
+  display: none;
   top: 10px;
   right: 10px;
   background: #0f0;

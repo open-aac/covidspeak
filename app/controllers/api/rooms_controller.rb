@@ -62,30 +62,79 @@ class Api::RoomsController < ApplicationController
       token.add_grant(grant)
       access = {token: token.to_jwt}
     elsif room.type == 'webrtc'
-      account_sid = ENV['TWILIO_ACCOUNT_ID']
-      api_token = ENV['TWILIO_TOKEN']
-
-      # Manually create the room on the backend
-      @client = Twilio::REST::Client.new(account_sid, api_token)
-      token = @client.tokens.create
-      access = {
-        "ice_servers": token.ice_servers,
-        "password": token.password,
-        "ttl": token.ttl,
-        "username": token.username
-      }
+      account = room.account
+      return api_error(400, {error: 'no account for this room'}) unless account
+      if account.settings['source'] == 'twilio'
+        account_sid = ENV['TWILIO_ACCOUNT_ID']
+        api_token = ENV['TWILIO_TOKEN']
+  
+        # Manually create the room on the backend
+        @client = Twilio::REST::Client.new(account_sid, api_token)
+        token = @client.tokens.create
+        access = {
+          "ice_servers": token.ice_servers,
+          "password": token.password,
+          "ttl": token.ttl,
+          "username": token.username
+        }
+      elsif account.settings['address']
+        cred = trimmed_identity
+        if account.settings['verifier'] == 'custom_md5'
+          cred = Digest::MD5.hexdigest("signed#{trimmed_identity}verifier")
+        end
+        port = account.settings['port'] || 3478
+        servers = [
+          {
+            url: "stun:#{account.settings['address']}:#{port}?transport=udp",
+            urls: "stun:#{account.settings['address']}:#{port}?transport=udp",
+            username: trimmed_identity,
+            credential: cred
+          }
+        ]
+        if account.settings['udp'] != false
+          servers << {
+            url: "turn:#{account.settings['address']}:#{port}?transport=udp",
+            urls: "turn:#{account.settings['address']}:#{port}?transport=udp",
+            username: trimmed_identity,
+            credential: cred
+          }
+        end
+        if account.settings['tcp'] != false
+          servers << {
+            url: "turn:#{account.settings['address']}:#{port}?transport=tcp",
+            urls: "turn:#{account.settings['address']}:#{port}?transport=tcp",
+            username: trimmed_identity,
+            credential: cred
+          }
+          servers << {
+            url: "turn:#{account.settings['address']}:443?transport=tcp",
+            urls: "turn:#{account.settings['address']}:443?transport=tcp",
+            username: trimmed_identity,
+            credential: cred
+          }
+        end
+        access = {
+          "username": trimmed_identity,
+          "ice_servers": servers,
+          "ttl": 86400
+        }
+      end
     else
       return api_error(400, {error: "unrecognized room type, #{room.type}"})
     end
-    room.allow_user(identity)
+    room.allow_user(trimmed_identity)
     
     # Generate the token
     render :json => {:room => {id: room_id, key: room_key, type: room.type}, user_id: trimmed_identity, access: access}
   end
 
   def keepalive
-    # if the user_id is a member of the rooom, then,
-    # note that the room is still active, so you can
-    # get an accurate time range for the room
+    room = Room.find_by(code: params[:room_id])
+    if room && room.user_allowed?(params[:user_id])
+      room.in_use
+      render json: {updated: true}
+    else
+      api_error({error: "room or user not found"})
+    end
   end
 end

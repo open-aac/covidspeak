@@ -140,6 +140,7 @@ remote.addEventListener('user_added', function(data) {
   // TODO: keep a rotation of helpers for the communicator,
   // and keep communicators on everyone else's view
   if(data.user.id != room.current_room.user_id) {
+    room.set_active();
     room.status('ready');
   }
   setTimeout(function() {
@@ -329,6 +330,23 @@ var room = {
   },
   flip_video: function() {
     // TODO: transform: scaleX(-1);
+  },
+  set_active: function() {
+    if(room.active_timeout) { return; }
+    var resume = function() {
+      room.active_timeout = setTimeout(function() {
+        room.active_timeout = null;
+        room.set_active();
+      }, 50000 + Math.round(Math.random() * 20000)); // add jitter
+    };
+    session.ajax('/api/v1/rooms/' + room.room_id + '/keepalive', {
+      method: 'POST',
+      data: {user_id: room.current_user_id} 
+    }).then(function(res) {
+      resume();
+    }, function(err) {
+      resume();
+    });
   },
   toggle_self_mute: function(mute) {
     var previous_mute = !!room.mute_audio;
@@ -723,6 +741,8 @@ var room = {
     volume = document.querySelector('#volume_level');
     if(location.href.match(/localhost/)) {
       volume.style.display = 'block';
+    } else {
+      volume.style.display = 'none';
     }
 
     room.room_id = localStorage['room_id_for_' + room_id] || room_id;

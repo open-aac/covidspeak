@@ -1,8 +1,12 @@
 require 'go_secure'
 
 class Account < ApplicationRecord
+  include SecureSerialize
+  secure_serialize :settings
+
   def backend_type
-    if self.code == 'twilio'
+    self.settings ||= {}
+    if self.settings['type'] == 'twilio'
       'twilio'
     else
       'webrtc'

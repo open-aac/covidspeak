@@ -11,7 +11,9 @@ Rails.application.routes.draw do
   mount ActionCable.server => '/cable'
 
   scope 'api/v1', module: 'api' do
-    resources :rooms
+    resources :rooms do
+      post 'keepalive' => 'rooms#keepalive'
+    end
     resources :users
   end
 end

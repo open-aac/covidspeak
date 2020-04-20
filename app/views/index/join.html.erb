@@ -3,7 +3,19 @@
   Ready to chat? 
   <div class='preview'>
   </div>
-  <a class='join' href="/rooms/<%= params['room_id'] %>">Join the Room</a>
+  <div class='big_checkbox' style='margin: 10px 0; padding-leftt: 70px; text-align: left; padding-top: 0; font-size: 14px;'>
+    <label>
+      <input type='checkbox' id='accept'/>
+      By registering or using the product, you are agreeing that you have read and understood the <a href="/terms">Terms of Use and License Agreement</a>, and are capable of binding to a legal contract.
+    </label>
+  </div>
+  
+  <a class='join' href="/rooms/<%= params['room_id'] %>">
+    Join the Room
+    <div id="accept_reminder" style='color: #800; font-size: 14px; display: none;'>
+      You must accept the terms before entering the room
+    </div>
+  </a>
   <div class='buttons'>
     <button id='copy' style='width: 50%;'>Copy Link to Share</button>
     <button id='share' style='width: calc(50% - 10px); float: right; margin-right: 0; display: xnone;'>
@@ -16,9 +28,17 @@
 if(navigator.canShare && navigator.canShare()) {
   document.querySelector("#share").style.display = 'inline';
 }
+if(localStorage.terms_accepted) {
+  document.querySelector('#accept').checked = true;
+}
 document.addEventListener('click', function(event) {
   var url = (document.querySelector('.join_link') || {}).innerText;
   if(event.target.classList.contains('join')) {
+    if(!document.querySelector('#accept').checked) {
+      document.querySelector('#accept_reminder').style.display = 'block';
+      event.preventDefault();
+      return;
+    }
     localStorage.terms_accepted = 'true';    
   }
   if(event.target.id ==  'copy') {
