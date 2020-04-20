@@ -754,7 +754,7 @@ var room = {
           }
           room.status("Connecting...");
           remote.connect_to_remote(res.access, res.room.key).then(function(room_session) {
-            room.status('Waiting for Participants...');
+            room.status('Waiting for Partner...');
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
             room_session.user_id = res.user_id;
             room_session.for_self = room.room_id == localStorage.room_id;
