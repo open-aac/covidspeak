@@ -206,6 +206,8 @@ Object.assign(remote, {
         room_ref.onmessage(data);
       }
       // console.log("ROOM DATA", data);
+    }).then(null, function(err) {
+      console.log("ROOM ENTRY FAILED", err);
     });
     return room_ref;
   }

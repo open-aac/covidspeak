@@ -5,6 +5,11 @@ class Room < ApplicationRecord
     self.account.backend_type
   end
 
+  def self.find_by_code(code)
+    code = code.sub(/^CoVidChatFor/, '')
+    find_by(code: code)
+  end
+
   def allow_user(user_id)
   end
 
