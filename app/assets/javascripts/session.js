@@ -9,7 +9,7 @@ var session = {
     return $.ajax(opts);
   },
   join_room: function(opts, callback) {
-    return new Promise(function(res, ref) {
+    return new Promise(function(res, rej) {
       session.subscriptions = session.subscriptions || {};
       if(session.subscriptions[opts.room_id]) {
         session.subscriptions[opts.room_id].unsubscribe();

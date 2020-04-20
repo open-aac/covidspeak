@@ -2,7 +2,7 @@ class RoomChannel < ApplicationCable::Channel
   def subscribed
     @room_id = params[:room_id]
     room = Room.find_by(code: params[:room_id])
-    return reject unless room & params[:user_id] && room.user_allowed?(params[:user_id])
+    return reject unless room && params[:user_id] && room.user_allowed?(params[:user_id])
     stream_from RoomChannel.room_key(params[:room_id])
     ids = RedisAccess.default.lrange("users_for_#{@room_id}", 0, -1).map{|id| {id: id} }
     if(!ids.detect{|u| u[:id] == params[:user_id] })
