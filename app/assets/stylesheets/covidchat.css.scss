@@ -157,6 +157,20 @@ strong {
   .for_visitor {
     display: block;
   }
+  .connected {
+    display: inline;
+  }
+  .disconnected {
+    display: none;
+  }
+  &.offline {
+    .connected {
+      display: none;
+    }
+    .disconnected {
+      display: inline;
+    }
+  }
   &.communicator {
     .for_communicator {
       display: block;
@@ -337,9 +351,11 @@ strong {
       flex: 6;
       position: relative;
       background: #000;
+      border-radius: 5px;
       #partner {
         position: absolute;
         overflow: hidden;
+        border-radius: 5px;
         top: 0;
         bottom: 0;
         left: 0;
@@ -349,6 +365,37 @@ strong {
           height: 100%;
         }
       }
+      #partner_shadow {
+        position: absolute;
+        overflow: hidden;
+        border-radius: 5px;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+      }
+      #status_holder {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        #status {
+          text-align: center;
+          color: #fff;
+          background: #000;
+          border-radius: 5px;
+          padding: 20px;
+          font-size: 20px;
+          font-weight: bold;
+          width: 50%;
+          margin-top: 50px;
+          margin-left: auto;
+          margin-right: auto;
+          box-shadow: 0 0 20px #000;
+        }
+      }
       #communicator {
         position: absolute;
         bottom: 10px;
@@ -356,9 +403,14 @@ strong {
         left: 10px;
         height: 30%;
         border: 2px solid #888;
+        border-radius: 4px;
+        overflow: hidden;
         box-shadow: 0 0 5px #000;
         min-width: 20px;
         max-width: calc(100% - 250px);
+        video {
+          margin-right: -2px;
+        }
         &.muted {
           &::after {
             content: "";

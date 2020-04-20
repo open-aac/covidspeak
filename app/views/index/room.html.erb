@@ -37,14 +37,22 @@
             Invite
             <img class='icon' src='/icons/people-circle.svg' alt='' />
             </div>
-          <div class='button sub_button' data-action='share'>
-            Show
-            <img class='icon' src='/icons/images.svg' alt='' />
-            </div>
-          <div class='button sub_button for_visitor' data-action='info'>
-            Info
-            <img class='icon' src='/icons/info-circle.svg' alt='' />
-            </div>
+          <span class='connected'>
+            <div class='button sub_button' data-action='share'>
+              Show
+              <img class='icon' src='/icons/images.svg' alt='' />
+              </div>
+            <div class='button sub_button for_visitor' data-action='info'>
+              Info
+              <img class='icon' src='/icons/info-circle.svg' alt='' />
+              </div>
+          </span>
+          <span class='disconnected'>
+            <div class='button sub_button for_visitor' data-action='reconnect'>
+              Re-Connect
+              <img class='icon' src='/icons/plug.svg' alt='' />
+              </div>
+          </span>
           <div class='button sub_button' data-action='end'>
             End
             <img class='icon' src='/icons/power.svg' alt='' />
@@ -70,6 +78,12 @@
     </div>
     <div class='preview'>
       <div id="partner">
+      </div>
+      <div id="partner_shadow">
+      </div>
+      <div id="status_holder">
+        <div id='status'>Initializing...
+        </div>
       </div>
       <div id="communicator">
       </div>

@@ -16,6 +16,9 @@ Object.assign(remote, {
     // Resolves with a track reference
     return remote[remote.backend].remove_local_track(room_id, track, remember);
   },
+  reconnect: function() {
+    return remote[remote.backend].reconnect();
+  },
   send_message: function(room_id, message) {
     // Resolves with the following attributes
     // { message: [Message Object] }
@@ -34,24 +37,58 @@ Object.assign(remote, {
         remote.rooms = remote.rooms || {};
         remote.rooms[room.id] = remote.rooms[room.id] || {};
         remote.rooms[room.id].room = room;
-        res(room);
+        if(room.defer) {
+          room.defer.then(function() {
+            res(room);
+          }, function(err) {
+            rej(err);
+          });
+        } else {
+          res(room);
+        }
       }, function(err) {
         rej(err);
       });
 
     })
   },
-  user_added: function(room, user) {
+  user_added: function(room, user, notify) {
     remote.rooms[room.id].users = remote.rooms[room.id].users || {}
     remote.rooms[room.id].users[user.id] = remote.rooms[room.id].users[user.id] || {};
     remote.rooms[room.id].users[user.id].user = user;
     // Trigger for each user that joins, or for each
     // user that is already in the session
-    remote.notify('user_added', {
+    if(notify !== false) {
+      remote.notify('user_added', {
+        user: user,
+        room: remote.rooms[room.id].room,
+        room_id: room.id
+      });  
+    }
+  },
+  user_removed: function(room, user) {
+    remote.rooms[room.id].users = remote.rooms[room.id].users || {}
+    remote.rooms[room.id].users[user.id] = remote.rooms[room.id].users[user.id] || {};
+    remote.rooms[room.id].users[user.id].user = user;
+    remote.rooms[room.id].users[user.id].user.removed = true;
+    remote.notify('user_removed', {
       user: user,
       room: remote.rooms[room.id].room,
       room_id: room.id
-    })
+    });
+    var any_not_removed = false;
+    for(var user_id in remote.rooms[room.id].users) {
+      if(!remote.rooms[room.id].users[user_id].removed) {
+        any_not_removed = true;
+      }
+    }
+    if(!any_not_removed) {
+      remote.notify('room_empty', {
+        room: remote.rooms[room.id].room,
+        room_id: room.id
+      });
+  
+    }
   },
   track_added: function(room, user, track) {
     track.added_at = (new Date()).getTime();

@@ -17,7 +17,7 @@ if(navigator.canShare && navigator.canShare()) {
   document.querySelector("#share").style.display = 'inline';
 }
 document.addEventListener('click', function(event) {
-  var url = document.querySelector('.join_link').innerText;
+  var url = (document.querySelector('.join_link') || {}).innerText;
   if(event.target.classList.contains('join')) {
     localStorage.terms_accepted = 'true';    
   }

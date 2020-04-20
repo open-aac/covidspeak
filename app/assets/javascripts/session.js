@@ -9,17 +9,25 @@ var session = {
     return $.ajax(opts);
   },
   join_room: function(opts, callback) {
-    session.subscriptions = session.subscriptions || {};
-    if(session.subscriptions[opts.room_id]) {
-      session.subscriptions[opts.room_id].unsubscribe();
-    }
-    opts.channel = 'RoomChannel';
-    var subscription = session.cable.subscriptions.create(opts, {
-      received: function(data) {
-        callback(data);
+    return new Promise(function(res, ref) {
+      session.subscriptions = session.subscriptions || {};
+      if(session.subscriptions[opts.room_id]) {
+        session.subscriptions[opts.room_id].unsubscribe();
       }
+      opts.channel = 'RoomChannel';
+      var subscription = session.cable.subscriptions.create(opts, {
+        received: function(data) {
+          callback(data);
+        },
+        connected: function() {
+          res();
+        },
+        rejected: function() {
+          rej();
+        }
+      });
+      session.subscriptions[opts.room_id] = subscription;  
     });
-    session.subscriptions[opts.room_id] = subscription;
   },
   send_to_room(room_id, message) {
     session.subscriptions = session.subscriptions || {};

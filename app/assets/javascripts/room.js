@@ -116,10 +116,12 @@ var audio_loop = function() {
 remote.addEventListener('track_removed', function(data) {
   var track = data.track;
   var elems = document.getElementById('partner').getElementsByClassName('track-' + track.id);
+  var found = false;
   for(var idx = 0; idx < elems.length; idx++) {
     elems[idx].parentNode.removeChild(elems[idx]);
+    found = true;
   }
-  if(track.type == 'video') {
+  if(track.type == 'video' && found) {
     var priors = document.getElementById('partner').getElementsByClassName("room-" + track.type);
     for(var idx = 0; idx < priors.length; idx++) {
       if(priors[idx].getAttribute('data-user-id') == data.user_id) {
@@ -131,9 +133,15 @@ remote.addEventListener('track_removed', function(data) {
     }
   }
 });
+remote.addEventListener('room_empty', function(data) {
+  room.status('No One is Here');
+});
 remote.addEventListener('user_added', function(data) {
   // TODO: keep a rotation of helpers for the communicator,
   // and keep communicators on everyone else's view
+  if(data.user.id != room.current_room.user_id) {
+    room.status('ready');
+  }
   setTimeout(function() {
     room.send_update();
   }, 500);
@@ -251,7 +259,7 @@ grids.push({
   id: 'quick', name: 'quick', skip: true, buttons: default_buttons
 });
 var room = {
-  size_video: function() {
+  size_video: function(reset) {
     // TODO: videos have resize event?!?!
     var height = window.innerHeight - 30;
     var grid = document.getElementsByClassName('grid')[0];
@@ -270,19 +278,31 @@ var room = {
       var rect = box.getBoundingClientRect();
       var bw = rect.width;
       var bh = rect.height;
-      var zoom = room.zoom_level || 1.0;
       var vw = elem.videoWidth;
       var vh = elem.videoHeight;  
       if(!vw || !vh) { return; }
+      if(!room.manual_zoom && (room.last_video_width < vw || room.last_video_height < vh)) {
+        // TODO: better math here. If you would have needed
+        // to move the video element before but not you don't,
+        // then re-calculate unless it was a manual zoom
+        console.log("RESET AUTO ZOOM");
+        reset = true;
+      }
+      room.last_video_width = vw;
+      room.last_video_height = vh;
+      if(reset) { room.zoom_level = null; }
+      var zoom = room.zoom_level || 1.0;
+  
       var xscale = bw / vw;
       var yscale = bh / vh;
-      if(vw > 10 && vh > 10 && vw * zoom < bw && vh * zoom < bh) {
+      var scale = Math.max(xscale, yscale);
+      if(!room.manual_zoom && vw > 10 && vh > 10 && vw * xscale * zoom < bw && vh * yscale * zoom < bh) {
+        console.log("AUTO ZOOM", vw, vh, zoom);
         room.zoom_level = zoom * zoom_factor;
         // vw or vh is probably zero
         if(room.zoom_level > 10) { debugger }
         return room.size_video();
       }
-      var scale = Math.max(xscale, yscale);
       elem.style.width = (vw * scale * zoom) + "px";
       elem.style.height = (vh * scale * zoom) + "px";
       var fudge_x = (((vw * scale * zoom) - bw) / -2);
@@ -297,6 +317,14 @@ var room = {
       }
       elem.style.marginLeft = (fudge_x + shift_x) + "px";
       elem.style.marginTop = (fudge_y + shift_y) + "px";
+    }
+  },
+  status: function(str) {
+    if(!str || str == 'ready') {
+      document.querySelector('#status_holder').style.display = 'none';
+    } else {
+      document.querySelector('#status_holder').style.display = 'block';
+      document.querySelector('#status').innerText = str;
     }
   },
   flip_video: function() {
@@ -326,11 +354,12 @@ var room = {
     // keyboard entry state should be shared, should allow keyboard entry
   },
   end_share: function() {
-    if(room.share_tracks) {
+    if(room.share_tracks && room.share_tracks.length) {
       if(room.share_tracks.container && room.share_tracks.container.parentNode) {
         room.share_tracks.container.parentNode.removeChild(room.share_tracks.container);
       }
       var track_ids = {};
+      room.priority_tracks = null;
       room.share_tracks.forEach(function(track) {
         track_ids[track.id] = true;
         remote.remove_local_track(room.current_room.id, track);
@@ -344,9 +373,11 @@ var room = {
     room.end_share();
     if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
       navigator.mediaDevices.getDisplayMedia({
+        video: true,
         cursor: 'motion',
         displaySurface: 'monitor'
       }).then(function(stream) {
+        room.priority_tracks = stream.getTracks();
         remote.add_local_tracks(room.current_room.id, stream).then(function(tracks) {
           var track = tracks.find(function(t) { return t.type == 'video'; });
           if(track.generate_dom) {
@@ -406,7 +437,7 @@ var room = {
             // Sometimes it doesn't show up on the first load for remote users
             setTimeout(function() {
               draw_img(img);
-            }, 1000);
+            }, 100);
           };
           var draw = function() {
             context.fillStyle = 'black';
@@ -428,6 +459,7 @@ var room = {
             initialized = true;
             document.body.appendChild(div);
             var stream = canvas.captureStream();
+            room.priority_tracks = stream.getTracks();
             remote.add_local_tracks(room.current_room.id, stream).then(function(tracks) {
               var track = tracks.find(function(t) { return t.type == 'video'; });
               track.canvas = canvas;
@@ -522,6 +554,7 @@ var room = {
               } else if(video_elem.mozCaptureStream) {
                 stream = video_elem.mozCaptureStream();
               }
+              room.priority_tracks = stream.getTracks();
               remote.add_local_tracks(room.current_room.id, stream).then(function(tracks) {
                 var track = tracks.find(function(t) { return t.type == 'video'; });
                 track.container = div;
@@ -552,6 +585,7 @@ var room = {
     find_vid();
   },
   zoom: function(zoom_in) {
+    room.manual_zoom = true;
     room.zoom_level = (room.zoom_level || 1.0);
     if(zoom_in) {
       room.zoom_level = room.zoom_level * zoom_factor;
@@ -718,7 +752,9 @@ var room = {
               document.getElementById('communicator').appendChild(tracks[idx].generate_dom());
             }
           }
+          room.status("Connecting...");
           remote.connect_to_remote(res.access, res.room.key).then(function(room_session) {
+            room.status('Waiting for Participants...');
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
             room_session.user_id = res.user_id;
             room_session.for_self = room.room_id == localStorage.room_id;
@@ -1027,6 +1063,7 @@ window.addEventListener('resize', function() {
   room.show_grid();
 });
 var shift = function(event) {
+  room.manual_zoom = true;
   room.shift_x = event.clientX - (room.drag_x || event.clientX);
   room.shift_y = event.clientY - (room.drag_y || event.clientY);
   room.size_video();
@@ -1245,6 +1282,8 @@ document.addEventListener('click', function(event) {
       });
     } else if(action == 'info') {
       modal.open("About Co-VidChat", document.getElementById('info_modal'), []);
+    } else if(action == 'reconnect') {
+      remote.reconnect();
     } else if(action == 'invite') {
       var url = location.origin + "/rooms/" + room.room_id + "/join";
       document.querySelector('#invite_modal .link').innerText = url;

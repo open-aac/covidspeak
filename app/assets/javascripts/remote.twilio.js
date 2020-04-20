@@ -41,6 +41,7 @@ remote.twilio = {
           var aud = stream_or_track.getAudioTracks()[0];
           if(vid) { tracks.push(new Twilio.Video.LocalVideoTrack(vid, {priority: 'high'})); }
           if(aud) { tracks.push(new Twilio.Video.LocalAudioTrack(aud, {priority: 'high'})); }
+          // TODO: include the root audio track as well
         }
         if(tracks.length > 0 && participant) {
           participant.publishTracks(tracks).then(function(local_track_pubs) {
@@ -92,6 +93,9 @@ remote.twilio = {
         rej({error: 'failed to unpublish'});
       }
     })
+  },
+  reconnect: function() {
+    // TODO: not implemented
   },
   connect_to_remote: function(access, room_key) {
     return new Promise(function(res, rej) {
