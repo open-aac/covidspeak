@@ -55,7 +55,9 @@ h2 {
 header {
   position: fixed;
   top: 0;
-  width: 400px;
+  max-width: 600px;
+  min-width: 400px;
+  width: 100%;
   height: 30px;
   border-bottom: 1px solid #aaa;
 }
@@ -121,7 +123,8 @@ strong {
   font-weight: bold;
 }
 #simple_content {
-  width: 400px;
+  min-width: 400px;
+  max-width: 600px;
   margin: 0 auto;
 
   #middle {
@@ -129,6 +132,11 @@ strong {
     flex-direction: column;
     justify-content: center;
     height: calc(100vh - 110px);
+    margin: 0 auto;
+    max-width: calc(100vw - 40px);
+    &.buttons {
+      width: 400px;
+    }
     label a {
       color: #2955ba;
     }

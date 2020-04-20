@@ -11,7 +11,7 @@
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="/scripts/qrcode.min.js"></script>
     <%= action_cable_meta_tag %>
-  </head>
+    </head>
 
   <body>
     <div class="container" id="simple_content">
@@ -22,6 +22,7 @@
         <%= yield %>
       </div>
       <footer class="footer">
+        <a href="/">Home</a> <span style='color: #aaa;'>|</span>
         <a href="/about">About</a> <span style='color: #aaa;'>|</span>
         <a href="/terms">Terms</a> <span style='color: #aaa;'>|</span>
         <a href="/privacy">Privacy</a>
