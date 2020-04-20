@@ -404,13 +404,9 @@ strong {
         height: 30%;
         border: 2px solid #888;
         border-radius: 4px;
-        overflow: hidden;
         box-shadow: 0 0 5px #000;
         min-width: 20px;
         max-width: calc(100% - 250px);
-        video {
-          margin-right: -2px;
-        }
         &.muted {
           &::after {
             content: "";

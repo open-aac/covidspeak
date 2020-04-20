@@ -73,9 +73,9 @@ document.addEventListener('click', function(event) {
     if($(event.target).closest('.modal').length > 0) {
       modal.close();
     }
-  } else if(event.target.classList.contains('modal_button')) {
-    if($(event.target).closest(".modal_footer").length > 0) {
-      var action = event.target.action;
+  } else if(event.target.closest('.modal_button')) {
+    if(event.target.closest('.modal_footer')) {
+      var action = event.target.closest('.modal_button').action;
       if(!action) {
         modal.close(true);
       } else if(action.callback) {
