@@ -77,6 +77,7 @@ class Api::RoomsController < ApplicationController
     else
       return api_error(400, {error: "unrecognized room type, #{room.type}"})
     end
+    room.allow_user(identity)
     
     # Generate the token
     render :json => {:room => {id: room_id, key: room_key, type: room.type}, user_id: trimmed_identity, access: access}
