@@ -196,6 +196,10 @@ remote.webrtc = {
     config.iceCandidatePoolSize = 2;
 
     pc = new RTCPeerConnection(config);
+    pc.refState = 'new';
+    pc.id = Math.round(Math.random() * 9999) + ""  + (new Date()).getTime();
+    pc.user_id = remote_user_id;
+    pc.subroom_id = subroom_id;
     room.pcs = room.pcs || [];
     room.pcs.push(pc);
     pc.local_stream = new MediaStream();
@@ -220,7 +224,7 @@ remote.webrtc = {
       var rtcpc = pc;
       if(!initiator) {
         // don't trigger a renegotiation when one is already going on
-        if(rtcpc.connectionState == 'connected') { 
+        if(rtcpc.refState == 'connected') { 
           main_room.send({
             author_id: main_room.user_id,
             target_id: remote_user_id,
@@ -230,7 +234,7 @@ remote.webrtc = {
         }
         return; 
       }
-      if(rtcpc.connectionState == 'connected') {
+      if(rtcpc.refState == 'connected') {
         // We can set up a brand new connection which
         // will prevent the old session from pausing while
         // we negotiate
@@ -238,9 +242,9 @@ remote.webrtc = {
         rtcpc = remote.webrtc.initialize(remote_user_id, main_room.ref.id);
       }
       rtcpc.createOffer({  offerToReceiveAudio: 1, offerToReceiveVideo: 1}).then(function(desc) {
-        if(rtcpc.signalingState != "stable") { console.error("initializing when NOT STABLE", rtcpc.signalingState); return; }
+        // if(rtcpc.signalingState != "stable") { console.error("initializing when NOT STABLE", rtcpc.signalingState); return; }
         rtcpc.setLocalDescription(desc).then(function() {
-          console.log("OFFER SENT");
+          console.log("OFFER SENT", remote_user_id);
           main_room.send({
             target_id: remote_user_id, 
             author_id: main_room.user_id,
@@ -265,6 +269,8 @@ remote.webrtc = {
     });
     pc.addEventListener('track', function(event) {
       var track = event.track;
+      var subroom_id = event.target.subroom_id;
+      var remote_user_id = event.target.user_id;
       var add_track = function(track) {
         var track_id = main_room.subrooms[subroom_id].id_index + "-" + track.id;
         var track_ref = {
@@ -310,6 +316,7 @@ remote.webrtc = {
     });
     // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/signalingState
     pc.addEventListener('icecandidate', function(e) {
+      var remote_user_id = e.target.user_id;
       // ice candidate added
       e.candidate;
       if(e.candidate && e.candidate != '') {
@@ -341,26 +348,48 @@ remote.webrtc = {
     pc.addEventListener('negotiationneeded', function(e) {
       main_room.subrooms[subroom_id].renegotiate();
     });
+    connected = function(pc) {
+      console.log("CONNECTED", pc.id, pc.user_id);
+      if(pc.already_connected) { return; }
+      pc.already_connected = true;
+      (main_room.subrooms[pc.subroom_id].to_close || []).forEach(function(ref) { if(ref) { ref.close(); } });
+      main_room.subrooms[pc.subroom_id].to_close = null;
+      // we should be live!
+      remote.user_added(main_room.ref, main_room.users[pc.user_id]);
+    };
+    disconnected = function(pc) {
+      console.log("DISCONNECTED", pc.id, pc.user_id);
+      pc.already_connected = false;
+      main_room.already = false;
+      remote.user_removed(main_room.ref, main_room.users[pc.user_id]);
+      setTimeout(function() {
+        var rtcpc = (main_room.subrooms[pc.subroom_id] || {}).rtcpc;
+        if(rtcpc && rtcpc.refState != 'connected') {
+          main_room.subrooms[rtcpc.subroom_id].renegotiate();
+        }
+      }, 5000);
+    };
     pc.addEventListener('connectionstatechange', function(e) {
       // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceConnectionState
       console.log("STATE CHANGE", e.target.connectionState);
+      e.target.refState = e.target.connectionState;
       main_room.subrooms[subroom_id].id_index++;
       if(e.target.connectionState == 'failed' || e.target.connectionState == 'disconnected') { 
-        main_room.already = false;
-        remote.user_removed(main_room.ref, main_room.users[remote_user_id]);
-        setTimeout(function() {
-          main_room.subrooms[subroom_id].renegotiate();
-        }, 5000);
-      }
-      if(e.target.connectionState == 'connected') {
-        (main_room.subrooms[subroom_id].to_close || []).forEach(function(ref) { if(ref) { ref.close(); } });
-        main_room.subrooms[subroom_id].to_close = null;
-        // we should be live!
-        remote.user_added(main_room.ref, main_room.users[remote_user_id]);
+        disconnected(e.target);
+      } else if(e.target.connectionState == 'connected') {
+        connected(e.target);
       }
     });
     pc.addEventListener('iceconnectionstatechange', function(e) {
       console.log("ICE CHANGE", e.target.iceConnectionState);
+      if(e.target.connectionState === undefined && ['connected', 'disconnected', 'failed'].indexOf(e.target.iceConnectionState) != -1) {
+        e.target.refState = e.target.iceConnectionState;
+        if(e.target.iceConnectionState == 'failed' || e.target.iceConnectionState == 'disconnected') {
+          disconnected(e.target);
+        } else if(e.target.iceConnectionState == 'connected') {
+          connected(e.target);
+        }
+      }
       // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceConnectionState
     });
     pc.addEventListener('icegatheringstatechange', function(e) {
@@ -437,7 +466,17 @@ remote.webrtc = {
         id: room_key
       }
       main_room.ref = room_ref;
-      main_room.ready = function() { };
+      main_room.ready = function(subroom_id, remote_user_id, force) {
+        var room_owner = subroom_id.split(/::/)[1];
+        var pc = (main_room.subrooms[subroom_id] || {}).rtcpc;
+        if(!force && main_room.already && pc && pc.refState == 'connected') { console.log("SKIPPING reconnection because already active"); return; }
+        if(pc && ['new'].indexOf(pc.refState) != -1) { console.log("SKIPPING CONNECTION because already in progress"); return; }
+        main_room.already = true;
+        console.log("ROOM has both parties", remote_user_id, subroom_id, pc && pc.refState);
+        if(room_owner == main_room.user_id) {
+          var pc = remote.webrtc.initialize(remote_user_id, room_ref.id);
+        }
+      };
       main_room.onmessage = function(msg) {
         // console.log("MESSAGE", msg);
         if(msg.type == 'users') {
@@ -458,24 +497,15 @@ remote.webrtc = {
               if(!main_room.subrooms[subroom_id]) {
                 var ping = {};
                 if(room_owner == main_room.user_id) { ping.mine = true; }
-                if(!pc || pc.connectionState != 'connected') { ping.no_existing_connection = true; }
+                if(!pc || pc.refState != 'connected') { ping.no_existing_connection = true; }
 
+                console.log("PING TO", remote_user_id);
                 main_room.send({
                   author_id: main_room.user_id,
                   target_id: remote_user_id,
                   type: 'ping',
                   ping: ping
                 });
-                main_room.ready = function(force) {
-                  var pc = (main_room.subrooms[subroom_id] || {}).rtcpc;
-                  if(!force && main_room.already && pc && pc.connectionState == 'connected') { console.log("SKIPPING reconnection because already active"); return; }
-                  if(pc && ['new'].indexOf(pc.connectionState) != -1) { console.log("SKIPPING CONNECTION because already in progress"); return; }
-                  main_room.already = true;
-                  console.log("ROOM has both parties", subroom_id, pc && pc.connectionState);
-                  if(room_owner == main_room.user_id) {
-                    var pc = remote.webrtc.initialize(remote_user_id, room_ref.id);
-                  }
-                };
               }
             });
           }
@@ -486,7 +516,7 @@ remote.webrtc = {
             var room_owner = subroom_id.split(/::/)[1];
             var pong = {};
             if(room_owner == main_room.user_id) { pong.mine = true; }
-            if(!pc || pc.connectionState != 'connected') { pong.no_existing_connection = true; }
+            if(!pc || pc.refState != 'connected') { pong.no_existing_connection = true; }
             main_room.send({
               author_id: main_room.user_id,
               target_id: msg.author_id, 
@@ -497,8 +527,8 @@ remote.webrtc = {
             if(pong.mine && msg.ping.no_existing_connection) {
               force = true;
             }
-            console.log("RECEIVED PING");
-            main_room.ready(force);
+            console.log("RECEIVED PING", subroom_id, msg);
+            main_room.ready(subroom_id, msg.author_id, force);
           } if(msg.type == 'pong') {
             // if I'm the initiator and the other user ponged me
             // saying they have no connection, I should toss the old stuff
@@ -507,8 +537,8 @@ remote.webrtc = {
             if(room_owner == main_room.user_id && msg.pong.no_existing_connection) {
               force = true;
             }
-            console.log("RECEIVED PONG");
-            main_room.ready(force);
+            console.log("RECEIVED PONG", msg);
+            main_room.ready(subroom_id, msg.author_id, force);
           } else if(msg.type == 'offer') {
             console.log("OFFER RECEIVED", msg.offer);
             // TODO: if(pc.signalingState == 'stable') { console.error("Received offer when stable"); }
