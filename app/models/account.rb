@@ -42,4 +42,20 @@ class Account < ApplicationRecord
     hash, verifier = room_id.split(/:/)
     return room_id == generate_room(hash)
   end
+
+  def verifier(identity)
+    self.settings ||= {}
+    salt = self.settings['salt']
+    secret = self.settings['shared_secret']
+    return nil unless salt && secret && identity
+    secret = GoSecure.decrypt(secret, salt, 'account_hmac_sha1_verifier')
+    hmac = OpenSSL::HMAC.digest('sha1', secret, identity)
+    Base64.encode64(hmac)
+  end
+
+  def verifier=(str)
+    secret, salt = GoSecure.encrypt(str, 'account_hmac_sha1_verifier')
+    self.settings['salt'] = salt
+    self.settings['shared_secret'] = secret
+  end
 end
