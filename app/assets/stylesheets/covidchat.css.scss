@@ -315,6 +315,11 @@ strong {
         display: flex;
         flex-direction: row;
         align-items: center;
+        &.big_text {
+          .text {
+            font-size: 100px;
+          }
+        }
         .text {
           width: 100%;
           font-size: 32px;
@@ -412,12 +417,11 @@ strong {
         bottom: 10px;
         background: #000;
         left: 10px;
-        height: 30%;
         border: 2px solid #888;
         border-radius: 4px;
         box-shadow: 0 0 5px #000;
         min-width: 20px;
-        max-width: calc(100% - 250px);
+        max-width: 30%;
         &.muted {
           &::after {
             content: "";
@@ -436,7 +440,7 @@ strong {
           }
         }
         &.preview {
-          height: 40%;
+          max-width: 37%;
           &.playable {
             &::after {
               content: "";
@@ -478,7 +482,7 @@ strong {
           }
         }
         video {
-          height: 100%;
+          width: 100%;
           display: block;
         }
       }
@@ -489,14 +493,6 @@ strong {
         text-align: center;
         opacity: 0;
         transition: opacity 0.5s ease-in-out;
-        div {
-          text-align: center;
-          padding: 2px 5px;
-          background: #fff;
-          box-shadow: 0 5px 5px #fff, 0 -5px 5px #fff, 5px 0 5px #fff, -5px 0 5px #fff;
-          /* text-shadow: -2px 0 1px #fff, 0 2px 1px #fff, 2px 0 1px #fff, 0 -2px 1px #fff; */
-          display: inline;
-        }
         button {
           position: relative;
           z-index: 2;
@@ -529,6 +525,65 @@ strong {
           }
           .unmute {
             display: inline;
+          }
+        }
+      }
+      #text {
+        .prompt {
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          height: 50px;
+          width: 50px;
+          background: #fff;
+          cursor: pointer;
+          border-radius: 5px;
+          border: 1px solid #888;
+          opacity: 0;
+          transition: opacity 0.5s ease-in-out;
+          img {
+            width: 30px;
+            height: 30px;
+            margin: 8px;
+          }
+          .clear {
+            display: none;
+          }
+          &.active {
+            .cursor {
+              display: none;
+            }
+            .clear {
+              display: inline;
+            }
+          }
+        }
+        .text_input {
+          border: 0;
+          background: transparent;
+          position: absolute;
+          display: none;
+          width: 100%;
+          opacity: 0.0;
+          top: 5px;
+          left: 0;
+          right: 0;
+          color: #fff;
+          text-align: center;
+          font-weight: bold;
+          text-stroke: 2px #000;
+          font-size: 40px;
+          -webkit-text-stroke: 2px #000;
+          -webkit-text-fill-color: #fff;
+          text-shadow: -1px 1px 2px #fff, 1px 1px 2px #fff, 1px -1px #fff, -1px -1px 0 #fff;
+          transition: opacity 1s ease-in-out, color 1s ease-in-out, -webkit-text-fill-color 1s ease-in-out;
+          &:focus {
+            background: #000;
+            caret-color: #fff;
+          }
+          &.lingering {
+            color: #ff0;
+            -webkit-text-fill-color: #ff0;
           }
         }
       }
@@ -606,7 +661,7 @@ strong {
   }
 }
 .grids {
-  width: 330px;
+  width: 440px;
   max-width: calc(100vw - 150px);
   text-align: left;
   &::after {
@@ -729,6 +784,7 @@ strong {
   }
   .preview {
     max-height: 50vh;
+    height: 100%;
     width: 100%;
     overflow: hidden;
     video {

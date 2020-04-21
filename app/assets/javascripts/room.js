@@ -73,7 +73,7 @@ var add_dom = function(elem, track, user) {
 remote.addEventListener('track_added', function(data) {
   var track = data.track;
   if(track.generate_dom) {
-    console.log("adding track", track);
+    console.log("adding remote track", track);
     if(track.type == 'video') { //} || track.type == 'audio') {
       // Right now we allow multiple audio tracks, so you
       // can talk to someone while showing them a video
@@ -81,6 +81,8 @@ remote.addEventListener('track_added', function(data) {
       for(var idx = 0; idx < priors.length; idx++) {
         if(priors[idx].getAttribute('data-user-id') == data.user_id) {
           priors[idx].parentNode.removeChild(priors[idx]);
+        } else {
+          priors[idx].style.display = 'none';
         }
       }
     }
@@ -118,10 +120,11 @@ remote.addEventListener('track_removed', function(data) {
   var elems = document.getElementById('partner').getElementsByClassName('track-' + track.id);
   var found = false;
   for(var idx = 0; idx < elems.length; idx++) {
+    console.log("removing remote track", elems[idx]);
     elems[idx].parentNode.removeChild(elems[idx]);
     found = true;
   }
-  if(track.type == 'video' && found) {
+  if(track.type == 'video') {
     var priors = document.getElementById('partner').getElementsByClassName("room-" + track.type);
     for(var idx = 0; idx < priors.length; idx++) {
       if(priors[idx].getAttribute('data-user-id') == data.user_id) {
@@ -255,6 +258,86 @@ var grids = [
     {id: 7, text: "body", load_id: 'body', image_url: "https://lessonpix.com/drawings/1354/150x150/1354.png"},
     {id: 8, text: "quick", load_id: 'quick', image_url: "https://lessonpix.com/drawings/1680702/150x150/1680702.png"}
   ]},
+  {id: 'keyboard', name: 'keyboard', image_url: "https://lessonpix.com/drawings/211726/150x150/211726.png", buttons: [
+    {id: 1, text: "abcde", load_id: 'keyboard2', image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
+    {id: 3, text: "uvwxyz", load_id: 'keyboard8', image_url: ""},
+    {id: 4, text: "12345", load_id: 'keyboard3', image_url: ""},
+    {id: 5, text: "67890", load_id: 'keyboard7', image_url: ""},
+    {id: 6, text: "fghij", load_id: 'keyboard4', image_url: ""},
+    {id: 7, text: "klmno", load_id: 'keyboard5', image_url: ""},
+    {id: 8, text: "pqrst", load_id: 'keyboard6', image_url: ""}
+  ]},
+  {id: 'keyboard2', name: 'keyboard2', skip: true, buttons: [
+    {id: 1, text: "+a", load_id: 'root', image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
+    {id: 3, text: "+e", load_id: 'root', image_url: ""},
+    {id: 4, text: "", image_url: ""},
+    {id: 5, text: "", image_url: ""},
+    {id: 6, text: "+b", load_id: 'root', image_url: ""},
+    {id: 7, text: "+c", load_id: 'root', image_url: ""},
+    {id: 8, text: "+d", load_id: 'root', image_url: ""}
+  ]},
+  {id: 'keyboard3', name: 'keyboard3', skip: true, buttons: [
+    {id: 1, text: "+1", load_id: 'root', image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
+    {id: 3, text: "+5", load_id: 'root', image_url: ""},
+    {id: 4, text: "", image_url: ""},
+    {id: 5, text: "", image_url: ""},
+    {id: 6, text: "+2", load_id: 'root', image_url: ""},
+    {id: 7, text: "+3", load_id: 'root', image_url: ""},
+    {id: 8, text: "+4", load_id: 'root', image_url: ""}
+  ]},
+  {id: 'keyboard4', name: 'keyboard4', skip: true, buttons: [
+    {id: 1, text: "+f", load_id: 'root', image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
+    {id: 3, text: "+j", load_id: 'root', image_url: ""},
+    {id: 4, text: "", image_url: ""},
+    {id: 5, text: "", image_url: ""},
+    {id: 6, text: "+g", load_id: 'root', image_url: ""},
+    {id: 7, text: "+h", load_id: 'root', image_url: ""},
+    {id: 8, text: "+i", load_id: 'root', image_url: ""}
+  ]},
+  {id: 'keyboard5', name: 'keyboard5', skip: true, buttons: [
+    {id: 1, text: "+k", load_id: 'root', image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
+    {id: 3, text: "+o", load_id: 'root', image_url: ""},
+    {id: 4, text: "", image_url: ""},
+    {id: 5, text: "", image_url: ""},
+    {id: 6, text: "+l", load_id: 'root', image_url: ""},
+    {id: 7, text: "+m", load_id: 'root', image_url: ""},
+    {id: 8, text: "+n", load_id: 'root', image_url: ""}
+  ]},
+  {id: 'keyboard6', name: 'keyboard6', skip: true, buttons: [
+    {id: 1, text: "+p", load_id: 'root', image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
+    {id: 3, text: "+t", load_id: 'root', image_url: ""},
+    {id: 4, text: "", image_url: ""},
+    {id: 5, text: "", image_url: ""},
+    {id: 6, text: "+qu", load_id: 'root', image_url: ""},
+    {id: 7, text: "+r", load_id: 'root', image_url: ""},
+    {id: 8, text: "+s", load_id: 'root', image_url: ""}
+  ]},
+  {id: 'keyboard7', name: 'keyboard7', skip: true, buttons: [
+    {id: 1, text: "+6", load_id: 'root', image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
+    {id: 3, text: "+0", load_id: 'root', image_url: ""},
+    {id: 4, text: "", image_url: ""},
+    {id: 5, text: "", image_url: ""},
+    {id: 6, text: "+7", load_id: 'root', image_url: ""},
+    {id: 7, text: "+8", load_id: 'root', image_url: ""},
+    {id: 8, text: "+9", load_id: 'root', image_url: ""}
+  ]},
+  {id: 'keyboard8', name: 'keyboard8', skip: true, buttons: [
+    {id: 1, text: "+u", load_id: 'root', image_url: ""},
+    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
+    {id: 3, text: "+z", load_id: 'root', image_url: ""},
+    {id: 4, text: "+v", load_id: 'root', image_url: ""},
+    {id: 5, text: "", image_url: ""},
+    {id: 6, text: "+w", load_id: 'root', image_url: ""},
+    {id: 7, text: "+x", load_id: 'root', image_url: ""},
+    {id: 8, text: "+y", load_id: 'root', image_url: ""}
+  ]},
 ];
 grids.push({
   id: 'quick', name: 'quick', skip: true, buttons: default_buttons
@@ -274,50 +357,55 @@ var room = {
       }
     }
     var box = document.getElementById('partner');
-    var elem = box && box.getElementsByTagName('VIDEO')[0];
-    if(box && elem) {
-      var rect = box.getBoundingClientRect();
-      var bw = rect.width;
-      var bh = rect.height;
-      var vw = elem.videoWidth;
-      var vh = elem.videoHeight;  
-      if(!vw || !vh) { return; }
-      if(!room.manual_zoom && (room.last_video_width < vw || room.last_video_height < vh)) {
-        // TODO: better math here. If you would have needed
-        // to move the video element before but not you don't,
-        // then re-calculate unless it was a manual zoom
-        console.log("RESET AUTO ZOOM");
-        reset = true;
+    if(box) {
+      var list = [];
+      for(elem of box.getElementsByTagName('VIDEO')) {
+        list.push(elem);
       }
-      room.last_video_width = vw;
-      room.last_video_height = vh;
-      if(reset) { room.zoom_level = null; }
-      var zoom = room.zoom_level || 1.0;
-  
-      var xscale = bw / vw;
-      var yscale = bh / vh;
-      var scale = Math.max(xscale, yscale);
-      if(!room.manual_zoom && vw > 10 && vh > 10 && vw * xscale * zoom < bw && vh * yscale * zoom < bh) {
-        console.log("AUTO ZOOM", vw, vh, zoom);
-        room.zoom_level = zoom * zoom_factor;
-        // vw or vh is probably zero
-        if(room.zoom_level > 10) { debugger }
-        return room.size_video();
-      }
-      elem.style.width = (vw * scale * zoom) + "px";
-      elem.style.height = (vh * scale * zoom) + "px";
-      var fudge_x = (((vw * scale * zoom) - bw) / -2);
-      var fudge_y = (((vh * scale * zoom) - bh) / -2);
-      var shift_x = 0;
-      var shift_y = 0;
-      if(room.shift_x && fudge_x < 0) {
-        shift_x = Math.max(Math.min(room.shift_x || 0, -1 * fudge_x), fudge_x);
-      }
-      if(room.shift_y && fudge_y < 0) {
-        shift_y = Math.max(Math.min(room.shift_y || 0, -1 * fudge_y), fudge_y);  
-      }
-      elem.style.marginLeft = (fudge_x + shift_x) + "px";
-      elem.style.marginTop = (fudge_y + shift_y) + "px";
+      list.forEach(function(elem) {
+        var rect = box.getBoundingClientRect();
+        var bw = rect.width;
+        var bh = rect.height;
+        var vw = elem.videoWidth;
+        var vh = elem.videoHeight;  
+        if(!vw || !vh) { return; }
+        if(!room.manual_zoom && (room.last_video_width < vw || room.last_video_height < vh)) {
+          // TODO: better math here. If you would have needed
+          // to move the video element before but not you don't,
+          // then re-calculate unless it was a manual zoom
+          console.log("RESET AUTO ZOOM");
+          reset = true;
+        }
+        room.last_video_width = vw;
+        room.last_video_height = vh;
+        if(reset) { room.zoom_level = null; }
+        var zoom = room.zoom_level || 1.0;
+    
+        var xscale = bw / vw;
+        var yscale = bh / vh;
+        var scale = Math.max(xscale, yscale);
+        if(!room.manual_zoom && vw > 10 && vh > 10 && vw * xscale * zoom < bw && vh * yscale * zoom < bh) {
+          console.log("AUTO ZOOM", vw, vh, zoom);
+          room.zoom_level = zoom * zoom_factor;
+          // vw or vh is probably zero
+          if(room.zoom_level > 10) { debugger }
+          return room.size_video();
+        }
+        elem.style.width = (vw * scale * zoom) + "px";
+        elem.style.height = (vh * scale * zoom) + "px";
+        var fudge_x = (((vw * scale * zoom) - bw) / -2);
+        var fudge_y = (((vh * scale * zoom) - bh) / -2);
+        var shift_x = 0;
+        var shift_y = 0;
+        if(room.shift_x && fudge_x < 0) {
+          shift_x = Math.max(Math.min(room.shift_x || 0, -1 * fudge_x), fudge_x);
+        }
+        if(room.shift_y && fudge_y < 0) {
+          shift_y = Math.max(Math.min(room.shift_y || 0, -1 * fudge_y), fudge_y);  
+        }
+        elem.style.marginLeft = (fudge_x + shift_x) + "px";
+        elem.style.marginTop = (fudge_y + shift_y) + "px";  
+      });  
     }
   },
   status: function(str) {
@@ -662,7 +750,10 @@ var room = {
     }
     if(room.asserted_buttons) {
       room.asserted_buttons.buttons = room.asserted_buttons.buttons.map(function(b) { return room.simple_button(b)});
-      message.asserted_buttons = room.asserted_buttons
+      message.asserted_buttons = room.asserted_buttons;
+    }
+    if(room.keyboard_state) {
+      message.keyboard_state = room.keyboard_state;
     }
     remote.send_message(room.current_room.id, message).then(null, function() {
       // prolly not a big deal
@@ -738,6 +829,38 @@ var room = {
       history.replaceState(null, '', new_path);
     }
 
+    document.body.addEventListener('input', function(event) {
+      if(event.target.tagName == 'INPUT') { 
+        if(event.target.classList.contains('text_input')) {
+          room.add_key({string: event.target.value});
+        }
+      }
+    });
+    document.body.addEventListener('keypress', function(event) {
+      if(event.target.tagName == 'INPUT') { return; }
+      // TODO: allow for the text_input element
+      if(!document.querySelector('.preview #text')) { return; }
+      if(event.key && event.keyCode != 13 && event.keyCode != 27) {
+        room.add_key(event.key);
+      }
+    });
+    document.body.addEventListener('keydown', function(event) {
+      if(event.ctrlKey || event.altKey || event.metaKey) { return; }
+      if(event.target.tagName == 'INPUT' && !event.target.classList.contains('text_input')) { return; }
+      // TODO: allow for the text_input element
+      if(!document.querySelector('.preview #text')) { return; }
+      if(event.keyCode == 13 || (event.keyCode == 9 && !event.target.classList.contains('text_input'))) {
+        // TODO: newline/tab should be treated as concluding
+        // the message, so let's keep it around for a little
+        // bit and then clear it.
+        room.add_key({confirm: true});
+      } else if(event.keyCode == 8 && !event.target.classList.contains('text_input')) {
+        room.add_key({backspace: true});
+      } else if(event.keyCode == 27) {
+        room.add_key({clear: true});
+      }
+    });
+    
     volume = document.querySelector('#volume_level');
     if(location.href.match(/localhost/)) {
       volume.style.display = 'block';
@@ -859,14 +982,21 @@ var room = {
         return;
       }
       var text = cell.getElementsByClassName('text')[0];
-      text.innerText = button.text;
+      var button_text = button.text;
+      if(button.text.match(/^\+/)) {
+        button_text = button.text.replace(/^\+/, '');
+        cell.classList.add('big_text');
+      } else {
+        cell.classList.remove('big_text');
+      }
+      text.innerText = button_text;
       cell.style.display = '';
       cell.style.visibility = 'visible';
 //      cell.style.height = ((window_height / 3) - 7) + "px";
       if(cell.classList.contains('skinny')) {
         // cell.style.height = (window_height * .12) + "px";
       }
-      if(button.load_id && (button.load_id != 'root' || room.root_id)) {
+      if(button.load_id && !button.text.match(/^\+/) && (button.load_id != 'root' || room.root_id)) {
         if(button.load_id != 'root' || room.root_id) {
           if(button.load_id == 'root' && room.root_id == room.grid_id) {
             // don't show as link if already on main page
@@ -925,11 +1055,116 @@ var room = {
       }
     }
   },
+  show_keyboard: function() {
+    var edit = document.querySelector('.preview .text_input');
+    var prompt = document.querySelector('.preview .prompt');
+
+    prompt.style.display = 'block';
+    // TODO: enable edit icon/button
+    var str = room.keyboard_state && room.keyboard_state.string;
+    var lingering = false;
+    if(room.keyboard_state.linger && room.keyboard_state.linger.string_id != room.local_linger_id) {
+      var now = (new Date()).getTime();
+      if(room.keyboard_state.linger.string_at && room.keyboard_state.linger.string_at > (now - 30000)) {
+        str = room.keyboard_state.linger.string;
+        lingering = true;
+      }
+    }
+    if(str) {
+      edit.tmp_id = null;
+      edit.style.display = 'block';
+      edit.style.opacity = 1.0;
+      edit.value = str;
+      room.editing = true;
+      document.querySelector('#text_prompt').classList.add('active');
+      if(lingering) {
+        edit.classList.add('lingering');
+      } else {
+        edit.classList.remove('lingering');
+      }
+      if(!edit.focus_watch) {
+        edit.focus_watch = true;
+        edit.addEventListener('focus', function(event) {
+          // document.querySelector('#text_prompt').classList.add('active');  
+          // setTimeout(function() {
+          //   room.editing = true;
+          // }, 500);
+        });
+      }
+      // TODO: measure text and resize accordingly
+    } else {
+      var tmp_id = Math.round(Math.random() * 99999);
+      edit.tmp_id = tmp_id;
+      edit.blur();
+      setTimeout(function() {
+        if(edit.tmp_id == tmp_id) {
+          edit.value = "";
+          edit.tmp_id = null;
+          edit.style.display = 'none';
+        }
+      }, 2000);
+      edit.style.opacity = 0.0;
+    }
+  },
+  toggle_input: function() {
+    var edit = document.querySelector('.preview .text_input');
+    if(room.editing) {
+      room.add_key({clear: true});
+    } else {
+      edit.tmp_id = null;
+      edit.style.display = 'block';
+      edit.style.opacity = 1.0;
+      edit.focus();
+      edit.selectionStart = edit.selectionEnd = 100000;
+    }
+  },
+  add_key: function(str) {
+    var now = (new Date()).getTime();
+    room.keyboard_state = room.keyboard_state || {string: ""};
+    if(str.backspace) {
+      var ref = room.keyboard_state.string || "";
+      room.keyboard_state.string = ref.substring(0, ref.length - 1);
+    } else if(str.clear) {
+      room.keyboard_state.string = "";
+      room.editing = false;
+      document.querySelector('#text_prompt').classList.remove('active');
+      document.querySelector('.preview .text_input').blur();
+      document.querySelector('.preview .text_input').value = '';
+    } else if(str.confirm) {
+      if(room.keyboard_state.string) {
+        room.keyboard_state.linger = {}
+        room.keyboard_state.linger.string = room.keyboard_state.string;
+        var linger_id = Math.round(Math.random() * 99999);
+        room.keyboard_state.linger.string_at = now;
+        room.keyboard_state.linger.string_id = linger_id;
+        room.local_linger_id = linger_id;
+        setTimeout(function() {
+          if(room.keyboard_state && room.keyboard_state.linger && room.keyboard_state.linger.string_id == linger_id) {
+            delete room.keyboard_state.linger;
+            room.keyboard_state.set_at = (new Date()).getTime();
+            room.show_keyboard();
+            room.send_update();        
+          }
+        }, 5000);
+      }
+      room.keyboard_state.string = "";
+      document.querySelector('.preview .text_input').blur();
+      document.querySelector('.preview .text_input').value = '';
+    } else if(str.string) {
+      room.keyboard_state.string = str.string;
+    } else {
+      room.keyboard_state.string = room.keyboard_state.string + str;
+    }
+    room.keyboard_state.set_at = now;
+    room.show_keyboard();
+    room.send_update();
+  },
   show_image: function(url, text, big_image) {
+    var total_slots = 3;
     room.image_slots = room.image_slots || [];
     room.image_slots.index = room.image_slots.index || 0;
     var found_empty = false;
-    for(var idx = 0; idx < 3; idx++) {
+    for(var idx = 0; idx < total_slots; idx++) {
       if(!room.image_slots[idx] && !found_empty) {
         found_empty = true;
         room.image_slots.index = idx;
@@ -951,7 +1186,7 @@ var room = {
       wait = 510;
     }
     room.image_slots[idx] = img;
-    room.image_slots.index = (idx + 1) % 3;
+    room.image_slots.index = (idx + 1) % total_slots;
     setTimeout(function() {
       var complete = function() {
         if(room.image_slots[idx] == img) {
@@ -981,6 +1216,7 @@ var room = {
   },
   toggle_zoom: function(force) {
     var $nav = $("#nav");
+    var $text_prompt = $("#text_prompt");
     if(force == null) {
       force = $nav.css('opacity') == '1' ? false : true;
     }
@@ -989,6 +1225,7 @@ var room = {
       return;
     }
     $nav.css('opacity', force ? 1 : 0);
+    $text_prompt.css('opacity', force ? 1 : 0);
     if(room.current_room && !room.current_room.for_self) {
       document.querySelector('#eyes').style.opacity = force ? 1 : 0;
     }
@@ -1000,6 +1237,7 @@ var room = {
         var hide_at = ($("#nav")[0] || {}).hide_at;
         if(hide_at && hide_at < now) {
           $("#nav").css('opacity', 0);
+          $("#text_prompt").css('opacity', 0);
           document.querySelector('#eyes').style.opacity = 0;
           $("#nav")[0].hide_at = null;
         }
@@ -1058,6 +1296,30 @@ var room = {
           }
         }
       }
+      if(data.user && data.user.ts_offset != null && json.keyboard_state) {
+        // accept the other user's butttons if they were updated
+        // more recently than your own
+        // console.log("KEYBOARD STATE", json.keyboard_state);
+        var ts = json.keyboard_state.set_at - data.user.ts_offset;
+        var now = (new Date()).getTime();
+        var current_state = room.keyboard_state || {};
+        if(!current_state.set_at || current_state.set_at < ts) {
+          var changed = json.keyboard_state.string != current_state.string;
+          if(json.keyboard_state.linger && json.keyboard_state.linger.string_at < (now - 3000)) {
+            changed = true;
+          } else if(room.keyboard_state && room.keyboard_state.linger && !json.keyboard_state.linger) {
+            changed = true;
+          }
+          if(changed) {
+            room.keyboard_state = json.keyboard_state;
+            room.keyboard_state.set_at = ts - 1000;
+            if(room.keyboard_state.linger && room.keyboard_state.linger.string_at < (now - 3000)) {
+              delete room.keyboard_state.linger;
+            }
+            room.show_keyboard();
+          }
+        }
+      }
     } else {
       // TODO: if more users in the feed, ensure
       // that everyone else sees the communicator's video feed
@@ -1096,6 +1358,7 @@ var drag = function(event) {
 };
 document.addEventListener('mousemove', function(event) {
   if($(event.target).closest('.grid').length == 0) { return; }
+  if(event.target.classList.contains('text_input')) { return; }
   if($(event.target).closest('#partner').length > 0) {
     if(event.buttons == 1) {
       event.preventDefault();
@@ -1107,6 +1370,7 @@ document.addEventListener('mousemove', function(event) {
 });
 document.addEventListener('touchmove', function(event) {
   if($(event.target).closest('.grid').length == 0) { return; }
+  if(event.target.classList.contains('text_input')) { return; }
   if($(event.target).closest('#partner').length > 0) {
     event.preventDefault();
     shift(event);
@@ -1114,6 +1378,8 @@ document.addEventListener('touchmove', function(event) {
 });
 document.addEventListener('mousedown', function(event) {
   if($(event.target).closest('.grid').length == 0) { return; }
+  if(event.target.classList.contains('text_input')) { return; }
+  if(document.activeElement && document.activeElement.classList.contains('text_input')) { document.activeElement.blur(); return; }
   if($(".popover:visible").length > 0) {
     if($(event.target).closest('.button:not(.sub_button)').find(".popover:visible").length == 0) {
       $(".popover:visible").css('display', 'none');
@@ -1128,6 +1394,8 @@ document.addEventListener('mousedown', function(event) {
 });
 document.addEventListener('touchstart', function(event) {
   if($(event.target).closest('.grid').length == 0) { return; }
+  if(event.target.classList.contains('text_input')) { return; }
+  if(document.activeElement && document.activeElement.classList.contains('text_input')) { document.activeElement.blur(); return; }
   if($(".popover:visible").length > 0) {
     if($(event.target).closest('.button:not(.sub_button)').find(".popover:visible").length == 0) {
       $(".popover:visible").css('display', 'none');
@@ -1142,9 +1410,11 @@ document.addEventListener('touchstart', function(event) {
 });
 document.addEventListener('click', function(event) {
   if($(event.target).closest('.grid').length == 0) { return; }
+  if(event.target.classList.contains('text_input')) { return; }
   var $cell = $(event.target).closest('.cell');
   var $button = $(event.target).closest('.button');
   var $partner = $(event.target).closest('#partner');
+  var $text_prompt = $(event.target).closest('#text_prompt');
   var $communicator = $(event.target).closest('#communicator');
   var $zoom = $(event.target).closest('.zoom');
   if($(event.target).closest("#nav").css('opacity') == '0') {
@@ -1159,6 +1429,9 @@ document.addEventListener('click', function(event) {
     }
   } else if($partner.length > 0) {
     room.toggle_zoom();
+  } else if($text_prompt.length > 0) {
+    event.preventDefault();
+    room.toggle_input();
   } else if($cell.length > 0) {
     if(room.current_room) {
       remote.send_message(room.current_room.id, {action: 'click', button: {id: $cell[0].button.id }}).then(null, function() {
@@ -1167,6 +1440,10 @@ document.addEventListener('click', function(event) {
     }
     $cell.addClass('my_highlight');
     $cell.blur();
+    var btn = $cell[0].button;
+    if(btn.text.match(/^\+/)) {
+      room.add_key(btn.text.replace(/^\+/, ''));
+    }
     setTimeout(function() {
       var btn = $cell[0].button;
       if(btn.load_id) {
@@ -1190,7 +1467,7 @@ document.addEventListener('click', function(event) {
         return;
       }
     }
-    $(".popover:visible").css('display', 'none');
+    var do_hide = true;
     var action = $button.attr('data-action');
     if(action == 'end') {
       modal.open("Leave Room?", document.getElementById('confirm_exit'), [
@@ -1363,11 +1640,15 @@ document.addEventListener('click', function(event) {
     } else if(action == 'send') {
       var container = document.getElementsByClassName('reactions')[0];
       if($(event.target).closest(".reactions").length > 0 && event.target.tagName == 'IMG') {
-        container.parentNode.style.display = 'none';
+        // container.parentNode.style.display = 'none';
+        do_hide = false;
         room.send_image(event.target.src, event.target.alt);
       } else {
         container.parentNode.style.display = 'none';
       }
+    }
+    if(do_hide) {
+      $(".popover:visible").css('display', 'none');
     }
   } else if($zoom.length > 0) {
     event.preventDefault();
