@@ -155,6 +155,13 @@ remote.twilio = {
           console.log("A remote Participant connected: " + participant);
           track_participant(participant);
         });  
+        room.on('participantDisconnected', function(participant) {
+          console.log("A remote Participant disconnected: " + participant);
+          var participant_ref = {
+            id: participant.identity
+          };
+          remote.user_removed(room_ref, participant_ref);
+        });  
       }, function(err) {
         rej(err);
       });

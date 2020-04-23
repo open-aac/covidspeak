@@ -1,6 +1,6 @@
 var audio_analysers = [];
 var volume = null;
-
+var mirror_type = location.href.match(/mirror/);
 var add_dom = function(elem, track, user) {
   if(elem.tagName == 'AUDIO') {
     var new_list = [];
@@ -13,7 +13,7 @@ var add_dom = function(elem, track, user) {
       }
     });
     audio_analysers = new_list;
-    if(window.AudioContext || window.webkitAudioContext) { // if I'm the communicator, analyze, otherwise it should only add for communicator
+    if((window.AudioContext || window.webkitAudioContext)) { // if I'm the communicator, analyze, otherwise it should only add for communicator
       var AudioContext = window.AudioContext || window.webkitAudioContext;
       var context = new AudioContext();
       var stream = user.remote_stream;
@@ -33,7 +33,10 @@ var add_dom = function(elem, track, user) {
           analyser.fftSize = 256;
           // var source = context.createMediaElementSource(elem);
           var source = context.createMediaStreamSource(stream);
-          source.connect(analyser).connect(context.destination);
+          var mid = source.connect(analyser);
+          if(!elem.fake_remote) {
+            mid.connect(context.destination);
+          }
           var arr = new Uint8Array(analyser.frequencyBinCount);
           audio_analysers.push({
             stream: stream,
@@ -145,12 +148,22 @@ remote.addEventListener('user_added', function(data) {
   if(data.user.id != room.current_room.user_id) {
     room.set_active();
     room.status('ready');
+    var sound = new Audio();
+    sound.src = "/sounds/enter.mp3";
+    sound.oncanplay = function() {
+      sound.play();
+    }
   }
   setTimeout(function() {
     room.send_update();
   }, 500);
 });
 remote.addEventListener('user_removed', function(data) {
+  var sound = new Audio();
+  sound.src = "/sounds/exit.mp3";
+  sound.oncanplay = function() {
+    sound.play();
+  }
 });
 remote.addEventListener('message', function(data) {
   room.handle_message(data);
@@ -420,7 +433,7 @@ var room = {
     // TODO: transform: scaleX(-1);
   },
   set_active: function() {
-    if(room.active_timeout) { return; }
+    if(room.active_timeout || mirror_type) { return; }
     var resume = function() {
       room.active_timeout = setTimeout(function() {
         room.active_timeout = null;
@@ -721,7 +734,10 @@ var room = {
     room.show_grid();
   },
   send_image: function(image_url, alt) {
-    room.show_image(image_url, alt, false);
+    if(!mirror_type) {
+      debugger
+      room.show_image(image_url, alt, false);
+    }
     if(!room.current_room) { return; }
     remote.send_message(room.current_room.id, {
       from_communicator: room.current_room.for_self,
@@ -808,25 +824,27 @@ var room = {
   start: function() {
     // TODO: if the user hasn't accepted terms, pop them up
     var room_id = (location.pathname.match(/\/rooms\/([\w:]+)$/) || {})[1];
-    if(room_id && room_id.match(/^x/) && localStorage['room_id_for_' + room_id]) {
-      try {
-        var json = JSON.parse(localStorage['room_id_for_' + room_id]);
-        room_id = json.id;
-      } catch(e) { 
+    if(!mirror_type) {
+      if(room_id && room_id.match(/^x/) && localStorage['room_id_for_' + room_id]) {
+        try {
+          var json = JSON.parse(localStorage['room_id_for_' + room_id]);
+          room_id = json.id;
+        } catch(e) { 
+          // TODO: make this prettier
+          alert('room data has been lost!');
+          return;
+        }
+      } else if(room_id.match(/^x/)) {
         // TODO: make this prettier
         alert('room data has been lost!');
         return;
-      }
-    } else if(room_id.match(/^x/)) {
-      // TODO: make this prettier
-      alert('room data has been lost!');
-      return;
-    } else {
-      // obfuscate room id in case it shows up in a screen shot
-      var local_id = "x" + btoa((new Date()).getTime() + "-" + Math.round(Math.random()));
-      localStorage['room_id_for_' + local_id] = JSON.stringify({exp: (new Date()).getTime() + (48*60*60*1000), id: room_id});
-      var new_path = location.pathname.replace(room_id, local_id);
-      history.replaceState(null, '', new_path);
+      } else {
+        // obfuscate room id in case it shows up in a screen shot
+        var local_id = "x" + btoa((new Date()).getTime() + "-" + Math.round(Math.random()));
+        localStorage['room_id_for_' + local_id] = JSON.stringify({exp: (new Date()).getTime() + (48*60*60*1000), id: room_id});
+        var new_path = location.pathname.replace(room_id, local_id);
+        history.replaceState(null, '', new_path);
+      }  
     }
 
     document.body.addEventListener('input', function(event) {
@@ -882,10 +900,23 @@ var room = {
       user_id = (new Date()).getTime() + ":" + Math.round(Math.random() * 9999999);
     }
     var enter_room = function() {
-      session.ajax('/api/v1/rooms/' + room.room_id, {
-        method: 'PUT',
-        data: {user_id: user_id} 
-      }).then(function(res) {
+      var room_check = new Promise(function(res, rej) {
+        res({
+          user_id: 'self',
+          access: {},
+          room: {
+            key: 'mirror-room',
+            type: 'mirror'
+          }
+        });
+      });
+      if(!mirror_type) {
+        room_check = session.ajax('/api/v1/rooms/' + room.room_id, {
+          method: 'PUT',
+          data: {user_id: user_id} 
+        });
+      }
+      room_check.then(function(res) {
         room.current_user_id = res.user_id;
         remote.backend = res.room.type;
         remote.start_local_tracks({audio: true, video: true, data: true}).then(function(tracks) {
@@ -918,7 +949,7 @@ var room = {
         console.error("Room creation error: ", err);
       });
     };
-    if(localStorage.user_id && room.room_id == localStorage.room_id) {
+    if(!mirror_type && localStorage.user_id && room.room_id == localStorage.room_id) {
       // We check user auth here to make sure the user/room hasn't expired
       session.ajax('/api/v1/users', {
         method: 'POST',
@@ -1148,6 +1179,8 @@ var room = {
         }, 5000);
       }
       room.keyboard_state.string = "";
+      room.editing = false;
+      document.querySelector('#text_prompt').classList.remove('active');
       document.querySelector('.preview .text_input').blur();
       document.querySelector('.preview .text_input').value = '';
     } else if(str.string) {
@@ -1163,6 +1196,8 @@ var room = {
     var total_slots = 3;
     room.image_slots = room.image_slots || [];
     room.image_slots.index = room.image_slots.index || 0;
+    var reactions_popover = document.querySelector('.popover .reactions');
+    var popover_in_the_way = reactions_popover && reactions_popover.offsetWidth > 0;
     var found_empty = false;
     for(var idx = 0; idx < total_slots; idx++) {
       if(!room.image_slots[idx] && !found_empty) {
@@ -1173,7 +1208,13 @@ var room = {
     var idx = room.image_slots.index;
     var img = document.createElement('img');
     img.classList.add('reaction');
-    img.style.left = ((idx * 60) + 10) + "px";
+    var orig_left = ((idx * 60) + 10);
+    img.style.left = orig_left + 'px';
+    if(big_image && popover_in_the_way) {
+      var elem = document.querySelector('.preview');
+      var rect = elem.getBoundingClientRect();
+      img.style.left = (rect.width - 100 - (total_slots * 60) + orig_left) + 'px';
+    }
     img.src = url;
     img.alt = text;
     var wait = 10;
@@ -1204,7 +1245,11 @@ var room = {
         img.classList.add('finished');
         setTimeout(complete, 10000);
       } else {
+        if(popover_in_the_way) {
+
+        }
         setTimeout(function() {
+          img.style.left = orig_left + 'px';
           img.classList.add('finished');
           setTimeout(complete, 20000);
         }, 3000);
@@ -1267,6 +1312,8 @@ var room = {
       } else if(!data.message.from_communicator && room.current_room.for_self) {
         // or if sent by someone else and you are the communicator
         // show a big version of the image
+        big_image = true;
+      } else if(mirror_type) {
         big_image = true;
       } else {
         // show a small version of the image
