@@ -187,174 +187,7 @@ var reactions = [
   {text: "rolling eyes", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f644.svg"},
   {text: "shrug", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f937-200d-2640-fe0f.svg"},
 ];
-var default_buttons = [
-  {text: 'hi', id: 1, image_url: "https://lessonpix.com/drawings/858816/150x150/858816.png"},
-  {text: 'Start Over', load_id: 'root', id: 2},
-  {text: 'goodbye', id: 3, image_url: "https://lessonpix.com/drawings/44246/150x150/44246.png"},
-  {text: 'yes', id: 4, image_url: "https://lessonpix.com/drawings/13097/150x150/13097.png"},
-  {text: 'no', id: 5, image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
-  {text: 'How are things?', id: 6, image_url: "https://lessonpix.com/drawings/9560/150x150/9560.png"},
-  {text: 'tell me more', id: 7, image_url: "https://lessonpix.com/drawings/34535/150x150/34535.png"},
-  {text: 'I\'m tired', id: 8, image_url: "https://lessonpix.com/drawings/509/150x150/509.png"},
-];
-// sharing photos/videos
-// love it, that's awesome, so cute, no way
-var grids = [
-  // afraid, confused
-  {id: 'feelings', name: 'feelings', image_url: "https://lessonpix.com/drawings/4720/150x150/4720.png", buttons: [
-    {id: 1, text: "tired", image_url: "https://lessonpix.com/drawings/509/150x150/509.png"},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "hungry / thirsty", image_url: "https://lessonpix.com/drawings/1813/150x150/1813.png"},
-    {id: 4, text: "happy", image_url: "https://lessonpix.com/drawings/18080/150x150/18080.png"},
-    {id: 5, text: "sad", image_url: "https://lessonpix.com/drawings/1695/150x150/1695.png"},
-    {id: 6, text: "hurt", image_url: "https://lessonpix.com/drawings/84399/100x100/84399.png"},
-    {id: 7, text: "bored", image_url: "https://lessonpix.com/drawings/713417/150x150/713417.png"},
-    {id: 8, text: "frustrated", image_url: "https://lessonpix.com/drawings/113206/150x150/113206.png"}
-  ]},
-  // head, eye, throat, mouth, ear, chest, stomach, back, arm, leg, tongue
-  // pain scale
-  // likert scale
-  // medical requests (nurse, suction, temperature, adjust, uncomfortable)
-  // pillow, bed, up, down, on stomach, on side, head, arms, pain, okay, itchy, out of bed, uncomfortable, IV, massage, rub, sit up, lay down
-  // swab mouth, dry lips, light on/off, washcloth on head, clean glasses, cold, hot, open/close curtain, bathroom, when tube out of mouth
-  // leave me alone, listen to music, read book
-  // dull, sharp, everywhere, itch, sting, hurts, aches, burns, stuck
-  // how am I doing?
-  // prayer, don't leave, wash hair, brush teeth, brush hair
-  {id: 'body', name: 'body', image_url: "https://lessonpix.com/drawings/1354/150x150/1354.png", buttons: [
-    {id: 1, text: "head", image_url: "https://lessonpix.com/drawings/6844/150x150/6844.png"},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "higher", image_url: "https://lessonpix.com/drawings/812/150x150/812.png"},
-    {id: 4, text: "yes", image_url: "https://lessonpix.com/drawings/13097/150x150/13097.png"},
-    {id: 5, text: "no", image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
-    {id: 6, text: "torso", image_url: "https://lessonpix.com/drawings/515/150x150/515.png"},
-    {id: 7, text: "limbs", image_url: "https://lessonpix.com/drawings/9729/150x150/9729.png"},
-    {id: 8, text: "lower", image_url: "https://lessonpix.com/drawings/816/150x150/816.png"}
-  ]},
-  {id: 'requests', name: 'requests', image_url: "https://lessonpix.com/drawings/234158/150x150/234158.png", buttons: [
-    {id: 1, text: "Tell me a Story", image_url: "https://lessonpix.com/drawings/7369/150x150/7369.png"},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "Read to Me", image_url: "https://lessonpix.com/drawings/6012/150x150/6012.png"},
-    {id: 4, text: "more", image_url: "https://lessonpix.com/drawings/850/150x150/850.png"},
-    {id: 5, text: "done", image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
-    {id: 6, text: "Sing to Me", image_url: "https://lessonpix.com/drawings/1090436/150x150/1090436.png"},
-    {id: 7, text: "How was your Day?", image_url: "https://lessonpix.com/drawings/211740/150x150/211740.png"},
-    {id: 8, text: "Look at Photos", image_url: "https://lessonpix.com/drawings/9320/100x100/9320.png"}
-  ]},
-  {id: 'religious', name: 'religious', image_url: "https://lessonpix.com/drawings/6968/150x150/6968.png", buttons: [
-    {id: 1, text: "Pray for me", image_url: "https://lessonpix.com/drawings/36126/150x150/36126.png"},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "Read Scripture", image_url: "https://lessonpix.com/drawings/111111/150x150/111111.png"},
-    {id: 4, text: "faith", image_url: "https://lessonpix.com/drawings/10646/150x150/10646.png"},
-    {id: 5, text: "God", image_url: "https://lessonpix.com/drawings/113650/150x150/113650.png"},
-    {id: 6, text: "Sing me a Hymn", image_url: "https://lessonpix.com/drawings/1090434/150x150/1090434.png"},
-    {id: 7, text: "How was Meeting?", image_url: "https://lessonpix.com/drawings/44810/150x150/44810.png"},
-    {id: 8, text: "Study Together", image_url: "https://lessonpix.com/drawings/6937/150x150/6937.png"}
-  ]},
-  {id: 'comments', name: 'comments', image_url: "https://lessonpix.com/drawings/130397/150x150/130397.png", buttons: [
-    {id: 1, text: "I miss you", image_url: "https://lessonpix.com/drawings/33676/150x150/33676.png"},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "I can't wait to come Home", image_url: "https://lessonpix.com/drawings/126/150x150/126.png"},
-    {id: 4, text: "I am Scared", image_url: "https://lessonpix.com/drawings/33516/150x150/33516.png"},
-    {id: 5, text: "Something Hurts", image_url: "https://lessonpix.com/drawings/84399/100x100/84399.png"},
-    {id: 6, text: "I need a Distraction", image_url: "https://lessonpix.com/drawings/94963/150x150/94963.png"},
-    {id: 7, text: "I'm Tired of This", image_url: "https://lessonpix.com/drawings/6576/150x150/6576.png"},
-    {id: 8, text: "What Happens Next?", image_url: "https://lessonpix.com/drawings/11213/150x150/11213.png"}
-  ]},
-  {id: 'nav', name: 'multi-level', image_url: "https://lessonpix.com/drawings/44259/100x100/44259.png", buttons: [
-    {id: 1, text: "requests", load_id: 'requests', image_url: "https://lessonpix.com/drawings/234158/150x150/234158.png"},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "comments", load_id: 'comments', image_url: "https://lessonpix.com/drawings/130397/150x150/130397.png"},
-    {id: 4, text: "yes", image_url: "https://lessonpix.com/drawings/13097/150x150/13097.png"},
-    {id: 5, text: "no", image_url: "https://lessonpix.com/drawings/13178/150x150/13178.png"},
-    {id: 6, text: "feelings", load_id: 'feelings', image_url: "https://lessonpix.com/drawings/4720/150x150/4720.png"},
-    {id: 7, text: "body", load_id: 'body', image_url: "https://lessonpix.com/drawings/1354/150x150/1354.png"},
-    {id: 8, text: "quick", load_id: 'quick', image_url: "https://lessonpix.com/drawings/1680702/150x150/1680702.png"}
-  ]},
-  {id: 'keyboard', name: 'keyboard', image_url: "https://lessonpix.com/drawings/211726/150x150/211726.png", buttons: [
-    {id: 1, text: "abcde", load_id: 'keyboard2', image_url: ""},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "uvwxyz", load_id: 'keyboard8', image_url: ""},
-    {id: 4, text: "12345", load_id: 'keyboard3', image_url: ""},
-    {id: 5, text: "67890", load_id: 'keyboard7', image_url: ""},
-    {id: 6, text: "fghij", load_id: 'keyboard4', image_url: ""},
-    {id: 7, text: "klmno", load_id: 'keyboard5', image_url: ""},
-    {id: 8, text: "pqrst", load_id: 'keyboard6', image_url: ""}
-  ]},
-  {id: 'keyboard2', name: 'keyboard2', skip: true, buttons: [
-    {id: 1, text: "+a", load_id: 'root', image_url: ""},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "+e", load_id: 'root', image_url: ""},
-    {id: 4, text: "", image_url: ""},
-    {id: 5, text: "", image_url: ""},
-    {id: 6, text: "+b", load_id: 'root', image_url: ""},
-    {id: 7, text: "+c", load_id: 'root', image_url: ""},
-    {id: 8, text: "+d", load_id: 'root', image_url: ""}
-  ]},
-  {id: 'keyboard3', name: 'keyboard3', skip: true, buttons: [
-    {id: 1, text: "+1", load_id: 'root', image_url: ""},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "+5", load_id: 'root', image_url: ""},
-    {id: 4, text: "", image_url: ""},
-    {id: 5, text: "", image_url: ""},
-    {id: 6, text: "+2", load_id: 'root', image_url: ""},
-    {id: 7, text: "+3", load_id: 'root', image_url: ""},
-    {id: 8, text: "+4", load_id: 'root', image_url: ""}
-  ]},
-  {id: 'keyboard4', name: 'keyboard4', skip: true, buttons: [
-    {id: 1, text: "+f", load_id: 'root', image_url: ""},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "+j", load_id: 'root', image_url: ""},
-    {id: 4, text: "", image_url: ""},
-    {id: 5, text: "", image_url: ""},
-    {id: 6, text: "+g", load_id: 'root', image_url: ""},
-    {id: 7, text: "+h", load_id: 'root', image_url: ""},
-    {id: 8, text: "+i", load_id: 'root', image_url: ""}
-  ]},
-  {id: 'keyboard5', name: 'keyboard5', skip: true, buttons: [
-    {id: 1, text: "+k", load_id: 'root', image_url: ""},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "+o", load_id: 'root', image_url: ""},
-    {id: 4, text: "", image_url: ""},
-    {id: 5, text: "", image_url: ""},
-    {id: 6, text: "+l", load_id: 'root', image_url: ""},
-    {id: 7, text: "+m", load_id: 'root', image_url: ""},
-    {id: 8, text: "+n", load_id: 'root', image_url: ""}
-  ]},
-  {id: 'keyboard6', name: 'keyboard6', skip: true, buttons: [
-    {id: 1, text: "+p", load_id: 'root', image_url: ""},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "+t", load_id: 'root', image_url: ""},
-    {id: 4, text: "", image_url: ""},
-    {id: 5, text: "", image_url: ""},
-    {id: 6, text: "+qu", load_id: 'root', image_url: ""},
-    {id: 7, text: "+r", load_id: 'root', image_url: ""},
-    {id: 8, text: "+s", load_id: 'root', image_url: ""}
-  ]},
-  {id: 'keyboard7', name: 'keyboard7', skip: true, buttons: [
-    {id: 1, text: "+6", load_id: 'root', image_url: ""},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "+0", load_id: 'root', image_url: ""},
-    {id: 4, text: "", image_url: ""},
-    {id: 5, text: "", image_url: ""},
-    {id: 6, text: "+7", load_id: 'root', image_url: ""},
-    {id: 7, text: "+8", load_id: 'root', image_url: ""},
-    {id: 8, text: "+9", load_id: 'root', image_url: ""}
-  ]},
-  {id: 'keyboard8', name: 'keyboard8', skip: true, buttons: [
-    {id: 1, text: "+u", load_id: 'root', image_url: ""},
-    {id: 2, text: "Start Over", load_id: 'root', image_url: ""},
-    {id: 3, text: "+z", load_id: 'root', image_url: ""},
-    {id: 4, text: "+v", load_id: 'root', image_url: ""},
-    {id: 5, text: "", image_url: ""},
-    {id: 6, text: "+w", load_id: 'root', image_url: ""},
-    {id: 7, text: "+x", load_id: 'root', image_url: ""},
-    {id: 8, text: "+y", load_id: 'root', image_url: ""}
-  ]},
-];
-grids.push({
-  id: 'quick', name: 'quick', skip: true, buttons: default_buttons
-});
+
 var room = {
   size_video: function(reset) {
     // TODO: videos have resize event?!?!
@@ -1045,11 +878,16 @@ var room = {
       // cell.parentNode.style.display = 'block';
       var img = cell.getElementsByTagName('img')[0];
       if(img) {
-        if(button.image_url && localStorage.show_images != 'false') {
+        var image_url = button.image_url;
+        if(symbols['en'] && symbols['en'][button.text.toLowerCase()] && symbols['en'][button.text.toLowerCase()][room.symbol_library]) {
+          image_url = symbols['en'][button.text.toLowerCase()][room.symbol_library];
+        }
+    
+        if(image_url && localStorage.show_images != 'false') {
           img.style.visibility = 'visible';
           img.src = "/blank.gif";
           setTimeout(function() {
-            img.src = button.image_url;
+            img.src = image_url;
           }, 10);
           cell.classList.remove('text_only');
         } else {
@@ -1381,6 +1219,9 @@ var room = {
       load_id: btn.load_id,
       image_url: btn.image_url
     };
+    if(symbols['en'] && symbols['en'][btn.text.toLowerCase()] && symbols['en'][btn.text.toLowerCase()][room.symbol_library]) {
+      res.image_url = symbols['en'][btn.text.toLowerCase()][room.symbol_library];
+    }
     if(comp) {
       res.same = comp.id == btn.id && comp.text == btn.text && comp.image_url == btn.image_url && comp.load_id == btn.load_id;
     }
@@ -1498,6 +1339,9 @@ document.addEventListener('click', function(event) {
         if(load_id == 'root') { load_id = room.root_id; }
         var grid = grids.find(function(g) { return g.id == load_id; });
         if(grid) {
+          if(room.grid_id == load_id && room.grid_id == 'keyboard') {
+            room.add_key({confirm: true});
+          } 
           room.assert_grid(grid.buttons, grid.id, false);
         }
       }
@@ -1723,4 +1567,5 @@ if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
   room.screen_sharing = true;
 }
 
+room.symbol_library = 'twemoji';
 room.default_buttons = default_buttons;
