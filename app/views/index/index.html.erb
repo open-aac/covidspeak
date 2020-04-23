@@ -1,19 +1,21 @@
 <div id='middle' class='buttons'>
-  <div style='display: none;'>
-    <img src="https://api.adorable.io/avatars/face/eyes9/nose9/mouth9/ffff00" alt="user avatar" style='width: 50px; border-radius: 10px; border: 1px solid #888; box-shadow: 0 0 2px #000; vertical-align: middle; margin-right: 10px;'/>
-    <input type="text" placeholder="Display Name" value=""/>
-  </div>
   <div id='existing_room' style='display: none; margin-bottom: 50px;'>
     <h2>Re-Join Previous Room</h2>
     <div>
-      <button id='rejoin' class='primary' style='width: 100%; height: 80px; font-size: 25px;'>Re-Join Room</button>
+      <button id='rejoin' class='primary' style='width: 100%; height: 80px; font-size: 25px;'>
+        <img src="/logo.svg" class='img_logo' style='height: 60px; margin: -10px 0;'/>
+        Re-Join Room
+      </button>
     </div>
   </div>
   <h2>Start a New Room</h2>
   <div>
     <form id='join'>
-      <input type='text' style='width: calc(100% - 155px);' placeholder='Join Code' id='join_code'/>
-      <button type='submit' class='primary' style='width: 150px; margin-right: 0;'>Start Room</button>
+      <input type='text' style='width: calc(100% - 180px);' placeholder='Join Code' id='join_code'/>
+      <button type='submit' class='primary' style='width: 175px; margin-right: 0;'>
+        <img src="/logo.svg" class='img_logo' style='height: 40px; margin: -10px 0;'/> 
+        Start Room
+      </button>
       <p class='error'></p>
     </form>
   </div>

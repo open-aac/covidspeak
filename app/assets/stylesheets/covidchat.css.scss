@@ -81,12 +81,21 @@ button {
   border-radius: 5px;
   margin-right: 10px;
   cursor: pointer;
+  .img_logo {
+    filter: grayscale(0.5);    
+  }
   &:hover {
     background: #eee;
     color: #222;
+    .img_logo {
+      filter: none;
+    }
   }
   &:active {
     background: #bbb;
+    .img_logo {
+      filter: none;
+    }
   }
   &.primary {
     border-color: #222;

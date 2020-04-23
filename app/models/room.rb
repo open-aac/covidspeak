@@ -9,7 +9,7 @@ class Room < ApplicationRecord
   end
 
   def self.find_by_code(code)
-    code = code.sub(/^CoVidChatFor/, '')
+    code = code.sub(/^VidChatFor-/, '')
     find_by(code: code)
   end
 

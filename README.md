@@ -1,5 +1,5 @@
-# Co-VidChat
-Co-VidChat was created from discussions by Bill Binko and
+# Co-VidSpeak
+Co-VidSpeak was created from discussions by Bill Binko and
 Brian Whitmer. We realized during the Covid-19 pandemic that
 people on a breathing tube in the ICU are being physically 
 isolated from family, but that a video call wouldn't be enough
@@ -12,7 +12,7 @@ could still have access to and communication with the
 people who were important to them.
 
 ## More Details
-Co-VidChat is an open source communication tool built on 
+Co-VidSpeak is an open source communication tool built on 
 WebRTC targeted at individuals with complex communication
 needs. Imagine if you can't speak (either suddenly or
 otherwise), but you still want to be able to connect with
@@ -22,7 +22,7 @@ provide you emotional support or therapy, then in theory
 you could connect via video chat.
 
 But video chat on its own doesn't support non-verbal 
-communication. Co-VidChat provides a grid of buttons
+communication. Co-VidSpeak provides a grid of buttons
 wrapped around the video feed to allow people to hit
 the buttons themselves, or indicate them using their
 eyes so the other party can notice where they are looking
@@ -40,7 +40,8 @@ As long as the application and its hosting services, etc.
 request no user information and store no user information 
 (other than transiently) including IP address and URL-based 
 identifiers, photos, etc.
-Then it can leverage the <b>conduit exception rule</b>, and 
+then (in theory) it can leverage the 
+<b>conduit exception rule</b>, and 
 does not need to enter into a Business Asssociate 
 Agreement with the health provider.
 

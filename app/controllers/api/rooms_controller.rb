@@ -25,7 +25,7 @@ class Api::RoomsController < ApplicationController
     end
     room_id = room.code
     # TODO: ensure user matches room id
-    room_key = "CoVidChatFor#{room_id}"
+    room_key = "VidChatFor-#{room_id}"
     access = nil
 
     if room.type == 'twilio'

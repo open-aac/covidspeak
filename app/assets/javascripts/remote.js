@@ -207,7 +207,7 @@ Object.assign(remote, {
       }
       // console.log("ROOM DATA", data);
     }).then(null, function(err) {
-      console.log("ROOM ENTRY FAILED", err);
+      console.log("ROOM SOCKET ENTRY FAILED", err);
     });
     return room_ref;
   }

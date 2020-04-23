@@ -1578,7 +1578,7 @@ document.addEventListener('click', function(event) {
         }
       });
     } else if(action == 'info') {
-      modal.open("About Co-VidChat", document.getElementById('info_modal'), []);
+      modal.open("About Co-VidSpeak", document.getElementById('info_modal'), []);
     } else if(action == 'reconnect') {
       remote.reconnect();
     } else if(action == 'invite') {
