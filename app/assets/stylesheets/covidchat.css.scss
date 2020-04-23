@@ -78,6 +78,16 @@ footer {
   height: 20px;
 }
 
+a {
+  .img_logo {
+    filter: grayscale(0.6);
+  }
+  &:hover {
+    .img_logo {
+      filter: none;
+    }
+  }
+}
 button {
   background: #fff;
   border: 1px solid #ccc;

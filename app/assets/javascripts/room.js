@@ -1567,5 +1567,5 @@ if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
   room.screen_sharing = true;
 }
 
-room.symbol_library = 'twemoji';
+room.symbol_library = 'lessonpix';
 room.default_buttons = default_buttons;

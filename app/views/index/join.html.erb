@@ -11,14 +11,21 @@
   </div>
   
   <a class='join' href="/rooms/<%= params['room_id'] %>">
+    <img src="/logo.svg" class='img_logo' style='height: 50px; margin: -10px 0;'/>
     Join the Room
-    <div id="accept_reminder" style='color: #800; font-size: 14px; display: none;'>
+    <div id="accept_reminder" style='color: #800; font-size: 14px; visibility: hidden;'>
       You must accept the terms before entering the room
     </div>
   </a>
   <div class='buttons'>
-    <button id='copy' style='width: 50%;'>Copy Link to Share</button>
-    <button id='share' style='width: calc(50% - 10px); float: right; margin-right: 0; display: xnone;'>
+    <button id='copy' style='width: 50%; height: 55px;'>
+      <img class='icon' src='/icons/clipboard.svg' alt='' style='height: 25px; vertical-align: bottom;'/>
+      Copy Link to Share
+      <div id="copy_confirm" style='color: #19558a; font-size: 14px; display: none;'>
+        Copied to clipboard!
+      </div>
+    </button>
+    <button id='share' style='width: calc(50% - 10px); height: 55px; float: right; margin-right: 0;'>
       <img class='icon' src='/icons/reply.svg' alt='' style='height: 25px; vertical-align: bottom;'/>
       Share Link
     </button>
@@ -31,18 +38,27 @@ if(navigator.canShare && navigator.canShare()) {
 if(localStorage.terms_accepted) {
   document.querySelector('#accept').checked = true;
 }
+if(!navigator.share) {
+  document.querySelector('#share').style.display = 'none';
+  document.querySelector('#copy').style.width = '100%';
+  document.querySelector('#copy').style.height = '70px';
+}
+
 document.addEventListener('click', function(event) {
   var url = (document.querySelector('.join_link') || {}).innerText;
   if(event.target.classList.contains('join')) {
     if(!document.querySelector('#accept').checked) {
-      document.querySelector('#accept_reminder').style.display = 'block';
+      document.querySelector('#accept_reminder').style.visibility = 'visible';
       event.preventDefault();
       return;
     }
     localStorage.terms_accepted = 'true';    
   }
   if(event.target.id ==  'copy') {
-    extras.copy(url);
+    extras.copy(url).then(function() {
+      document.querySelector('#copy_confirm').style.display = 'block';
+      document.querySelector('#copy_confirm').style.visibility = 'visible';
+    });
   } else if(event.target.id == 'share') {
     if(navigator.share) {
       navigator.share({url: url});
