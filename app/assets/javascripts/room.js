@@ -253,12 +253,15 @@ var room = {
       });  
     }
   },
-  status: function(str) {
+  status: function(str, show_invite) {
     if(!str || str == 'ready') {
       document.querySelector('#status_holder').style.display = 'none';
     } else {
       document.querySelector('#status_holder').style.display = 'block';
       document.querySelector('#status').innerText = str;
+      if(room.current_room && room.current_room.for_self) {
+        document.querySelector('#status_invite').style.display = (show_invite ? 'block' : 'none');
+      }
     }
   },
   flip_video: function() {
@@ -760,7 +763,7 @@ var room = {
           }
           room.status("Connecting...");
           remote.connect_to_remote(res.access, res.room.key).then(function(room_session) {
-            room.status('Waiting for Partner...');
+            room.status('Waiting for Partner...', true);
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
             room_session.user_id = res.user_id;
             room_session.for_self = room.room_id == localStorage.room_id;
