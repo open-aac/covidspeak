@@ -13,7 +13,7 @@ var add_dom = function(elem, track, user) {
       }
     });
     audio_analysers = new_list;
-    if((window.AudioContext || window.webkitAudioContext)) { // if I'm the communicator, analyze, otherwise it should only add for communicator
+    if(window.AudioContext || window.webkitAudioContext) { // if I'm the communicator, analyze, otherwise it should only add for communicator
       var AudioContext = window.AudioContext || window.webkitAudioContext;
       var context = new AudioContext();
       var stream = user.remote_stream;
@@ -58,7 +58,6 @@ var add_dom = function(elem, track, user) {
       }
     }
   }
-  if(!elem.classList) { debugger }
   elem.classList.add("room-" + track.type);
   elem.setAttribute('data-track-id', track.id);
   elem.setAttribute('data-user-id', user.id);
@@ -691,7 +690,7 @@ var room = {
       if(event.target.tagName == 'INPUT') { return; }
       // TODO: allow for the text_input element
       if(!document.querySelector('.preview #text')) { return; }
-      if(event.key && event.keyCode != 13 && event.keyCode != 27) {
+      if(event.key && event.keyCode != 13 && event.keyCode != 27 && event.keyCode != 8) {
         room.add_key(event.key);
       }
     });
@@ -954,17 +953,16 @@ var room = {
       if(!edit.focus_watch) {
         edit.focus_watch = true;
         edit.addEventListener('focus', function(event) {
-          // document.querySelector('#text_prompt').classList.add('active');  
-          // setTimeout(function() {
-          //   room.editing = true;
-          // }, 500);
         });
       }
       // TODO: measure text and resize accordingly
     } else {
       var tmp_id = Math.round(Math.random() * 99999);
       edit.tmp_id = tmp_id;
-      edit.blur();
+      if(document.activeElement != edit) {
+        edit.blur();
+        edit.style.opacity = 0.0;
+      }
       setTimeout(function() {
         if(edit.tmp_id == tmp_id) {
           edit.value = "";
@@ -972,7 +970,6 @@ var room = {
           edit.style.display = 'none';
         }
       }, 2000);
-      edit.style.opacity = 0.0;
     }
   },
   toggle_input: function() {
@@ -996,7 +993,6 @@ var room = {
     } else if(str.clear) {
       room.keyboard_state.string = "";
       room.editing = false;
-      document.querySelector('#text_prompt').classList.remove('active');
       document.querySelector('.preview .text_input').blur();
       document.querySelector('.preview .text_input').value = '';
     } else if(str.confirm) {
@@ -1021,10 +1017,14 @@ var room = {
       document.querySelector('#text_prompt').classList.remove('active');
       document.querySelector('.preview .text_input').blur();
       document.querySelector('.preview .text_input').value = '';
-    } else if(str.string) {
+    } else if(str.string != null) {
       room.keyboard_state.string = str.string;
     } else {
       room.keyboard_state.string = room.keyboard_state.string + str;
+    }
+    if(!room.keyboard_state.string) {
+      room.keyboard_state.string = "";
+      document.querySelector('#text_prompt').classList.remove('active');
     }
     room.keyboard_state.set_at = now;
     room.show_keyboard();
@@ -1097,7 +1097,38 @@ var room = {
       }, 100);
     }, wait);
   },
-  toggle_zoom: function(force) {
+  invite: function() {
+    var url = location.origin + "/rooms/" + room.room_id + "/join";
+    document.querySelector('#invite_modal .link').innerText = url;
+    var actions = [
+      {action: 'copy', label: "Copy Link", callback: function() {
+        // Select the link anchor text  
+        extras.copy(url).then(function(res) {
+          if(res.copied) {
+            document.querySelector('.modal .modal_footer .modal_button').innerText = 'Copied!';
+            setTimeout(function() {
+              modal.close();
+            }, 2000);
+          }
+        }, function() {
+
+        });
+      }}
+    ];
+    if(navigator.canShare && navigator.canShare()) {
+      actions.push({action: 'share', label: "Share", callback: function() {
+        if(navigator.share) {
+          navigator.share({url: url});
+        }
+        modal.close();
+      }})
+    }
+    modal.open("Invite a Visitor", document.getElementById('invite_modal'), actions);
+    if(window.QRCode) {
+      var qr = new window.QRCode(document.querySelector('.modal #invite_modal .qr_code'), url);
+    }
+  },
+  toggle_controls: function(force) {
     var $nav = $("#nav");
     var $text_prompt = $("#text_prompt");
     if(force == null) {
@@ -1237,7 +1268,7 @@ var shift = function(event) {
   room.shift_x = event.clientX - (room.drag_x || event.clientX);
   room.shift_y = event.clientY - (room.drag_y || event.clientY);
   room.size_video();
-  room.toggle_zoom(true);
+  room.toggle_controls(true);
   // console.log("drag", room.shift_x, room.shift_y);
 }
 var drag = function(event) {
@@ -1247,12 +1278,36 @@ var drag = function(event) {
 document.addEventListener('mousemove', function(event) {
   if($(event.target).closest('.grid').length == 0) { return; }
   if(event.target.classList.contains('text_input')) { return; }
-  if($(event.target).closest('#partner').length > 0) {
-    if(event.buttons == 1) {
-      event.preventDefault();
-      shift(event);
-    } else {
-      room.toggle_zoom(true);
+  if($(event.target).closest('#partner').length > 0 && event.buttons == 1) {
+    event.preventDefault();
+    shift(event);
+  } else if(event.target.closest('#partner,#nav,#eyes')) {
+    // if moving the mouse more than 1.5s, show controls
+    if(!room.partner_hover) {
+      clearTimeout(room.partner_hover);
+      room.partner_hover = setTimeout(function() {
+        if(room.partner_hover) {
+          room.toggle_controls(true);
+        }
+      }, 1500);
+    }
+    // if moved and rested on partner, show controls
+    if(room.partner_linger) {
+      clearTimeout(room.partner_linger);
+    }
+    room.partner_linger = setTimeout(function() {
+      if(room.partner_linger) {
+        room.toggle_controls(true);
+      }
+    }, 500);
+  } else {
+    if(room.partner_hover) {
+      clearTimeout(room.partner_hover);
+      room.partner_hover = false;
+    }
+    if(room.partner_linger) {
+      clearTimeout(room.partner_linger);
+      room.partner_linger = false;
     }
   }
 });
@@ -1302,6 +1357,7 @@ document.addEventListener('click', function(event) {
   var $cell = $(event.target).closest('.cell');
   var $button = $(event.target).closest('.button');
   var $partner = $(event.target).closest('#partner');
+  var $invite = $(event.target).closest('#invite_partner');
   var $text_prompt = $(event.target).closest('#text_prompt');
   var $communicator = $(event.target).closest('#communicator');
   var $zoom = $(event.target).closest('.zoom');
@@ -1316,7 +1372,9 @@ document.addEventListener('click', function(event) {
       room.toggle_video();
     }
   } else if($partner.length > 0) {
-    room.toggle_zoom();
+    room.toggle_controls();
+  } else if($invite.length > 0) {
+    room.invite();
   } else if($text_prompt.length > 0) {
     event.preventDefault();
     room.toggle_input();
@@ -1473,35 +1531,7 @@ document.addEventListener('click', function(event) {
     } else if(action == 'reconnect') {
       remote.reconnect();
     } else if(action == 'invite') {
-      var url = location.origin + "/rooms/" + room.room_id + "/join";
-      document.querySelector('#invite_modal .link').innerText = url;
-      var actions = [
-        {action: 'copy', label: "Copy Link", callback: function() {
-          // Select the link anchor text  
-          extras.copy(url).then(function(res) {
-            if(res.copied) {
-              document.querySelector('.modal .modal_footer .modal_button').innerText = 'Copied!';
-              setTimeout(function() {
-                modal.close();
-              }, 2000);
-            }
-          }, function() {
-
-          });
-        }}
-      ];
-      if(navigator.canShare && navigator.canShare()) {
-        actions.push({action: 'share', label: "Share", callback: function() {
-          if(navigator.share) {
-            navigator.share({url: url});
-          }
-          modal.close();
-        }})
-      }
-      modal.open("Invite a Visitor", document.getElementById('invite_modal'), actions);
-      if(window.QRCode) {
-        var qr = new window.QRCode(document.querySelector('.modal #invite_modal .qr_code'), url);
-      }
+      room.invite();
     } else if(action == 'quick') {
       room.assert_grid(room.default_buttons, 'quick', true);
     } else if(action == 'load') {
@@ -1544,7 +1574,7 @@ document.addEventListener('click', function(event) {
   } else if($zoom.length > 0) {
     event.preventDefault();
     $zoom.blur();
-    $("#nav")[0].hide_at = (new Date()).getTime() + 10000;
+    $("#nav")[0].hide_at = (new Date()).getTime() + 7000;
     if($("#nav").css('opacity') != '1') { return; }
     if($zoom.attr('data-direction') == 'in') {
       room.zoom(true);

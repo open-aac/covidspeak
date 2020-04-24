@@ -437,6 +437,13 @@ strong {
           margin-right: auto;
           box-shadow: 0 0 20px #000;
         }
+        #status_invite {
+          text-align: center;
+          display: none;
+          button {
+            font-weight: bold;
+          }
+        }
       }
       #communicator {
         position: absolute;
