@@ -40,7 +40,7 @@ document.querySelector('#join').addEventListener('submit', function(event) {
   event.preventDefault();
   var code = document.querySelector('#join_code').value;
   if(code == 'mirror') {
-    location.href = '/rooms/mirror-' + (new Date()).getTime() + "x" + Math.round(Math.random() * 99999);
+    location.href = '/rooms/mirror-' + (new Date()).getTime() + "x" + Math.round(Math.random() * 99999) + '/join';
     return;
   }
   document.querySelector('#join button').innerText = "Starting...";

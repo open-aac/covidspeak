@@ -1,6 +1,8 @@
 <div id='middle' class='join'>
   <a class="join_link" style="position: absolute; left: -2000px;"><%= request.url %></a>
-  Ready to chat? 
+  <div style='white-space: nowrap;'>
+    Ready to chat<span id='mirror_text'> <b>with yourself</b></span>? 
+  </div>
   <div class='preview'>
   </div>
   <div class='big_checkbox' style='margin: 10px 0; padding-leftt: 70px; text-align: left; padding-top: 0; font-size: 14px;'>
@@ -65,6 +67,9 @@ document.addEventListener('click', function(event) {
     }
   }
 });
+if(location.href.match(/rooms\/mirror/)) {
+  document.querySelector('#mirror_text').style.display = 'inline';
+}
 async function getMedia() {
   var stream = await navigator.mediaDevices.getUserMedia({video: true}).then(function(stream) {
     var video = document.createElement('video');
