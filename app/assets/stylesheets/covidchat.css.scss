@@ -438,16 +438,20 @@ strong {
           margin-right: auto;
           box-shadow: 0 0 20px #000;
           &.big {
-            width: 80%;
+            width: 90%;
             font-size: 15px;
           }
         }
         #status_invite,#status_popout {
           text-align: center;
           display: none;
+          color: #fff;
           button {
             font-weight: bold;
           }
+        }
+        #status_popout {
+          margin-top: -15px;
         }
       }
       #communicator {

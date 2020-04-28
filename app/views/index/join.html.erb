@@ -104,7 +104,6 @@ function getMedia() {
   }, 500);
   if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     navigator.mediaDevices.getUserMedia({video: true}).then(function(stream) {
-      return;
       // TODO: track audio level
       handled = true;
       var video = document.createElement('video');
