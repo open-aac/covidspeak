@@ -62,6 +62,8 @@ document.addEventListener('click', function(event) {
       return;
     }
     localStorage.terms_accepted = 'true';    
+  } else if(event.target.id == 'popout_browser') {
+    window.open(location.href);
   }
   if(event.target.id ==  'copy') {
     extras.copy(url).then(function() {
@@ -78,17 +80,19 @@ if(location.href.match(/rooms\/mirror/)) {
   document.querySelector('#mirror_text').style.display = 'inline';
 }
 async function getMedia() {
-  room.status = function(message, options) {
-    document.querySelector('.preview .status #message').innerText = message;
-    document.querySelector('.preview .status #popout').style.display = 'none';
-    if(options && options.popout) {
-      document.querySelector('.preview .status #popout').style.display = 'block';
+  var status = function(message, options) {
+    if(document.querySelector('.preview .status #message')) {
+      document.querySelector('.preview .status #message').innerText = message;
+      document.querySelector('.preview .status #popout').style.display = 'none';
+      if(options && options.popout) {
+        document.querySelector('.preview .status #popout').style.display = 'block';
+      }  
     }
   };
   var handled = false;
   setTimeout(function() {
     if(!handled) {
-      room.status("Waiting for camera...");
+      status("Waiting for camera...");
       document.querySelector('#middle .preview .status').classList.add('waiting');
     }
   }, 500);
@@ -103,11 +107,11 @@ async function getMedia() {
     document.querySelector('#middle .preview').appendChild(video);
   }, function(err) {
     handled = true;
-    room.handle_camera_error(err);    
+    room.handle_camera_error(err, status);    
   });
   setTimeout(function() {
     if(!handled) { 
-      room.handle_camera_error({timeout: true});
+      room.handle_camera_error({timeout: true}, status);
     }
   }, 5000);
 };

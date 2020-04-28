@@ -737,34 +737,35 @@ var room = {
       enter_room();
     }
   },
-  handle_camera_error: function(err) {
+  handle_camera_error: function(err, callback) {
     var android_webview = navigator.userAgent.match(/Chrome\/.+Mobile/) && navigator.userAgent.match(/wv/);
     var userAgent = window.navigator.userAgent.toLowerCase();
     var ios_webview = /iphone|ipod|ipad/.test( userAgent ) && !window.navigator.standalone && !/safari/.test( userAgent );
+    var status = callback || room.status;
 
     if(err && err.timeout) {
       if(android_webview || ios_webview) {
-        room.status("Please grant camera access or load in your device's browser", {popout: true});
+        status("Please grant camera access or load in your device's browser", {popout: true});
       } else {
-        room.status("Please grant access to the camera");
+        status("Please grant access to the camera");
       }
     } else if(err && err.name == 'NotAllowedError') {
       if(android_webview || ios_webview) {
-        room.status("Camera permission required", {popout: true});
+        status("Camera permission required", {popout: true});
       } else {
-        room.status("Camera permission not granted");
+        status("Camera permission not granted");
       }
     } else if(err && err.name == 'NotFoundError') {
       if(android_webview || ios_webview) {
-        room.status("Camera access not available", {popout: true});
+        status("Camera access not available", {popout: true});
       } else {
-        room.status("Can't accesss the camera, your device may not support video calling, or you have it disabled.");
+        status("Can't accesss the camera, your device may not support video calling, or you have it disabled.");
       }
     } else if(android_webview || ios_webview) {
       // in an Android webview, not native browser
-      room.status("Camera access doesn't work inside non-browser apps.", {popout: true});
+      status("Camera access doesn't work inside non-browser apps.", {popout: true});
     } else {
-      room.status("Can't accesss the camera, your device may not support video calling, or you have it disabled.");
+      status("Can't accesss the camera, your device may not support video calling, or you have it disabled.");
     }
   },
   update_from_settings: function() {
