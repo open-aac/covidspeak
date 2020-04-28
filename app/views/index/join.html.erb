@@ -63,7 +63,7 @@ document.addEventListener('click', function(event) {
     }
     localStorage.terms_accepted = 'true';    
   } else if(event.target.id == 'popout_browser') {
-    window.open(location.href);
+    window.open(location.href, '_system');
   }
   if(event.target.id ==  'copy') {
     extras.copy(url).then(function() {

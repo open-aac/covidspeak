@@ -613,6 +613,7 @@ var room = {
         history.replaceState(null, '', new_path);
       }  
     }
+    room.raw_room_id = room_id;
 
     document.body.addEventListener('input', function(event) {
       if(event.target.tagName == 'INPUT') { 
@@ -646,7 +647,7 @@ var room = {
       }
     });
     
-    room.room_id = localStorage['room_id_for_' + room_id] || room_id;
+    room.room_id = room_id;
     try {
       room.settings = JSON.parse(localStorage['vidspeak_settings']);
     } catch(e) { room.settings = {}; }
@@ -1410,7 +1411,8 @@ document.addEventListener('click', function(event) {
   } else if($invite.length > 0) {
     room.invite();
   } else if($popout.length > 0) {
-    window.open()
+    var url = location.origin + "/rooms/" + room.room_id + "/join";
+    window.open(url, '_system');
   } else if($text_prompt.length > 0) {
     event.preventDefault();
     room.toggle_input();
