@@ -176,20 +176,25 @@ var room = {
       });  
     }
   },
-  status: function(str, show_something) {
+  status: function(str, opts) {
     document.querySelector('#status_invite').style.display = 'none';
     document.querySelector('#status_popout').style.display = 'none';
+    if(opts && opts.big) {
+      document.querySelector('#status').classList.add('big');
+    } else {
+      document.querySelector('#status').classList.remove('big');
+    }
     if(!str || str == 'ready') {
       document.querySelector('#status_holder').style.display = 'none';
     } else {
       document.querySelector('#status_holder').style.display = 'block';
       document.querySelector('#status').innerText = str;
       if(room.current_room && room.current_room.for_self) {
-        if(show_something && show_something.invite) {
+        if(opts && opts.invite) {
           document.querySelector('#status_invite').style.display = 'block';
         }
       }
-      if(show_something && show_something.popout) {
+      if(opts && opts.popout) {
         document.querySelector('#status_popout').style.display = 'block';
       }
     }
@@ -745,7 +750,7 @@ var room = {
 
     if(err && err.timeout) {
       if(android_webview || ios_webview) {
-        status("Please grant camera access or load in your device's browser", {popout: true});
+        status("Please grant camera access or load in your device's browser", {popout: true, big: true});
       } else {
         status("Please grant access to the camera");
       }
@@ -759,13 +764,13 @@ var room = {
       if(android_webview || ios_webview) {
         status("Camera access not available", {popout: true});
       } else {
-        status("Can't accesss the camera, your device may not support video calling, or you have it disabled.");
+        status("Can't accesss the camera, your device may not support video calling, or you have it disabled.", {big: true});
       }
     } else if(android_webview || ios_webview) {
       // in an Android webview, not native browser
-      status("Camera access doesn't work inside non-browser apps.", {popout: true});
+      status("Camera access doesn't work inside non-browser apps.", {popout: true, big: true});
     } else {
-      status("Can't accesss the camera, your device may not support video calling, or you have it disabled.");
+      status("Can't accesss the camera, your device may not support video calling, or you have it disabled.", {big: true});
     }
   },
   update_from_settings: function() {

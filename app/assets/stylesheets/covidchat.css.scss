@@ -76,6 +76,7 @@ footer {
   position: fixed;
   bottom: 0;
   height: 20px;
+  margin: 0 5px;
 }
 
 a {
@@ -436,6 +437,10 @@ strong {
           margin-left: auto;
           margin-right: auto;
           box-shadow: 0 0 20px #000;
+          &.big {
+            width: 80%;
+            font-size: 15px;
+          }
         }
         #status_invite,#status_popout {
           text-align: center;
@@ -1028,5 +1033,13 @@ strong {
     border: 1px solid #888; 
     background: #000; 
     color: #eee;    
+  }
+  .message {
+    font-size: 20px;
+  }
+  &.big {
+    .messsage {
+      font-size: 15px;
+    }
   }
 }

@@ -5,7 +5,7 @@
   </div>
   <div class='preview'>
     <div class='status'>
-      <div id='message' style='font-size: 20px;'>
+      <div id='message'>
       </div>
       <div id='popout' style='display: none;'>
         <b>Try opening in your device's browser</b>
@@ -79,13 +79,18 @@ document.addEventListener('click', function(event) {
 if(location.href.match(/rooms\/mirror/)) {
   document.querySelector('#mirror_text').style.display = 'inline';
 }
-async function getMedia() {
+function getMedia() {
   var status = function(message, options) {
-    if(document.querySelector('.preview .status #message')) {
-      document.querySelector('.preview .status #message').innerText = message;
-      document.querySelector('.preview .status #popout').style.display = 'none';
+    if(document.querySelector('#middle .preview .status #message')) {
+      if(options && options.big) {
+        document.querySelector('#middle .preview .status').classList.add('big');
+      } else {
+        document.querySelector('#middle .preview .status').classList.remove('big');
+      }
+      document.querySelector('#middle .preview .status #message').innerText = message;
+      document.querySelector('#middle .preview .status #popout').style.display = 'none';
       if(options && options.popout) {
-        document.querySelector('.preview .status #popout').style.display = 'block';
+        document.querySelector('#middle .preview .status #popout').style.display = 'block';
       }  
     }
   };
@@ -97,24 +102,30 @@ async function getMedia() {
       document.querySelector('#middle .preview .status').classList.add('waiting');
     }
   }, 500);
-  var stream = await navigator.mediaDevices.getUserMedia({video: true}).then(function(stream) {
-    handled = true;
-    var video = document.createElement('video');
-    video.srcObject = stream;
-    video.onloadedmetadata = function(e) {
-      video.play();
-    };
-    document.querySelector('#middle .preview').innerText = "";
-    document.querySelector('#middle .preview').appendChild(video);
-  }, function(err) {
-    handled = true;
-    room.handle_camera_error(err, status);    
-  });
-  setTimeout(function() {
-    if(!handled) { 
-      room.handle_camera_error({timeout: true}, status);
-    }
-  }, 5000);
+  if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({video: true}).then(function(stream) {
+      return;
+      // TODO: track audio level
+      handled = true;
+      var video = document.createElement('video');
+      video.srcObject = stream;
+      video.onloadedmetadata = function(e) {
+        video.play();
+      };
+      document.querySelector('#middle .preview').innerText = "";
+      document.querySelector('#middle .preview').appendChild(video);
+    }, function(err) {
+      handled = true;
+      room.handle_camera_error(err, status);    
+    });
+    setTimeout(function() {
+      if(!handled) { 
+        room.handle_camera_error({timeout: true}, status);
+      }
+    }, 5000);  
+  } else {
+    room.handle_camera_error(null, status);
+  }
 };
 getMedia();
 
