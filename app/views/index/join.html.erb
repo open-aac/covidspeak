@@ -8,7 +8,7 @@
       <div id='message' style='font-size: 20px;'>
       </div>
       <div id='popout' style='display: none;'>
-        <button id='popout_browser' class='primary'>Open in Browser</button>
+        <b>Try opening in your device's browser</b>
       </div>
     </div>
   </div>
@@ -89,6 +89,7 @@ async function getMedia() {
       }  
     }
   };
+  room.join_status = status;
   var handled = false;
   setTimeout(function() {
     if(!handled) {

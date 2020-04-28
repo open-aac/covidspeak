@@ -613,7 +613,6 @@ var room = {
         history.replaceState(null, '', new_path);
       }  
     }
-    room.raw_room_id = room_id;
 
     document.body.addEventListener('input', function(event) {
       if(event.target.tagName == 'INPUT') { 
