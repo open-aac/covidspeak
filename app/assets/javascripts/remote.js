@@ -6,15 +6,61 @@ Object.assign(remote, {
   start_local_tracks: function(opts) {
     // Resolves a list of objects with the following attributes
     // { type: "video, audio, data", id: "", generate_dom: function...}
-    return remote[remote.backend].start_local_tracks(opts);
+    return new Promise(function(res, rej) {
+      remote[remote.backend].start_local_tracks(opts).then(function(tracks) {
+        remote.default_local_tracks = tracks;
+        res(tracks);
+      }, function(err) {
+        rej(err);
+      });
+    });
   },
-  add_local_tracks: function(room_id, stream_or_track) {
+  local_track: function(type) {
+    return (remote.default_local_tracks || []).find(function(t) { return t.type == type; });
+  },
+  add_local_tracks: function(room_id, stream_or_track, replace_default) {
     // Resolves with a list of track references
-    return remote[remote.backend].add_local_tracks(room_id, stream_or_track);
+    return new Promise(function(res, rej) {
+      var add_now = function(local_track_to_add) {
+        remote[remote.backend].add_local_tracks(room_id, stream_or_track).then(function(tracks) {
+          if(local_track_to_add) {
+            remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.kind != local_track_to_add.kind; });
+            remote.default_local_tracks.push(tracks[0]);
+          }
+          res(tracks);
+        }, function(err) {
+          rej(err);
+        });    
+      };
+      if(replace_default && stream_or_track.kind) {
+        var current_default = (remote.default_local_tracks || []).find(function(t) { return t.kind == stream_or_track.kind; });
+        if(current_default == stream_or_track) { 
+          console.error("already added local track", stream_or_track)
+          return res([stream_or_track]);
+        } else if(current_default) {
+          remote.remove_local_track(room_id, stream_or_track, true).then(function(res) {
+            add_now(stream_or_track);
+          }, function(err) {
+            rej(err);
+          });
+        } else {
+          add_now();
+        }
+      } else {
+        add_now();
+      }
+    });
   },
   remove_local_track: function(room_id, track, remember) {
     // Resolves with a track reference
-    return remote[remote.backend].remove_local_track(room_id, track, remember);
+    return new Promise(function(res, rej) {
+      remote[remote.backend].remove_local_track(room_id, track, remember).then(function(track) {
+        remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.id != track.id; });
+        res(track);
+      }, function(err) {
+        rej(err);
+      });
+    });
   },
   reconnect: function() {
     return remote[remote.backend].reconnect();

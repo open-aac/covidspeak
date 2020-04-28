@@ -1,7 +1,7 @@
 var modal = {
   open: function(title, dom, actions) {
     modal.close(true);
-    var res = new Promise(function(res, rej) {
+    var result = new Promise(function(res, rej) {
       var defer = {
         resolve: function(data) {
           if(!modal.defer.completed) {
@@ -30,6 +30,7 @@ var modal = {
       title_elem.appendChild(a);
       modal_content.appendChild(title_elem);
       var content = dom.cloneNode(true);
+      dom.cloned_content = content;
       modal_content.appendChild(content);
       actions = actions || [];
       if(!actions.find(function(a) { return a.action == 'close'; })) {
@@ -53,8 +54,12 @@ var modal = {
       modal_elem.appendChild(modal_content);
       document.body.appendChild(modal_elem);
     });
-    res.then(null, function() { });
-    return res;
+    result.then(null, function() { });
+    if(dom.onattached && dom.cloned_content) {
+      dom.onattached(dom.cloned_content);
+      dom.onattached = null;
+    }
+    return result;
   },
   close: function(force) {
     var modals = document.getElementsByClassName('modal');

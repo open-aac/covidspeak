@@ -3,8 +3,18 @@ remote.twilio = {
   start_local_tracks: function(opts) {
     opts = opts || {audio: true, video: true, data: true};
     var init = {};
-    if(opts.audio) { init.audio = true; }
-    if(opts.video) { init.video = true; }
+    if(opts.audio) { 
+      init.audio = true; 
+      if(opts.audio_id) {
+        init.audio = { deviceId: opts.audio_id };
+      }
+    }
+    if(opts.video) { 
+      init.video = true; 
+      if(opts.video_id) { 
+        init.video = { deviceId: opts.video_id };
+      }
+    }
     return new Promise(function(res, rej) {
       var local_track = new Twilio.Video.LocalDataTrack();
       remote.twilio.data_track = local_track;
@@ -20,6 +30,7 @@ remote.twilio = {
             id: track.name,
             added: (new Date()).getTime(),
             mediaStreamTrack: track.mediaStreamTrack,
+            device_id: track.mediaStreamTrack.getSettings().deviceId,
             generate_dom: track.attach ? function() { return track.attach(); } : null,
           });
         });
@@ -52,6 +63,7 @@ remote.twilio = {
                 type: local_track_pub.track.kind,
                 id: local_track_pub.track.name,
                 mediaStreamTrack: local_track_pub.track.mediaStreamTrack,
+                device_id: local_track_pub.track.mediaStreamTrack.getSettings().deviceId,
                 added: (new Date()).getTime(),
                 generate_dom: local_track_pub.track.attach ? function() { return local_track_pub.track.attach(); } : null,
               };
@@ -121,6 +133,7 @@ remote.twilio = {
               type: track.kind,
               id: track.name,
               mediaStreamTrack: track.mediaStreamTrack,
+              device_id: track.mediaStreamTrack.getSettings().deviceId,
               generate_dom: track.attach ? function() { return track.attach(); } : null
             };
             // TODO: can we figure out the video dimensions here?

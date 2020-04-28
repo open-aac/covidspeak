@@ -53,6 +53,10 @@
               <img class='icon' src='/icons/plug.svg' alt='' />
               </div>
           </span>
+          <div class='button sub_button' data-action='settings'>
+            Settings
+            <img class='icon' src='/icons/gear.svg' alt='' />
+            </div>
           <div class='button sub_button' data-action='end'>
             End
             <img class='icon' src='/icons/power.svg' alt='' />
@@ -84,6 +88,9 @@
         </div>
         <div id='status_invite'>
           <button id='invite_partner' class='primary'>Invite Partner</button>
+        </div>
+        <div id='status_popout'>
+          <button id='popout_view' class='primary'>Open in Browser</button>
         </div>
       </div>
       <div id="communicator">
@@ -159,12 +166,6 @@
     <button style='flex: 1;' class='size' data-size='6'>6 Buttons</button>
     <button class='size primary' data-size='8' style='flex: 1; margin-right: 0;'>8 Buttons</button>
   </div>
-  <div class='big_checkbox' style='margin: 10px 0;'>
-    <label>
-      <input type='checkbox' name='show_images'/>
-      Show Images on Buttons (when available)
-    </label>
-  </div>
   <div id='layouts'>
     <div class='layout'>
       <div class='layout_container'>
@@ -196,6 +197,51 @@
     your camera app do scan this code to load a share link:
   </p>
   <div class='qr_code'>
+  </div>
+</div>
+<div id="settings_modal" class="content">
+  <div class='half'>
+    <h2>Video Input</h2>
+    <select id='video_select'></select>
+  </div>
+  <div class='half'>
+    <h2>Pictures on Buttons</h2>
+    <select id='symbol_select'>
+      <option value='lessonpix'>LessonPix Pictures</option>
+      <option value='twemoji'>Emoji Symbols</option>
+      <option value='none'>Don't Show Any Pictures</option>
+    </select>
+  </div>
+  <div class='half'>
+    <h2>Audio Input</h2>
+    <select id='audio_select'></select>
+  </div>
+  <div class='half'>
+    <div id='settings_symbol_preview'>
+      <div class='lessonpix_preview'>
+        <img src="https://lessonpix.com/drawings/234158/150x150/234158.png"/>
+        <img src="https://lessonpix.com/drawings/130397/150x150/130397.png"/>
+        <img src="https://lessonpix.com/drawings/4720/150x150/4720.png"/>
+        <img src="https://lessonpix.com/drawings/1354/150x150/1354.png"/>
+        <img src="https://lessonpix.com/drawings/1680702/150x150/1680702.png"/>
+      </div>
+      <div class='twemoji_preview'>
+        <img src="https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f5e3.svg"/>
+        <img src="https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f4ac.svg"/>
+        <img src="https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f3ad.svg"/>
+        <img src="https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f6b6.svg"/>
+        <img src="https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f4dc.svg"/>
+      </div>
+      <div class='none_preview'>
+        No pictures will be shown on buttons
+      </div>
+    </div>
+  </div>
+  <div style='clear: both;'></div>
+  <div class='preview_container'>
+    <video id='settings_video_preview'></video>
+    <audio id='settings_audio_preview' style='display: none;''></audio>
+    <div id='settings_audio_level'></div>
   </div>
 </div>
 <div id="confirm_exit" class="content">

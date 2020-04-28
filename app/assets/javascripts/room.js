@@ -1,62 +1,8 @@
-var audio_analysers = [];
-var volume = null;
 var mirror_type = location.href.match(/mirror/);
 var add_dom = function(elem, track, user) {
   if(elem.tagName == 'AUDIO') {
-    var new_list = [];
-    audio_analysers.forEach(function(ana) {
-      if(!ana.audio_element.parentNode || ana.stream.active == false) {
-        console.log("OLD TRACK, STOPPING ANALYSIS");
-        ana.release();
-      } else {
-        new_list.push(ana);
-      }
-    });
-    audio_analysers = new_list;
-    if(window.AudioContext || window.webkitAudioContext) { // if I'm the communicator, analyze, otherwise it should only add for communicator
-      var AudioContext = window.AudioContext || window.webkitAudioContext;
-      var context = new AudioContext();
-      var stream = user.remote_stream;
-      if(!stream && track.mediaStreamTrack) {
-        stream = new MediaStream();
-        stream.addTrack(track.mediaStreamTrack);
-      }
-      if(context && user && stream) {
-        var found = false;
-        audio_analysers.forEach(function(ana) {
-          if(ana.stream == stream) {
-            found = true;
-          }
-        });
-        if(!found) {
-          var analyser = context.createAnalyser();
-          analyser.fftSize = 256;
-          // var source = context.createMediaElementSource(elem);
-          var source = context.createMediaStreamSource(stream);
-          var mid = source.connect(analyser);
-          if(!elem.fake_remote) {
-            mid.connect(context.destination);
-          }
-          var arr = new Uint8Array(analyser.frequencyBinCount);
-          audio_analysers.push({
-            stream: stream,
-            user: user, 
-            audio_element: elem,
-            release: function() { context.close(); },
-            analyser: analyser, 
-            audio_track: track,
-            bins: analyser.frequencyBinCount,
-            frequency_array: arr
-          });
-        }
-  
-        // analyser.connect(context.destination);
-        if(!audio_loop.running) {
-          audio_loop.running = true;
-          audio_loop();
-        }  
-      }
-    }
+    var analyser = input.track_audio(elem, track, user);
+    analyser.for_volume = true;
   }
   elem.classList.add("room-" + track.type);
   elem.setAttribute('data-track-id', track.id);
@@ -93,30 +39,7 @@ remote.addEventListener('track_added', function(data) {
     add_dom(dom, data.track, data.user);
   }
 });
-var audio_loop = function() {
-  if(audio_analysers.length > 0) {
-    var biggest = null;
-    audio_analysers.forEach(function(ana) {
-      ana.analyser.getByteFrequencyData(ana.frequency_array);
-      var tally = 0;
-      for(var i = 0; i < ana.bins; i++){
-        tally = tally + ana.frequency_array[i];
-      }
-      if(audio_loop.verbose) {
-        console.log(ana.audio_element, ana.frequency_array);
-      }
-      ana.output = (tally / ana.bins);
-      if(!biggest || ana.output > biggest.output) {
-        biggest = ana;
-      }
-    });
-    if(biggest != null && volume) {
-      volume.style.width = (biggest.output || 0) + "px";
-    }
-    // set user as loudest, update display
-  }
-  window.requestAnimationFrame(audio_loop);
-};
+
 remote.addEventListener('track_removed', function(data) {
   var track = data.track;
   var elems = document.getElementById('partner').getElementsByClassName('track-' + track.id);
@@ -253,14 +176,21 @@ var room = {
       });  
     }
   },
-  status: function(str, show_invite) {
+  status: function(str, show_something) {
+    document.querySelector('#status_invite').style.display = 'none';
+    document.querySelector('#status_popout').style.display = 'none';
     if(!str || str == 'ready') {
       document.querySelector('#status_holder').style.display = 'none';
     } else {
       document.querySelector('#status_holder').style.display = 'block';
       document.querySelector('#status').innerText = str;
       if(room.current_room && room.current_room.for_self) {
-        document.querySelector('#status_invite').style.display = (show_invite ? 'block' : 'none');
+        if(show_something && show_something.invite) {
+          document.querySelector('#status_invite').style.display = 'block';
+        }
+      }
+      if(show_something && show_something.popout) {
+        document.querySelector('#status_popout').style.display = 'block';
       }
     }
   },
@@ -562,7 +492,7 @@ var room = {
       set_at: now,
       grid_id: id,
       root_id: room.root_id,
-      show_images: localStorage.show_images != 'false',
+      symbol_library: room.settings.symbol_library,
       buttons: room.buttons
     };
     room.send_update();
@@ -570,7 +500,6 @@ var room = {
   },
   send_image: function(image_url, alt) {
     if(!mirror_type) {
-      debugger
       room.show_image(image_url, alt, false);
     }
     if(!room.current_room) { return; }
@@ -657,6 +586,9 @@ var room = {
     }
   },
   start: function() {
+    if(room.camera === false) {
+      room.handle_camera_error();
+    }
     // TODO: if the user hasn't accepted terms, pop them up
     var room_id = (location.pathname.match(/\/rooms\/([\w:]+)$/) || {})[1];
     if(!mirror_type) {
@@ -714,14 +646,12 @@ var room = {
       }
     });
     
-    volume = document.querySelector('#volume_level');
-    if(location.href.match(/localhost/)) {
-      volume.style.display = 'block';
-    } else {
-      volume.style.display = 'none';
-    }
-
     room.room_id = localStorage['room_id_for_' + room_id] || room_id;
+    try {
+      room.settings = JSON.parse(localStorage['vidspeak_settings']);
+    } catch(e) { room.settings = {}; }
+    room.settings = room.settings || {};
+    room.settings.symbol_library = room.settings.symbol_library || 'lessonpix';
     room.flush();
     
     // TODO: show an intro video option (always for communicator, once for visitors)
@@ -797,6 +727,95 @@ var room = {
     } else {
       enter_room();
     }
+  },
+  handle_camera_error: function(err) {
+    var android_webview = navigator.userAgent.match(/Chrome\/.+Mobile/) && navigator.userAgent.match(/wv/);
+    var userAgent = window.navigator.userAgent.toLowerCase();
+    var ios_webview = /iphone|ipod|ipad/.test( userAgent ) && !window.navigator.standalone && !/safari/.test( userAgent );
+
+    if(err && err.timeout) {
+      if(android_webview || ios_webview) {
+        room.status("Please grant camera access or load in your device's browser", {popout: true});
+      } else {
+        room.status("Please grant access to the camera");
+      }
+    } else if(err && err.name == 'NotAllowedError') {
+      if(android_webview || ios_webview) {
+        room.status("Camera permission required", {popout: true});
+      } else {
+        room.status("Camera permission not granted");
+      }
+    } else if(err && err.name == 'NotFoundError') {
+      if(android_webview || ios_webview) {
+        room.status("Camera access not available", {popout: true});
+      } else {
+        room.status("Can't accesss the camera, your device may not support video calling, or you have it disabled.");
+      }
+    } else if(android_webview || ios_webview) {
+      // in an Android webview, not native browser
+      room.status("Camera access doesn't work inside non-browser apps.", {popout: true});
+    } else {
+      room.status("Can't accesss the camera, your device may not support video calling, or you have it disabled.");
+    }
+  },
+  update_from_settings: function() {
+    var video_track = remote.local_track('video'); 
+    var audio_track = remote.local_track('audio');
+    var current_video_id = video_track && video_track.device_id;
+    var current_audio_id = audio_track && audio_track.device_id;
+    if(room.settings.audio_device_id != current_audio_id) {
+      if(room.settings.audio_device_id == 'none') {
+        remote.remove_local_track(room.current_room.id, audio_track, true);
+      } else if(room.last_preview_audio_track && room.last_preview_audio_track.getSettings().deviceId == room.settings.audio_device_id) {
+        // We end any shares to prevent clobbering it with
+        // a new video feed, which could cause the user
+        // to send an unnoticed share feed in addition to video.
+        // TODO: a better solution would be to check on track_added
+        // and see if the new track is a new default_local_track
+        // and not end_share unless that is true
+        room.end_share();
+        var stream = new MediaStream();
+        stream.addTrack(room.last_preview_audio_track);
+        remote.add_local_tracks(room.current_room.id, stream, true);
+      }
+    }
+    if(room.settings.video_device_id != current_video_id) {
+      if(room.settings.video_device_id == 'none') {
+        remote.remove_local_track(room.current_room.id, video_track, true);
+      } else if(room.last_preview_video_track && room.last_preview_video_track.getSettings().deviceId == room.settings.video_device_id) {
+        // We end any shares to prevent clobbering it with
+        // a new video feed, which could cause the user
+        // to send an unnoticed share feed in addition to video.
+        // TODO: a better solution would be to check on track_added
+        // and see if the new track is a new default_local_track
+        // and not end_share unless that is true
+        room.end_share();
+        var stream = new MediaStream();
+          stream.addTrack(room.last_preview_video_track);
+        remote.add_local_tracks(room.current_room.id, stream, true);
+      }
+    }
+    room.assert_grid(room.buttons, room.grid_id);
+  },
+  swap_video: function() {
+    var video_track = remote.local_track('video');
+    var current_video_id = video_track && video_track.device_id;
+    // We intentionally don't persist the swap to
+    // settings, since most of the time the user will
+    // want to revert on their next fresh call
+    input.enumerate('video').then(function(list) {
+      var match = list.find(function(d) { return d.deviceId == current_video_id; });
+      var idx = (list.indexOf(match) + 1) % list.length;
+      var new_id = list[idx].deviceId;
+      navigator.mediaDevices.getUserMedia({
+        video: {deviceId: new_id}
+      }).then(function(stream) {
+        var track = stream.getVideoTracks()[0];
+        remote.add_local_tracks(room.current_room.id, track, true);
+      });
+    }, function(err) {
+      console.error('video swap failed', err);
+    });
   },
   filled_grid: function(lookups, transpose) {
     if(lookups.length == 6) {
@@ -881,11 +900,11 @@ var room = {
       var img = cell.getElementsByTagName('img')[0];
       if(img) {
         var image_url = button.image_url;
-        if(symbols['en'] && symbols['en'][button.text.toLowerCase()] && symbols['en'][button.text.toLowerCase()][room.symbol_library]) {
-          image_url = symbols['en'][button.text.toLowerCase()][room.symbol_library];
+        if(symbols['en'] && symbols['en'][button.text.toLowerCase()] && symbols['en'][button.text.toLowerCase()][room.settings.symbol_library]) {
+          image_url = symbols['en'][button.text.toLowerCase()][room.settings.symbol_library];
         }
     
-        if(image_url && localStorage.show_images != 'false') {
+        if(image_url && room.settings.symbol_library != 'none') {
           img.style.visibility = 'visible';
           img.src = "/blank.gif";
           setTimeout(function() {
@@ -1197,7 +1216,7 @@ var room = {
         // more recently than your own
         var ts = json.asserted_buttons.set_at - data.user.ts_offset;
         if(room.buttons && (!room.buttons.set_at || room.buttons.set_at < ts)) {
-          var changed = json.asserted_buttons.show_images != (localStorage.show_images != 'false');
+          var changed = json.asserted_buttons.symbol_library != room.settings.symbol_library;
           room.buttons.forEach(function(btn, idx) {
             if(!room.simple_button(btn, json.asserted_buttons.buttons[idx]).same) {
               changed = true;
@@ -1206,7 +1225,8 @@ var room = {
           if(changed) {
             room.asserted_buttons = json.asserted_buttons;
             room.asserted_buttons.set_at = ts - 1000;
-            localStorage.show_buttons = json.asserted_buttons.show_images.toString();
+            room.settings.symbol_library = json.asserted_buttons.symbol_library;
+            localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
             room.buttons = json.asserted_buttons.buttons;
             room.buttons.set_at = ts - 1000;
             room.grid_id = json.asserted_buttons.grid_id;
@@ -1253,8 +1273,8 @@ var room = {
       load_id: btn.load_id,
       image_url: btn.image_url
     };
-    if(symbols['en'] && symbols['en'][btn.text.toLowerCase()] && symbols['en'][btn.text.toLowerCase()][room.symbol_library]) {
-      res.image_url = symbols['en'][btn.text.toLowerCase()][room.symbol_library];
+    if(symbols['en'] && symbols['en'][btn.text.toLowerCase()] && symbols['en'][btn.text.toLowerCase()][room.settings.symbol_library]) {
+      res.image_url = symbols['en'][btn.text.toLowerCase()][room.settings.symbol_library];
     }
     if(comp) {
       res.same = comp.id == btn.id && comp.text == btn.text && comp.image_url == btn.image_url && comp.load_id == btn.load_id;
@@ -1441,7 +1461,6 @@ document.addEventListener('click', function(event) {
               image_urls[cell.querySelector('.text').innerText] = img.src;
             }
           });
-          localStorage.show_images = content.querySelector("input[name='show_images']").checked.toString();
 
           var ref = {};
           content.querySelectorAll('.layout_button').forEach(function(btn) {
@@ -1492,7 +1511,6 @@ document.addEventListener('click', function(event) {
       if(!room.current_room.for_self) {
         content.querySelector('.reverse').style.display = 'inline';
       }
-      content.querySelector("input[name='show_images']").checked = (localStorage.show_images != 'false');
       content.addEventListener('click', function(event) {
         if(event.target.classList.contains('size')) {
           size = parseInt(event.target.getAttribute('data-size'), 10);
@@ -1535,6 +1553,153 @@ document.addEventListener('click', function(event) {
       remote.reconnect();
     } else if(action == 'invite') {
       room.invite();
+    } else if(action == 'settings') {
+      var actions = [];
+      var settings = Object.assign({}, room.settings || {});
+      var modal_content = null;
+      actions.push({action: 'confirm', label: "Update", callback: function() {
+        var symbols = modal_content.querySelector('#symbol_select').value;
+        var video_id = modal_content.querySelector('#video_select').value;
+        var audio_id = modal_content.querySelector('#audio_select').value;
+        settings.audio_device_id = audio_id;
+        settings.video_device_id = video_id;
+        settings.symbol_library = symbols;
+        localStorage['vidspeak_settings'] = JSON.stringify(settings);
+        room.settings = settings;
+        room.update_from_settings();
+        modal.close();
+      }});
+      actions.push({action :'close', label: "Cancel"});
+      var elem = document.getElementById('settings_modal');
+      var analyser = null;
+      elem.onattached = function(content) {
+        modal_content = content;
+        var video_track = remote.local_track('video');
+        var audio_track = remote.local_track('audio');
+        var current_video_id = video_track && video_track.device_id;
+        var current_audio_id = audio_track && audio_track.device_id;
+        input.enumerate('audio').then(function(list) {
+          var select = content.querySelector('#audio_select');
+          select.innerHTML = '';
+          list.forEach(function(input) {
+            var option = document.createElement('option');
+            option.value = input.deviceId;
+            option.innerText = input.label;
+            select.appendChild(option);
+          });
+          var option = document.createElement('option');
+          option.value = 'none';
+          option.innerText = "No Audio";
+          select.appendChild(option);
+        });
+        content.querySelector('#audio_select').value = current_audio_id;
+        input.enumerate('video').then(function(list) {
+          var select = content.querySelector('#video_select');
+          select.innerHTML = '';
+          list.forEach(function(input) {
+            var option = document.createElement('option');
+            option.value = input.deviceId;
+            option.innerText = input.label;
+            select.appendChild(option);
+          });
+          var option = document.createElement('option');
+          option.value = 'none';
+          option.innerText = "No Video";
+          select.appendChild(option);
+        });
+        content.querySelector('#video_select').value = current_video_id;
+        content.querySelector('#symbol_select').value = room.settings.symbol_library;
+
+        var video = content.querySelector('#settings_video_preview');
+        video.wire_track = function(track) {
+          room.last_preview_video_track = track.mediaStreamTrack;
+          var stream = new MediaStream();
+          stream.addTrack(track.mediaStreamTrack);
+          video.srcObject = stream;
+          video.onloadedmetadata = function(e) {
+            video.play();
+          };
+        };
+        var track = remote.local_track('video');
+        if(track && track.mediaStreamTrack) {
+          video.wire_track(track);
+        }
+        var level = content.querySelector('#settings_audio_level');
+        var audio = content.querySelector('#settings_audio_preview');
+        audio.wire_track = function(track) {
+          room.last_preview_audio_track = track.mediaStreamTrack;
+          if(analyser) { analyser.release(); }
+          var stream = new MediaStream();
+          stream.addTrack(track.mediaStreamTrack);
+          audio.srcObject = stream;
+          audio.preview = true;
+          audio.muted = true;
+          audio.onloadedmetadata = function(e) {
+            audio.play();
+          };
+          analyser = input.track_audio(audio, track, {});
+          analyser.callback = function(output) {
+            level.style.height = Math.min(95, output) + "%";
+          }
+        }
+        var track = remote.local_track('audio');
+        if(track && track.mediaStreamTrack) {
+          audio.wire_track(track);
+        }
+
+        content.querySelector('#audio_select').addEventListener('change', function(e) {
+          var value = e.target.value;
+          if(value == 'none') {
+            if(analyser) { 
+              analyser.release(); 
+              analyser = null;
+            }
+            video.src = '';
+            setTimeout(function() {
+              level.style.height = '0px';
+            }, 1000);
+          } else {
+            navigator.mediaDevices.getUserMedia({
+              audio: {deviceId: value}
+            }).then(function(stream) {
+              var track = stream.getAudioTracks()[0];
+              if(track) {
+                audio.wire_track({mediaStreamTrack: track});
+              }
+            }, function(err) {
+              // TODO: err...
+            });
+          }
+        });
+        content.querySelector('#video_select').addEventListener('change', function(e) {
+          var value = e.target.value;
+          if(value == 'none') {
+            video.srcObject = null;
+          } else {
+            navigator.mediaDevices.getUserMedia({
+              video: {deviceId: value}
+            }).then(function(stream) {
+              var track = stream.getVideoTracks()[0];
+              if(track) {
+                video.wire_track({mediaStreamTrack: track});
+              }
+            }, function(err) {
+              // TODO: err...
+            });
+          }
+        });
+        content.querySelector('#symbol_select').addEventListener('change', function(e) {
+          content.querySelector('#settings_symbol_preview').className = e.target.value;
+        });
+        var select = content.querySelector('#symbol_select');
+        var event = new Event('change');
+        select.dispatchEvent(event);
+      };
+      modal.open("Call Settings", elem, actions).then(function() {
+        if(analyser) { analyser.release(); }
+      }, function() {
+        if(analyser) { analyser.release(); }
+      });
     } else if(action == 'quick') {
       room.assert_grid(room.default_buttons, 'quick', true);
     } else if(action == 'load') {
@@ -1600,5 +1765,4 @@ if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
   room.screen_sharing = true;
 }
 
-room.symbol_library = 'lessonpix';
 room.default_buttons = default_buttons;

@@ -40,8 +40,18 @@ remote.webrtc = {
   start_local_tracks: function(opts) {
     opts = opts || {audio: true, video: true, data: true};
     var init = {};
-    if(opts.audio) { init.audio = {autoGainControl: true, echoCancellation: true, noiseSuppression: true}; }
-    if(opts.video) { init.video = {facingMode: {ideal: 'user'}, height: 720}; }
+    if(opts.audio) { 
+      init.audio = {autoGainControl: true, echoCancellation: true, noiseSuppression: true}; 
+      if(opts.audio_id) {
+        init.audio.deviceId = opts.audio_id;
+      }
+    }
+    if(opts.video) { 
+      init.video = {facingMode: {ideal: 'user'}, height: 720}; 
+      if(opts.video_id) {
+        init.video.deviceId = opts.device_id;
+      }
+    }
     return new Promise(function(res, rej) {
       navigator.mediaDevices.getUserMedia(init).then(function(stream) {
         remote.webrtc.local_tracks = stream.getTracks();
@@ -50,6 +60,7 @@ remote.webrtc = {
           var track_ref = {
             type: track.kind,
             mediaStreamTrack: track,
+            device_id: track.getSettings().deviceId,
             id: "0-" + track.id,
             added: (new Date()).getTime(),
           };
@@ -82,6 +93,7 @@ remote.webrtc = {
             var track_ref = {
               id: "0-" + track.id,
               mediaStreamTrack: track,
+              device_id: track.getSettings().deviceId,
               type: track.kind
             };
             if(track.kind == 'audio' || track.kind == 'video') {
@@ -98,7 +110,6 @@ remote.webrtc = {
               main_room.subroom_ids.forEach(function(subroom_id) {
                 var pc = main_room.subrooms[subroom_id].rtcpc;
                 if(pc) {
-                  // pc.local_stream.addTrack(track);
                   var sender = pc.addTrack(track, pc.local_stream);
                   main_room.subrooms[subroom_id].tracks = main_room.subrooms[subroom_id].tracks || {};
                   main_room.subrooms[subroom_id].tracks[track_ref.id] = main_room.subrooms[subroom_id].tracks[track_ref.id] || {};
@@ -276,6 +287,7 @@ remote.webrtc = {
         var track_ref = {
           id: track_id,
           mediaStreamTrack: track,
+          device_id: track.getSettings().deviceId,
           type: track.kind,
           added: (new Date()).getTime(),
         };

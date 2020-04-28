@@ -49,8 +49,18 @@ remote.mirror = {
   start_local_tracks: function(opts) {
     opts = opts || {audio: true, video: true, data: true};
     var init = {};
-    if(opts.audio) { init.audio = {autoGainControl: true, echoCancellation: true, noiseSuppression: true}; }
-    if(opts.video) { init.video = {facingMode: {ideal: 'user'}, height: 720}; }
+    if(opts.audio) { 
+      init.audio = {autoGainControl: true, echoCancellation: true, noiseSuppression: true}; 
+      if(opts.audio_id) {
+        init.audio.deviceId = opts.audio_id;
+      }
+    }
+    if(opts.video) { 
+      init.video = {facingMode: {ideal: 'user'}, height: 720}; 
+      if(opts.video_id) {
+        init.video.deviceId = opts.device_id;
+      }
+    }
     return new Promise(function(res, rej) {
       navigator.mediaDevices.getUserMedia(init).then(function(stream) {
         remote.mirror.local_tracks = stream.getTracks();
@@ -60,6 +70,7 @@ remote.mirror = {
             type: track.kind,
             mediaStreamTrack: track,
             id: "0-" + track.id,
+            device_id: track.getSettings().deviceId,
             added: (new Date()).getTime(),
           };
           if(track.kind == 'audio' || track.kind == 'video') {
@@ -91,6 +102,7 @@ remote.mirror = {
             var track_ref = {
               id: "0-" + track.id,
               mediaStreamTrack: track,
+              device_id: track.getSettings().deviceId,
               type: track.kind
             };
             if(track.kind == 'audio' || track.kind == 'video') {
@@ -108,6 +120,7 @@ remote.mirror = {
                 var track_ref = {
                   id: 'remote-' + track.id,
                   mediaStreamTrack: track,
+                  device_id: track.getSettings().deviceId,
                   type: track.kind
                 };
                 remote.mirror.start_processsing(track, true, function(generator) {
@@ -178,6 +191,7 @@ remote.mirror = {
           var track_ref = {
             id: 'reverse-' + track.id,
             mediaStreamTrack: track,
+            device_id: track.getSettings().deviceId,
             type: track.kind,
             added: (new Date()).getTime(),
           }

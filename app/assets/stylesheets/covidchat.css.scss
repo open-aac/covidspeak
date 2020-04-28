@@ -666,7 +666,7 @@ strong {
   }
 }
 .extras {
-  width: 321px;
+  width: 428px;
   .button {
     height: 80px;
     width: 100px;
@@ -947,4 +947,86 @@ strong {
   box-shadow: 0 2px 5px #fff;
   height: 15px;
   width: 0;
+}
+#settings_modal {
+  select {
+    height: 40px;
+    width: 100%;
+    font-size: 20px;
+  }
+  .half {
+    width: calc(50% - 10px);
+    margin-right: 10px;
+    float: left;
+    margin-bottom: 5px;
+    h2 {
+      font-size: 14px;
+    }
+  }
+  .preview_container {
+    max-width: 80%;
+    height: calc(90vh - 110px - 160px);
+    position: relative;
+    video {
+      border: 1px solid #ccc;
+      padding: 5px;
+      height: 100%;
+      max-width: calc(100% - 10px);
+      margin-left: 15px;
+    }  
+    #settings_audio_level {
+      float: left;
+      position: absolute;
+      bottom: 5px;
+      width: 10px;
+      height: 100px;
+      background: #0f0;
+      border-radius: 3px;
+    }
+  }
+  #settings_symbol_preview {
+    .lessonpix_preview,.twemoji_preview,.none_preview {
+      display: none;
+      text-align: center;
+      img {
+        width: calc(80% / 5);
+        max-height: 50px;
+        object-fit: contain;
+        object-position: center;
+      }
+    }
+    &.lessonpix {
+      .lessonpix_preview {
+        display: block;
+      }
+    }
+    &.twemoji {
+      .twemoji_preview {
+        display: block;
+      }
+    }
+    &.none {
+      .none_preview {
+        display: block;
+        margin: 0 20px;
+        padding-top: 10px;
+        color: #888;
+      }
+    }
+    &:not(.twemoji):not(.none) {
+      .lessonpix_preview {
+        display: block;
+      }
+    }
+  }
+
+}
+#middle .preview .status {
+  &.waiting {
+    height: 100%; 
+    padding-top: 20px; 
+    border: 1px solid #888; 
+    background: #000; 
+    color: #eee;    
+  }
 }
