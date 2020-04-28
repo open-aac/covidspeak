@@ -411,7 +411,15 @@ remote.webrtc = {
 
     });
     pc.addEventListener('icecandidateerror', function(e) {
-      console.log("CANDIDATE ERROR", e.target);
+      console.log("CANDIDATE ERROR", e.errorCode, e.target);
+      if (e.errorCode >= 300 && e.errorCode <= 699) {
+        // STUN errors are in the range 300-699. See RFC 5389, section 15.6
+        // for a list of codes. TURN adds a few more error codes; see
+        // RFC 5766, section 15 for details.
+      } else if (e.errorCode >= 700 && ee.errorCode <= 799) {
+        // Server could not be reached; a specific error number is
+        // provided but these are not yet specified.
+      }
     });
     console.log("ADDING INITIAL LOCAL TRACKS", room.share_tracks, remote.webrtc.local_tracks);
     // Safari only allows streaming one video track, it seems, so add the later ones first

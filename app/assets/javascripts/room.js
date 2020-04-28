@@ -684,7 +684,9 @@ var room = {
       room_check.then(function(res) {
         room.current_user_id = res.user_id;
         remote.backend = res.room.type;
-        remote.start_local_tracks({audio: true, video: true, data: true}).then(function(tracks) {
+        var local_tried = false;
+        remote.start_local_tracks({audio: true, video: true, data: true, audio_id: room.settings.audio_device_id, video_id: room.settings.video_device_id}).then(function(tracks) {
+          local_tried = true;
           for(var idx = 0; idx < tracks.length; idx++) {
             if(tracks[idx].type == 'video') {
               document.getElementById('communicator').innerHTML = "";
@@ -693,7 +695,7 @@ var room = {
           }
           room.status("Connecting...");
           remote.connect_to_remote(res.access, res.room.key).then(function(room_session) {
-            room.status('Waiting for Partner...', true);
+            room.status('Waiting for Partner...', {invite: true});
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
             room_session.user_id = res.user_id;
             room_session.for_self = room.room_id == localStorage.room_id;
@@ -706,12 +708,19 @@ var room = {
             console.error("Unable to connect to Room: " + error.message);
           });
         }, function(err) {
+          local_tried = true;
           console.error("Unable to create local tracks: ", err);
         });
+        setTimeout(function() {
+          if(!local_tried) {
+            room.handle_camera_error({timeout: true});
+          }
+        }, 5000);
       }, function(err) {
         // TODO: alert the user, this will happen if the
         // communicator is no longer in the room
         console.error("Room creation error: ", err);
+        room.status("Room failed to initialize, please try again");
       });
     };
     if(!mirror_type && localStorage.user_id && room.room_id == localStorage.room_id) {
@@ -1381,6 +1390,7 @@ document.addEventListener('click', function(event) {
   var $button = $(event.target).closest('.button');
   var $partner = $(event.target).closest('#partner');
   var $invite = $(event.target).closest('#invite_partner');
+  var $popout = $(event.target).closest('#popout_view');
   var $text_prompt = $(event.target).closest('#text_prompt');
   var $communicator = $(event.target).closest('#communicator');
   var $zoom = $(event.target).closest('.zoom');
@@ -1398,6 +1408,8 @@ document.addEventListener('click', function(event) {
     room.toggle_controls();
   } else if($invite.length > 0) {
     room.invite();
+  } else if($popout.length > 0) {
+    window.open()
   } else if($text_prompt.length > 0) {
     event.preventDefault();
     room.toggle_input();
@@ -1753,6 +1765,9 @@ document.addEventListener('click', function(event) {
     room.toggle_self_mute();
   }
 });
+if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+  room.camera = false;
+}
 var canvas_elem = document.createElement('canvas');
 if(canvas_elem.captureStream) {
   room.image_sharing = true;  

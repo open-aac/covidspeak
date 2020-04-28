@@ -4,8 +4,15 @@
     Ready to chat<span id='mirror_text' style='display: none;'> <b>with yourself</b></span>? 
   </div>
   <div class='preview'>
+    <div class='status'>
+      <div id='message' style='font-size: 20px;'>
+      </div>
+      <div id='popout' style='display: none;'>
+        <button id='popout_browser' class='primary'>Open in Browser</button>
+      </div>
+    </div>
   </div>
-  <div class='big_checkbox' style='margin: 10px 0; padding-leftt: 70px; text-align: left; padding-top: 0; font-size: 14px;'>
+  <div class='big_checkbox' style='margin: 10px 0; padding-left: 52px; text-align: left; padding-top: 0; font-size: 14px;'>
     <label>
       <input type='checkbox' id='accept'/>
       By using the product, you are agreeing that you have read and understood the <a href="/terms">Terms of Use and License Agreement</a>, and are capable of binding to a legal contract.
@@ -71,7 +78,22 @@ if(location.href.match(/rooms\/mirror/)) {
   document.querySelector('#mirror_text').style.display = 'inline';
 }
 async function getMedia() {
+  room.status = function(message, options) {
+    document.querySelector('.preview .status #message').innerText = message;
+    document.querySelector('.preview .status #popout').style.display = 'none';
+    if(options && options.popout) {
+      document.querySelector('.preview .status #popout').style.display = 'block';
+    }
+  };
+  var handled = false;
+  setTimeout(function() {
+    if(!handled) {
+      room.status("Waiting for camera...");
+      document.querySelector('#middle .preview .status').classList.add('waiting');
+    }
+  }, 500);
   var stream = await navigator.mediaDevices.getUserMedia({video: true}).then(function(stream) {
+    handled = true;
     var video = document.createElement('video');
     video.srcObject = stream;
     video.onloadedmetadata = function(e) {
@@ -80,8 +102,14 @@ async function getMedia() {
     document.querySelector('#middle .preview').innerText = "";
     document.querySelector('#middle .preview').appendChild(video);
   }, function(err) {
-    
+    handled = true;
+    room.handle_camera_error(err);    
   });
+  setTimeout(function() {
+    if(!handled) { 
+      room.handle_camera_error({timeout: true});
+    }
+  }, 5000);
 };
 getMedia();
 
