@@ -32,7 +32,71 @@ There are other features as well, but those are the basics.
 
 ## Getting Started
 
-... Contributions welcome!
+Co-VidSpeak is a Rails backend (mainly for the API) and a
+lightweight JavaScript frontend (prolly shoulda started
+with a framework, but didn't). We run it in Heroku so I 
+assume other container frameworks shouldn't be too bad.
+
+Check out `.env.example` for configuration settings. Also 
+keep in mind Redis and Postgres (other other db) are 
+required (see `config/database.yml` and `config/cable.yml`)
+
+If you are not using Twilio Video as your delivery system,
+ActionCable is required to coordinate room management
+between participants.
+
+To get a barebones system running you should be able to do
+the following once you have Redis and Postgres (or other db) running
+and configured:
+
+```
+bundle install
+bundle exec rake db:migrate
+rails server
+```
+
+That should load the app, but you won't be able to start
+a shared room until you have a TURN server or Twilio account
+set up. You can enter `mirror` as the join code to join
+a room with yourself, but that's it.
+Below are examples of configurations that should
+allow you to start a two-person room:
+
+```
+bundle exec rails console
+# To make a join code that will use Twilio Video (easiest)
+a = Account.new(code: 'my_join_code')
+a.settings = {"type"=>"twilio"}
+a.save!
+
+# To make a join code that will use Twilio's TURN servers
+a = Account.new(code: 'my_join_code')
+a.settings = {"source"=>"twilio", "type"=>"webrtc"}
+a.save!
+
+# To make a join code that will use a custom TURN server
+a = Account.new(code: 'my_join_code')
+a.settings = {"address"=>"my.turnserver.org", "verifier"=>"hmac_sha1"}
+# If auth is disabled for the TURN server, this can be whatever
+a.verifier = "SHARED_SECRET"
+a.save!
+```
+
+Once you have an account created you should be able to enter
+the join code you specified and start a new room. Keep in mind
+if web sockets are not enabled on your server then you won't
+be able to join a room with another person because negotiation
+will fail.
+
+## Contributions
+Look in `app/assets/javascripts` for the js files. Keep
+in mind all js files are loaded for every page. CSS is
+in `app/assets/stylesheets`. HTML files are in
+`app/views/index` and `app/views/layouts`. Backend code
+should be straightforward if you know Rails. Projects
+listed below if you feel like taking one on. Please let me
+know if you do so we don't reproduce work. Chat/Q&A available
+via Slack join link at https://www.openaac.org .
 
 ## HIPAA
 
@@ -46,6 +110,18 @@ does not need to enter into a Business Asssociate
 Agreement with the health provider.
 
 https://www.hipaajournal.com/hipaa-conduit-exception-rule/
+
+## TODO
+(Contributions welcome!)
+- Limit concurrent rooms per account
+- Improve input-switching
+- Track down issue with Twilio TURN server sessions not loading if parter waits more than 10 minutes to join
+- Throttling (rack-attack?)
+- Account details page (secure link showing usage rates, etc.)
+- Turn off video rendering on page blur
+- Show some animated audio level when no video shown
+- Support for Multiple visitors
+- On mobile Android if you navigate away it keeps running...
 
 ## License
 
