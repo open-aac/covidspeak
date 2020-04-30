@@ -88,6 +88,14 @@ if web sockets are not enabled on your server then you won't
 be able to join a room with another person because negotiation
 will fail.
 
+### Scaling
+
+Co-VidSpeak should work with multiple hosting servers. As long
+as all servers can connect to the same Redis cluster and
+Postgres database, the data should stay synced. Database
+load should be minimal, though Redis is used both for 
+basic key-value storage (lightweight) and 
+
 ## Contributions
 Look in `app/assets/javascripts` for the js files. Keep
 in mind all js files are loaded for every page. CSS is

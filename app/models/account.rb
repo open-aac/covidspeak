@@ -30,6 +30,9 @@ class Account < ApplicationRecord
   end
 
   def generate_room(user_id_or_hash)
+    # TODO: throttling, only allow generating a new room
+    # if there haven't been too many concurrent rooms
+    # recently based on this account's settings
     str = user_id_or_hash
     if !user_id_or_hash.match(/^r/)
       str = "r" + GoSecure.sha512(user_id_or_hash, 'room_id for user')[0, 40]

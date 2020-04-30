@@ -68,23 +68,30 @@ remote.addEventListener('user_added', function(data) {
   // TODO: keep a rotation of helpers for the communicator,
   // and keep communicators on everyone else's view
   if(data.user.id != room.current_room.user_id) {
+    room.active_users = room.active_users || {};
     room.set_active();
     room.status('ready');
-    var sound = new Audio();
-    sound.src = "/sounds/enter.mp3";
-    sound.oncanplay = function() {
-      sound.play();
+    if(!room.active_users[data.user.id]) {
+      var sound = new Audio();
+      sound.src = "/sounds/enter.mp3";
+      sound.oncanplay = function() {
+        sound.play();
+      }  
     }
+    room.active_users[data.user.id] = true;
   }
   setTimeout(function() {
     room.send_update();
   }, 500);
 });
 remote.addEventListener('user_removed', function(data) {
-  var sound = new Audio();
-  sound.src = "/sounds/exit.mp3";
-  sound.oncanplay = function() {
-    sound.play();
+  if((room.active_users || {})[data.user.id]) {
+    room.active_users[data.user.id] = false;
+    var sound = new Audio();
+    sound.src = "/sounds/exit.mp3";
+    sound.oncanplay = function() {
+      sound.play();
+    }
   }
 });
 remote.addEventListener('message', function(data) {
@@ -291,8 +298,8 @@ var room = {
     var div = document.createElement('div');
     var canvas = document.createElement('canvas');
     var video = document.querySelector('#communicator video');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = (video || {}).videoWidth || 1280;
+    canvas.height = (video || {}).videoHeight || 720;
     div.appendChild(canvas);
     var context = canvas.getContext('2d');
     context.fillStyle = 'black';
@@ -375,27 +382,36 @@ var room = {
     find_pic();
   },
   update_preview: function(elem, playable) {
-    var $communicator = document.querySelector('#communicator')
+    var communicator = document.querySelector('#communicator');
     communicator.innerHTML = '';
     if(elem) {
-      $communicator.appendChild(elem);
+      communicator.appendChild(elem);
       var end_share = document.createElement('div');
       end_share.classList.add('end_share');
-      $communicator.appendChild(end_share);
-      $communicator.classList.add('preview');
+      communicator.appendChild(end_share);
+      communicator.classList.add('preview');
       if(playable) {
-        $communicator.classList.add('playable');
-        $communicator.classList.remove('paused');
+        communicator.classList.add('playable');
+        communicator.classList.remove('paused');
       }
     } else {
-      $communicator.classList.remove('preview');
-      $communicator.classList.remove('playable');
-      $communicator.classList.remove('paused');
+      communicator.classList.remove('preview');
+      communicator.classList.remove('playable');
+      communicator.classList.remove('paused');
       var vid = room.local_tracks.find(function(t) { return t.type == 'video'; });
       if(vid && vid.generate_dom) {
-        $communicator.appendChild(vid.generate_dom());
+        communicator.appendChild(vid.generate_dom());
+      } else {
+        var div = document.createElement('div');
+        var img = document.createElement('img');
+        img.src = '/icons/person-square.svg';
+        div.classList.add('nobody');
+        div.appendChild(img);
+        communicator.appendChild(div);
+        // TODO: show a placeholder picture instead
       }
     }
+    room.send_update();
   },
   toggle_video: function(rewind) {
     var video = room.share_tracks && room.share_tracks.video;
@@ -532,6 +548,12 @@ var room = {
       action: 'update',
       user_id: room.current_room.user_id,
       tracks: track_ids
+    }
+    if(room.local_tracks.find(function(t) { return t.type == 'audio' && t.mediaStreamTrack && t.mediaStreamTrack.enabled; })) {
+      message.audio = true;
+    }
+    if(room.local_tracks.find(function(t) { return t.type == 'video' && t.mediaStreamTrack && t.mediaStreamTrack.enabled; })) {
+      message.video = true;
     }
     if(room.asserted_buttons) {
       room.asserted_buttons.buttons = room.asserted_buttons.buttons.map(function(b) { return room.simple_button(b)});
@@ -692,7 +714,10 @@ var room = {
         room.current_user_id = res.user_id;
         remote.backend = res.room.type;
         var local_tried = false;
-        remote.start_local_tracks({audio: true, video: true, data: true, audio_id: room.settings.audio_device_id, video_id: room.settings.video_device_id}).then(function(tracks) {
+        if(room.settings.audio_device_id == 'none' && room.settings.video_device_id == 'none') {
+          room.settings['audio_device_id'] = 'any';
+        }
+        remote.start_local_tracks({audio: room.settings.audio_device_id != 'none', video: room.settings.video_device_id != 'none', data: true, audio_id: room.settings.audio_device_id, video_id: room.settings.video_device_id}).then(function(tracks) {
           local_tried = true;
           for(var idx = 0; idx < tracks.length; idx++) {
             if(tracks[idx].type == 'video') {
@@ -778,58 +803,100 @@ var room = {
   update_from_settings: function() {
     var video_track = remote.local_track('video'); 
     var audio_track = remote.local_track('audio');
-    var current_video_id = video_track && video_track.device_id;
-    var current_audio_id = audio_track && audio_track.device_id;
+    var current_video_id = video_track && video_track.device_id || 'none';
+    var current_audio_id = audio_track && audio_track.device_id || 'none';
     if(room.settings.audio_device_id != current_audio_id) {
       if(room.settings.audio_device_id == 'none') {
-        remote.remove_local_track(room.current_room.id, audio_track, true);
+        if(audio_track) {
+          remote.remove_local_track(room.current_room.id, audio_track, true);
+          room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != audio_track.id; });
+          room.update_preview();
+        }
       } else if(room.last_preview_audio_track && room.last_preview_audio_track.getSettings().deviceId == room.settings.audio_device_id) {
-        // We end any shares to prevent clobbering it with
-        // a new video feed, which could cause the user
-        // to send an unnoticed share feed in addition to video.
-        // TODO: a better solution would be to check on track_added
-        // and see if the new track is a new default_local_track
-        // and not end_share unless that is true
         room.end_share();
-        var stream = new MediaStream();
-        stream.addTrack(room.last_preview_audio_track);
-        remote.add_local_tracks(room.current_room.id, stream, true);
+        var track_ref = {
+          id: 'unknown',
+          device_id: room.last_preview_audio_track.getSettings().deviceId,
+          mediaStreamTrack: room.last_preview_audio_track,
+          type: 'audio'
+        };
+        remote.add_local_tracks(room.current_room.id, track_ref, true).then(function(tracks) {
+          // We add to the front of the list so shares don't get interrupted
+          tracks.forEach(function(t) { 
+            room.local_tracks.unshift(t);
+          });
+          room.update_preview();
+        }, function(err) {
+          debugger
+        });
       }
     }
-    if(room.settings.video_device_id != current_video_id) {
-      if(room.settings.video_device_id == 'none') {
-        remote.remove_local_track(room.current_room.id, video_track, true);
-      } else if(room.last_preview_video_track && room.last_preview_video_track.getSettings().deviceId == room.settings.video_device_id) {
-        // We end any shares to prevent clobbering it with
-        // a new video feed, which could cause the user
-        // to send an unnoticed share feed in addition to video.
-        // TODO: a better solution would be to check on track_added
-        // and see if the new track is a new default_local_track
-        // and not end_share unless that is true
-        room.end_share();
-        var stream = new MediaStream();
-          stream.addTrack(room.last_preview_video_track);
-        remote.add_local_tracks(room.current_room.id, stream, true);
+    var video_device_id = room.temp_video_device_id || room.settings.video_device_id;
+    if(video_device_id != current_video_id) {
+      if(video_device_id == 'none') {
+        if(video_track) {
+          remote.remove_local_track(room.current_room.id, video_track, true);
+          room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != video_track.id; });
+          room.update_preview();
+        }
+      } else if(room.last_preview_video_track && room.last_preview_video_track.getSettings().deviceId == video_device_id) {
+        var track_ref = {
+          id: 'unknown',
+          device_id: room.last_preview_video_track.getSettings().deviceId,
+          mediaStreamTrack: room.last_preview_video_track,
+          type: 'video'
+        };
+        remote.add_local_tracks(room.current_room.id, track_ref, true).then(function(tracks) {
+          // We add to the front of the list so shares don't get interrupted
+          tracks.forEach(function(t) { 
+            room.local_tracks.unshift(t);
+          });
+          room.update_preview();
+        }, function(err) {
+          debugger
+        });
       }
     }
-    room.assert_grid(room.buttons, room.grid_id);
   },
   swap_video: function() {
     var video_track = remote.local_track('video');
-    var current_video_id = video_track && video_track.device_id;
-    // We intentionally don't persist the swap to
-    // settings, since most of the time the user will
-    // want to revert on their next fresh call
+    var current_video_id = room.temp_video_device_id || (video_track && video_track.device_id);
     input.enumerate('video').then(function(list) {
-      var match = list.find(function(d) { return d.deviceId == current_video_id; });
-      var idx = (list.indexOf(match) + 1) % list.length;
-      var new_id = list[idx].deviceId;
-      navigator.mediaDevices.getUserMedia({
-        video: {deviceId: new_id}
-      }).then(function(stream) {
-        var track = stream.getVideoTracks()[0];
-        remote.add_local_tracks(room.current_room.id, track, true);
+      var ids = [];
+      if(current_video_id && current_video_id != 'none') { 
+        ids.push(current_video_id);
+      }
+      list.forEach(function(d) {
+        ids.push(d.deviceId);
       });
+      room.video_device_ids = [];
+      var hash = {};
+      ids.forEach(function(id) {
+        if(!hash[id]) {
+          hash[id] = true;
+          room.video_device_ids.push(id);
+        }
+      });
+      var idx = room.video_device_ids.indexOf(current_video_id);
+      var new_idx = idx + 1;
+      room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';
+      if(room.temp_video_device_id != 'none') {
+        navigator.mediaDevices.getUserMedia({
+          video: {deviceId: room.temp_video_device_id}
+        }).then(function(stream) {
+          var track = stream.getVideoTracks()[0];
+          if(track) {
+            room.temp_video_device_id = track.getSettings().deviceId;
+            room.last_preview_video_track = track;
+            room.update_from_settings();
+          }
+        }, function(err) {
+          // TODO: err...
+        });
+
+      } else {
+        room.update_from_settings();
+      }
     }, function(err) {
       console.error('video swap failed', err);
     });
@@ -1228,6 +1295,23 @@ var room = {
       }
       room.show_image(json.url, json.text, big_image);
     } else if(json && json.action == 'update') {
+      if(data.user) {
+        if(data.message.video) {
+          document.querySelector('#no_preview').style.display = 'none';
+          document.querySelector('#eyes').style.display = 'block';
+          // show the video feed (and audio indicator?)
+        } else if(data.message.audio) {
+          document.querySelector('#no_preview').style.display = 'block';
+          document.querySelector('#eyes').style.display = 'none';
+          document.querySelector('#no_preview').classList.remove('dancing');
+          // show the unanimated preview w/ animated audio
+        } else {
+          document.querySelector('#no_preview').classList.add('dancing');
+          document.querySelector('#no_preview').style.display = 'block';
+          document.querySelector('#eyes').style.display = 'none';
+          // show the animated preview
+        }
+      }
       if(data.user && data.user.ts_offset != null && json.asserted_buttons) {
         // accept the other user's butttons if they were updated
         // more recently than your own
@@ -1321,7 +1405,7 @@ document.addEventListener('mousemove', function(event) {
   if($(event.target).closest('#partner').length > 0 && event.buttons == 1) {
     event.preventDefault();
     shift(event);
-  } else if(event.target.closest('#partner,#nav,#eyes')) {
+  } else if(event.target.closest('#partner,#nav,#eyes,#no_preview')) {
     // if moving the mouse more than 1.5s, show controls
     if(!room.partner_hover) {
       clearTimeout(room.partner_hover);
@@ -1396,7 +1480,7 @@ document.addEventListener('click', function(event) {
   if(event.target.classList.contains('text_input')) { return; }
   var $cell = $(event.target).closest('.cell');
   var $button = $(event.target).closest('.button');
-  var $partner = $(event.target).closest('#partner');
+  var $partner = $(event.target).closest('#partner,#nav,#eyes,#no_preview');
   var $invite = $(event.target).closest('#invite_partner');
   var $popout = $(event.target).closest('#popout_view');
   var $text_prompt = $(event.target).closest('#text_prompt');
@@ -1413,6 +1497,14 @@ document.addEventListener('click', function(event) {
       room.toggle_video();
     }
   } else if($partner.length > 0) {
+    if(room.partner_hover) {
+      clearTimeout(room.partner_hover);
+      room.partner_hover = false;
+    }
+    if(room.partner_linger) {
+      clearTimeout(room.partner_linger);
+      room.partner_linger = false;
+    }
     room.toggle_controls();
   } else if($invite.length > 0) {
     room.invite();
@@ -1576,21 +1668,20 @@ document.addEventListener('click', function(event) {
       room.invite();
     } else if(action == 'settings') {
       var actions = [];
-      var settings = Object.assign({}, room.settings || {});
+      room.settings = room.settings || {};
       var modal_content = null;
-      actions.push({action: 'confirm', label: "Update", callback: function() {
-        var symbols = modal_content.querySelector('#symbol_select').value;
+      var update_tracks = function() {
         var video_id = modal_content.querySelector('#video_select').value;
         var audio_id = modal_content.querySelector('#audio_select').value;
-        settings.audio_device_id = audio_id;
-        settings.video_device_id = video_id;
-        settings.symbol_library = symbols;
-        localStorage['vidspeak_settings'] = JSON.stringify(settings);
-        room.settings = settings;
+        if(room.settings.audio_device_id == audio_id && room.settings.video_device_id == video_id) {
+          return;
+        }
+        room.settings.audio_device_id = audio_id;
+        room.settings.video_device_id = video_id;
+        room.temp_video_device_id = null;
+        localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
         room.update_from_settings();
-        modal.close();
-      }});
-      actions.push({action :'close', label: "Cancel"});
+      };
       var elem = document.getElementById('settings_modal');
       var analyser = null;
       elem.onattached = function(content) {
@@ -1599,6 +1690,12 @@ document.addEventListener('click', function(event) {
         var audio_track = remote.local_track('audio');
         var current_video_id = video_track && video_track.device_id;
         var current_audio_id = audio_track && audio_track.device_id;
+        if(room.settings.audio_device_id != 'none') {
+          room.settings.audio_device_id = current_audio_id || 'none';
+        }
+        if(room.settings.video_device_id != 'none') {
+          room.settings.video_device_id = current_video_id || 'none';
+        }
         input.enumerate('audio').then(function(list) {
           var select = content.querySelector('#audio_select');
           select.innerHTML = '';
@@ -1612,8 +1709,8 @@ document.addEventListener('click', function(event) {
           option.value = 'none';
           option.innerText = "No Audio";
           select.appendChild(option);
+          content.querySelector('#audio_select').value = current_audio_id || 'none';
         });
-        content.querySelector('#audio_select').value = current_audio_id;
         input.enumerate('video').then(function(list) {
           var select = content.querySelector('#video_select');
           select.innerHTML = '';
@@ -1627,8 +1724,8 @@ document.addEventListener('click', function(event) {
           option.value = 'none';
           option.innerText = "No Video";
           select.appendChild(option);
+          content.querySelector('#video_select').value = current_video_id || 'none';
         });
-        content.querySelector('#video_select').value = current_video_id;
         content.querySelector('#symbol_select').value = room.settings.symbol_library;
 
         var video = content.querySelector('#settings_video_preview');
@@ -1679,6 +1776,7 @@ document.addEventListener('click', function(event) {
             setTimeout(function() {
               level.style.height = '0px';
             }, 1000);
+            update_tracks();
           } else {
             navigator.mediaDevices.getUserMedia({
               audio: {deviceId: value}
@@ -1686,6 +1784,7 @@ document.addEventListener('click', function(event) {
               var track = stream.getAudioTracks()[0];
               if(track) {
                 audio.wire_track({mediaStreamTrack: track});
+                update_tracks();
               }
             }, function(err) {
               // TODO: err...
@@ -1696,6 +1795,7 @@ document.addEventListener('click', function(event) {
           var value = e.target.value;
           if(value == 'none') {
             video.srcObject = null;
+            update_tracks();
           } else {
             navigator.mediaDevices.getUserMedia({
               video: {deviceId: value}
@@ -1703,6 +1803,7 @@ document.addEventListener('click', function(event) {
               var track = stream.getVideoTracks()[0];
               if(track) {
                 video.wire_track({mediaStreamTrack: track});
+                update_tracks();
               }
             }, function(err) {
               // TODO: err...
@@ -1711,6 +1812,11 @@ document.addEventListener('click', function(event) {
         });
         content.querySelector('#symbol_select').addEventListener('change', function(e) {
           content.querySelector('#settings_symbol_preview').className = e.target.value;
+          if(e.target.value != room.settings.symbol_library) {
+            room.settings.symbol_library = e.target.value;
+            localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
+            room.assert_grid(room.buttons, room.grid_id);
+          }
         });
         var select = content.querySelector('#symbol_select');
         var event = new Event('change');
@@ -1770,6 +1876,8 @@ document.addEventListener('click', function(event) {
     } else {
       room.zoom(false);
     }
+  } else if(event.target.closest('.toggle') != null) {
+    room.swap_video();    
   } else if(event.target.closest('.unmute,.mute') != null) {
     room.toggle_self_mute();
   }

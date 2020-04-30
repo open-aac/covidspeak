@@ -136,8 +136,12 @@ remote.mirror = {
         }
       } else {
         var track = (remote.mirror.local_tracks || []).find(function(t) { return ("0-" + t.id) == track_ref.id; });
+        if(track_ref.device_id) {
+          track = track || (remote.mirror.local_tracks || []).find(function(t) { return t.device_id == track_ref.device_id; });
+        }
         if(track && pc) {
           track.enabled = true;
+          res([track_ref]);
         } else {
           return rej({error: 'no track or connection found'});
         }
@@ -147,6 +151,9 @@ remote.mirror = {
   remove_local_track: function(room_id, track_ref, remember) {
     return new Promise(function(res, rej) {
       var track = (remote.mirror.local_tracks || []).find(function(t) { return ("0-" + t.id) == track_ref.id; });
+      if(track_ref.device_id) {
+        track = track || (remote.mirror.local_tracks || []).find(function(t) { return t.device_id == track_ref.device_id; });
+      }
       var main_room = remote.mirror.rooms[room_id];
 
       if(track && main_room) {

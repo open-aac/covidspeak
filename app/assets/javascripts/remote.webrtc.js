@@ -126,8 +126,12 @@ remote.webrtc = {
         }
       } else {
         var track = (remote.webrtc.local_tracks || []).find(function(t) { return ("0-" + t.id) == track_ref.id; });
+        if(track_ref.device_id) {
+          track = track || (remote.webrtc.local_tracks || []).find(function(t) { return t.device_id == track_ref.device_id; });
+        }
         if(track && pc) {
           track.enabled = true;
+          res([track_ref]);
           // main_room.subroom_ids.forEach(function(subroom_id) {
           //   var pc = main_room.subrooms[subroom_id].rtcpc;
           //   if(pc) {
@@ -144,8 +148,12 @@ remote.webrtc = {
     });
   },
   remove_local_track: function(room_id, track_ref, remember) {
+    if(!track_ref) { debugger }
     return new Promise(function(res, rej) {
       var track = (remote.webrtc.local_tracks || []).find(function(t) { return ("0-" + t.id) == track_ref.id; });
+      if(track_ref.device_id) {
+        track = track || (remote.webrtc.local_tracks || []).find(function(t) { return t.device_id == track_ref.device_id; });
+      }
       var main_room = remote.webrtc.rooms[room_id];
 
       if(track && main_room) {
@@ -460,7 +468,7 @@ remote.webrtc = {
     return pc;
   },
   reconnect: function() {
-    if(remote.webrtc.last_room_id && remote.webrtc.room[remote.webrtc.last_room_id]) {
+    if(remote.webrtc.last_room_id && remote.webrtc.rooms[remote.webrtc.last_room_id]) {
       var main_room = remote.webrtc.room[remote.webrtc.last_room_id];
       main_room.subroom_ids.forEach(function(subroom_id) {
         if(main_room.subrooms[subroom_id]) {

@@ -78,6 +78,9 @@ remote.twilio = {
         }
       } else {
         var track = (remote.twilio.local_tracks || []).find(function(t) { return t.name == track_ref.id; });
+        if(track_ref.device_id) {
+          track = track || (remote.twilio.local_tracks || []).find(function(t) { return t.device_id == track_ref.device_id; });
+        }
         if(track && participant) {
           participant.publishTrack(track, {priority: 'high'}).then(function(local_track_pub) {
             res([track_ref]);
@@ -93,6 +96,9 @@ remote.twilio = {
   remove_local_track: function(room_id, track_ref, remember) {
     return new Promise(function(res, rej) {
       var track = (remote.twilio.local_tracks || []).find(function(t) { return t.name == track_ref.id; });
+      if(track_ref.device_id) {
+        track = track || (remote.twilio.local_tracks || []).find(function(t) { return t.device_id == track_ref.device_id; });
+      }
       var participant = remote.twilio.rooms[room_id].localParticipant;
       if(track && participant) {
         participant.unpublishTrack(track);
@@ -154,6 +160,7 @@ remote.twilio = {
           participant.on('trackUnsubscribed', function(track) {
             var track_ref = {
               type: track.kind,
+              device_id: track.getSettings().deviceId,
               id: track.name
             };
             remote.track_removed(room_ref, participant_ref, track_ref);

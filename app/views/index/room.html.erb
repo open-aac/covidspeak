@@ -94,6 +94,14 @@
     <div class='preview'>
       <div id="partner">
       </div>
+      <div id='no_preview'>
+        <div class='volume'>
+          <div class='bar'></div>
+        </div>
+        <div class='icon'>
+          <img src='/icons/person-square.svg' />
+        </div>
+      </div>
       <div id="status_holder">
         <div id='status'>Initializing...
         </div>
@@ -108,8 +116,11 @@
       </div>
       <div id="end_preview"></div>
       <div id="nav">
-        <button class='mute'><img src="/icons/mic-mute.svg" alt="mute"/></button>
-        <button class='unmute'><img src="/icons/mic.svg" alt="unmute"/></button>
+        <span class='pres'>
+          <button class='mute'><img src="/icons/mic-mute.svg" alt="mute"/></button>
+          <button class='unmute'><img src="/icons/mic.svg" alt="unmute"/></button>
+          <button class='toggle'><img src="/icons/camera-video.svg" alt="toggle"/></button>
+        </span>
         <button class='zoom' data-direction='in'>+</button>
         <button class='zoom' data-diration='out'>-</button><br/>
       </div>

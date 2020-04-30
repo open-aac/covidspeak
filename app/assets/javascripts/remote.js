@@ -9,6 +9,7 @@ Object.assign(remote, {
     return new Promise(function(res, rej) {
       remote[remote.backend].start_local_tracks(opts).then(function(tracks) {
         remote.default_local_tracks = tracks;
+        remote.local_tracks = tracks;
         res(tracks);
       }, function(err) {
         rej(err);
@@ -18,33 +19,48 @@ Object.assign(remote, {
   local_track: function(type) {
     return (remote.default_local_tracks || []).find(function(t) { return t.type == type; });
   },
-  add_local_tracks: function(room_id, stream_or_track, replace_default) {
+  add_local_tracks: function(room_id, stream_or_track_ref, replace_default) {
     // Resolves with a list of track references
     return new Promise(function(res, rej) {
       var add_now = function(local_track_to_add) {
-        remote[remote.backend].add_local_tracks(room_id, stream_or_track).then(function(tracks) {
+        if(stream_or_track_ref.id == 'unknown') {
+          console.log("finding corresponding track");
+          var new_result = (remote.local_tracks || []).find(function(t) { return t.device_id == stream_or_track_ref.device_id; });
+          new_result = new_result || (remote.removed_local_tracks || []).find(function(t) { return t.device_id == stream_or_track_ref.device_id; });
+          if(!new_result) {
+            console.log("no existing track found");
+            var ms = new MediaStream();
+            ms.addTrack(stream_or_track_ref.mediaStreamTrack);
+            new_result = ms;
+          }
+          stream_or_track_ref = new_result;
+        }
+        remote[remote.backend].add_local_tracks(room_id, stream_or_track_ref).then(function(tracks) {
           if(local_track_to_add) {
-            remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.kind != local_track_to_add.kind; });
+            remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.type != local_track_to_add.type; });
             remote.default_local_tracks.push(tracks[0]);
           }
+          var track_ids = tracks.map(function(t) { return t.id; });
+          remote.removed_local_tracks = (remote.removed_local_tracks || []).filter(function(t) { return track_ids.indexOf(t.id) == -1;  });
+          remote.local_tracks = (remote.local_tracks || []).concat(tracks);
           res(tracks);
         }, function(err) {
           rej(err);
         });    
       };
-      if(replace_default && stream_or_track.kind) {
-        var current_default = (remote.default_local_tracks || []).find(function(t) { return t.kind == stream_or_track.kind; });
-        if(current_default == stream_or_track) { 
-          console.error("already added local track", stream_or_track)
-          return res([stream_or_track]);
+      if(replace_default && stream_or_track_ref.type) {
+        var current_default = (remote.default_local_tracks || []).find(function(t) { return t.type == stream_or_track_ref.type; });
+        if(current_default && current_default.mediaStreamTrack == stream_or_track_ref.mediaStreamTrack) { 
+          console.error("already added local track", stream_or_track_ref)
+          return res([current_default]);
         } else if(current_default) {
-          remote.remove_local_track(room_id, stream_or_track, true).then(function(res) {
-            add_now(stream_or_track);
+          remote.remove_local_track(room_id, current_default, true).then(function(res) {
+            add_now(stream_or_track_ref);
           }, function(err) {
             rej(err);
           });
         } else {
-          add_now();
+          add_now(stream_or_track_ref);
         }
       } else {
         add_now();
@@ -56,6 +72,12 @@ Object.assign(remote, {
     return new Promise(function(res, rej) {
       remote[remote.backend].remove_local_track(room_id, track, remember).then(function(track) {
         remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.id != track.id; });
+        var local = (remote.local_tracks || []).find(function(t) { return t.id == track.id; });
+        if(local) {
+          remote.removed_local_tracks = (remote.removed_local_tracks || []).filter(function(t) { return t.id != track.id; });
+          remote.removed_local_tracks.push(local);
+        }
+        remote.local_tracks = (remote.local_tracks || []).filter(function(t) { return t.id != track.id; });
         res(track);
       }, function(err) {
         rej(err);

@@ -1,5 +1,6 @@
 var audio_analysers = [];
 var volume = null;
+var preview_volume = null;
 var input = {
   track_audio: function(elem, track, user) {
     var res = null;
@@ -11,6 +12,7 @@ var input = {
         volume.style.display = 'none';
       }  
     }
+    preview_volume = document.querySelector('#no_preview .volume .bar');
 
     var new_list = [];
     audio_analysers.forEach(function(ana) {
@@ -96,6 +98,8 @@ var input = {
 }
 
 var audio_loop = function() {
+  audio_loop.iter = ((audio_loop.iter || 0) + 1) % 20;
+  audio_loop.max = audio_loop.max || 0;
   if(audio_analysers.length > 0) {
     var biggest = null;
     audio_analysers.forEach(function(ana) {
@@ -120,6 +124,19 @@ var audio_loop = function() {
     });
     if(biggest != null && volume) {
       volume.style.width = (biggest.output || 0) + "px";
+      if(preview_volume.offsetWidth > 0) {
+        if(audio_loop.iter == 0) {
+          var amt = Math.round(Math.min(audio_loop.max, 100));
+          preview_volume.style.top = (-5 - amt) + 'px';
+          preview_volume.style.left = preview_volume.style.top;
+          preview_volume.style.right = preview_volume.style.top;
+          preview_volume.style.bottom = preview_volume.style.top;
+          preview_volume.style.borderWidth = amt + 'px';
+          audio_loop.max = 0;
+        } else {
+          audio_loop.max = Math.max(audio_loop.max || 0, biggest.output);
+        }  
+      }
     }
     // set user as loudest, update display
   }
