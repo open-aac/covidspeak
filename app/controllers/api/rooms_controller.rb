@@ -83,7 +83,7 @@ class Api::RoomsController < ApplicationController
         if account.settings['verifier'] == 'custom_md5'
           cred = Digest::MD5.hexdigest("signed#{trimmed_identity}verifier")
         elsif account.settings['verifier'] == 'hmac_sha1'
-          cred = account.verifier(identity)
+          cred = account.verifier(trimmed_identity)
         end
         port = account.settings['port'] || 3478
         servers = [
