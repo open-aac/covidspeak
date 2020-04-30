@@ -50,7 +50,7 @@ class Account < ApplicationRecord
     return nil unless salt && secret && identity
     secret = GoSecure.decrypt(secret, salt, 'account_hmac_sha1_verifier')
     hmac = OpenSSL::HMAC.digest('sha1', secret, identity)
-    Base64.encode64("#{hmac}\n")
+    Base64.encode64(hmac).strip
   end
 
   def verifier=(str)
