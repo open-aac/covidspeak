@@ -567,7 +567,9 @@ var room = {
         if(grid.skip) { return; }
         var div = document.createElement('div');
         div.classList.add('grid_option');
-        div.innerText = grid.name;
+        var name = document.createElement('span');
+        name.innerText = grid.name;
+        div.appendChild(name);
         var img = document.createElement('img');
         img.src = grid.image_url;
         img.alt = '';

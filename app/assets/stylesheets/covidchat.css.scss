@@ -236,6 +236,13 @@ strong {
       padding: 5px;
       cursor: pointer;
       position: relative;
+      .label {
+        width: 100%;
+        overflow: hidden;
+        .skinny {
+          display: none;
+        }
+      }
       img.icon {
         display: block;
         filter: invert(100%);
@@ -721,8 +728,12 @@ strong {
     border-radius: 5px;
     color: #000;
     float: left;
+    overflow: hidden;
     &:hover {
       background: #eee;
+    }
+    span {
+      white-space: nowrap;
     }
     img {
       width: calc(100% - 12px);
@@ -962,6 +973,8 @@ strong {
     height: 40px;
     width: 100%;
     font-size: 20px;
+    border: 1px solid #888;
+    border-radius: 5px;
   }
   .half {
     width: calc(50% - 10px);
@@ -1044,6 +1057,45 @@ strong {
   &.big {
     .messsage {
       font-size: 15px;
+    }
+  }
+}
+@media (max-width: 650px) {
+  #contents .grid {
+    .cell {
+      .text {
+        font-size: 18px;
+      }
+      &.text_only .text {
+        font-size: 24px;
+      }
+    }
+  }
+  #contents .grid .menu {
+    width: 60px;
+    .button {
+      img.icon {
+        width: 80%;
+        margin-left: 10%;
+      }
+      .label {
+        .skinny {
+          display: inline;
+        }
+        .wide {
+          display: none;
+        }
+      }
+      .extras {
+        width: 217px;
+      }
+      .grids .grid_option {
+        width: 76px;
+      }
+      .reactions img {
+        width: 77px;
+        margin: 5px;
+      }
     }
   }
 }
