@@ -78,7 +78,7 @@ class Api::RoomsController < ApplicationController
           "username": token.username
         }
       elsif account.settings['address']
-        trimmed_identity = "#{48.hours.from_now.to_i}:#{trimmed_identity}"
+        trimmed_identity = "#{48.hours.from_now.to_i}"#":#{trimmed_identity}"
         cred = trimmed_identity
         if account.settings['verifier'] == 'custom_md5'
           cred = Digest::MD5.hexdigest("signed#{trimmed_identity}verifier")

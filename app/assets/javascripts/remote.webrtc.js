@@ -416,7 +416,7 @@ remote.webrtc = {
         // STUN errors are in the range 300-699. See RFC 5389, section 15.6
         // for a list of codes. TURN adds a few more error codes; see
         // RFC 5766, section 15 for details.
-      } else if (e.errorCode >= 700 && ee.errorCode <= 799) {
+      } else if (e.errorCode >= 700 && e.errorCode <= 799) {
         // Server could not be reached; a specific error number is
         // provided but these are not yet specified.
       }
