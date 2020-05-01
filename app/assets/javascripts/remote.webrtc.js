@@ -200,7 +200,21 @@ remote.webrtc = {
     return new Promise(function(res, rej) {
       var track = (remote.webrtc.local_tracks || []).find(function(t) { return ("0-" + t.id) == track_ref.id; });
       if(track_ref.device_id) {
-        track = track || (remote.webrtc.local_tracks || []).find(function(t) { return t.device_id == track_ref.device_id; });
+        track = track || (remote.webrtc.local_tracks || []).find(function(t) { return t.getSettings().deviceId == track_ref.device_id; });
+      }
+      if(!track) {
+        // fallback for unexpected removal
+        main_room.subroom_ids.forEach(function(subroom_id) {
+          var pc = main_room.subrooms[subroom_id].rtcpc;
+          if(pc && !track) {
+            pc.getSenders().forEach(function(sender) {
+              if(sender.track && ('0-' + sender.track.id) == track_ref.id) {
+                track = sender.track
+              }
+            })  
+          }
+        });
+        
       }
       var main_room = remote.webrtc.rooms[room_id];
 
@@ -213,6 +227,14 @@ remote.webrtc = {
           main_room.subroom_ids.forEach(function(subroom_id) {
             var pc = main_room.subrooms[subroom_id].rtcpc;
             var sender = main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].sender;
+            // fallback if we lost the sender
+            if(!sender) {
+              pc.getSenders().forEach(function(s) {
+                if(s.track == track) {
+                  sender = s;
+                }
+              });
+            }
             if(pc && sender) {
               setTimeout(function() {
                 pc.removeTrack(sender);

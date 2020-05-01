@@ -51,7 +51,7 @@ Object.assign(remote, {
             new_result = ms;
           }
           remote.add_local_tracks(room_id, new_result).then(function(tracks) {
-            remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.type != track.type; });
+            remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.type != track.kind; });
             remote.default_local_tracks.push(tracks[0]);
             res({
               added: tracks[0],
@@ -61,8 +61,8 @@ Object.assign(remote, {
             rej(err);
           });
         };
-        var current_default = (remote.default_local_tracks || []).find(function(t) { return t.type == track.type; });
-        if(current_default && current_default.mediaStreamTrack == track.mediaStreamTrack) { 
+        var current_default = (remote.default_local_tracks || []).find(function(t) { return t.type == track.kind; });
+        if(current_default && current_default.mediaStreamTrack == track) { 
           console.error("already added local track", track)
           return res({added: current_default, removed: current_default});
         } else if(current_default) {
@@ -78,8 +78,8 @@ Object.assign(remote, {
       });
     };
     return new Promise(function(res, rej) {
-      var existing_track = (remote.default_local_tracks || []).find(function(t) { return t.type == track.type && t.id != track.id; });
-      if(existing_track && existing_track.mediaStreamTrack == track.mediaStreamTrack) { 
+      var existing_track = (remote.default_local_tracks || []).find(function(t) { return t.type == track.kind && t.mediaStreamTrack == track; });
+      if(existing_track && existing_track.mediaStreamTrack == track) { 
         console.error("already added local track", track)
         res({
           added: existing_track,
@@ -87,7 +87,7 @@ Object.assign(remote, {
         });
       } else if(remote[remote.backend].replace_local_track) {
         remote[remote.backend].replace_local_track(room_id, track).then(function(data) {
-          remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.type != track.type; });
+          remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.type != track.kind; });
           remote.default_local_tracks.push(data.added);
           data.removed = data.removed || existing_track;
           res(data);
