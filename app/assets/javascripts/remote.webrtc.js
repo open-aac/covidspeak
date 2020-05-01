@@ -160,6 +160,9 @@ remote.webrtc = {
       if(track && main_room) {
         track.enabled = false;
         if(!remember) {
+          // This needs to come before we update the connection
+          // to prevent a negotiation race condition
+          remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.id != track_ref.id.replace(/^\d+-/, ''); });
           main_room.subroom_ids.forEach(function(subroom_id) {
             var pc = main_room.subrooms[subroom_id].rtcpc;
             var sender = main_room.subrooms[subroom_id].tracks[track_ref.id].sender;
@@ -169,7 +172,6 @@ remote.webrtc = {
             }
           });
           track.stop();
-          remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.id != track_ref.id.replace(/^\d+-/, ''); });
         }
         res(track_ref);  
       } else {
@@ -224,6 +226,10 @@ remote.webrtc = {
     room.pcs.push(pc);
     pc.local_stream = new MediaStream();
     main_room.subrooms[subroom_id].rtcpc = pc;
+    main_room.subrooms[subroom_id].negotiating = false;
+    main_room.subrooms[subroom_id].remote_tracks = {};
+    main_room.subrooms[subroom_id].tracks = {};
+
     var local_data = pc.createDataChannel('channel-name');
     local_data.addEventListener('open', function() {
       if(local_data.readyState == 'open') {
