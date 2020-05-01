@@ -134,6 +134,67 @@ remote.webrtc = {
       }
     });
   },
+  replace_local_track: function(room_id, track) {
+    return new Promise(function(res, rej) {
+      var main_room = remote.webrtc.rooms[room_id];
+      if(track && main_room) {
+        var track_ref = {
+          type: track.kind,
+          mediaStreamTrack: track,
+          device_id: track.getSettings().deviceId,
+          id: "0-" + track.id,
+          added: (new Date()).getTime(),
+        };
+        if(track.kind == 'audio' || track.kind == 'video') {
+          track_ref.generate_dom = remote.webrtc.dom_generator(track);
+        }
+        var finished = 0, errors = [];
+        var check_done = function(error) {
+          finished++;
+          if(error) {
+            errors.push(error);
+          }
+          if(finished >= main_room.subroom_ids.length) {
+            if(errors.length > 0) {
+              rej(errors.length > 1 ? errors : errors[0]);
+            } else {
+              remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.kind == track.kind; });
+              remote.webrtc.local_tracks.push(track);
+              res({added: track_ref});
+            }
+          }
+        };
+        main_room.subroom_ids.forEach(function(subroom_id) {
+          var pc = main_room.subrooms[subroom_id].rtcpc;
+          var sender = null;
+          for(var track_id in ((main_room.subrooms[subroom_id][pc.id] || {}).tracks || {})) {
+            if(track_id.match(/^0-.+/)) {
+              var subroom_ref = main_room.subrooms[subroom_id][pc.id].tracks[track_id];
+              if(subroom_ref.sender && subroom_ref.track.kind == track.kind && subroom_ref.track.enabled) {
+                sender = subroom_ref.sender;
+              }
+            }
+          }
+          if(pc && sender) {
+            var old_track_id = "0-" + sender.track.id;
+            sender.replaceTrack(track).then(function(res) {
+              delete main_room.subrooms[subroom_id][pc.id].tracks[old_track_id];
+              main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id] = main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id] || {};
+              main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].track = track;
+              main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].sender = sender;
+              check_done();
+            }, function(err) {
+              check_done(err);
+            });
+          } else {
+            check_done({error: 'no active tracks found to replace'});
+          }
+        });
+      } else {
+        rej({error: 'failed to replace'});
+      }
+    });
+  },
   remove_local_track: function(room_id, track_ref, remember) {
     if(!track_ref) { debugger }
     return new Promise(function(res, rej) {
@@ -155,6 +216,7 @@ remote.webrtc = {
             if(pc && sender) {
               setTimeout(function() {
                 pc.removeTrack(sender);
+                delete main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id];
                 main_room.subrooms[subroom_id].renegotiate();  
               }, 100);
             }
@@ -469,7 +531,7 @@ remote.webrtc = {
   },
   reconnect: function() {
     if(remote.webrtc.last_room_id && remote.webrtc.rooms[remote.webrtc.last_room_id]) {
-      var main_room = remote.webrtc.room[remote.webrtc.last_room_id];
+      var main_room = remote.webrtc.rooms[remote.webrtc.last_room_id];
       main_room.subroom_ids.forEach(function(subroom_id) {
         if(main_room.subrooms[subroom_id]) {
           main_room.subrooms[subroom_id].renegotiate();

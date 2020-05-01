@@ -846,17 +846,14 @@ var room = {
         }
       } else if(room.last_preview_audio_track && room.last_preview_audio_track.getSettings().deviceId == room.settings.audio_device_id) {
         room.end_share();
-        var track_ref = {
-          id: 'unknown',
-          device_id: room.last_preview_audio_track.getSettings().deviceId,
-          mediaStreamTrack: room.last_preview_audio_track,
-          type: 'audio'
-        };
-        remote.add_local_tracks(room.current_room.id, track_ref, true).then(function(tracks) {
+        remote.replace_local_track(room.current_room.id, room.last_preview_audio_track).then(function(data) {
+          var track = data.added;
           // We add to the front of the list so shares don't get interrupted
-          tracks.forEach(function(t) { 
-            room.local_tracks.unshift(t);
-          });
+          room.local_tracks.unshift(track);
+          var old = data.removed;
+          if(old) {
+            room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != old.id; });
+          }
           room.update_preview();
         }, function(err) {
           debugger
@@ -872,17 +869,14 @@ var room = {
           room.update_preview();
         }
       } else if(room.last_preview_video_track && room.last_preview_video_track.getSettings().deviceId == video_device_id) {
-        var track_ref = {
-          id: 'unknown',
-          device_id: room.last_preview_video_track.getSettings().deviceId,
-          mediaStreamTrack: room.last_preview_video_track,
-          type: 'video'
-        };
-        remote.add_local_tracks(room.current_room.id, track_ref, true).then(function(tracks) {
+        remote.replace_local_track(room.current_room.id, room.last_preview_video_track).then(function(data) {
+          var track = data.added;
           // We add to the front of the list so shares don't get interrupted
-          tracks.forEach(function(t) { 
-            room.local_tracks.unshift(t);
-          });
+          room.local_tracks.unshift(track);
+          var old = data.removed;
+          if(old) {
+            room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != old.id; });
+          }
           room.update_preview();
         }, function(err) {
           debugger

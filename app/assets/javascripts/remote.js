@@ -19,51 +19,93 @@ Object.assign(remote, {
   local_track: function(type) {
     return (remote.default_local_tracks || []).find(function(t) { return t.type == type; });
   },
-  add_local_tracks: function(room_id, stream_or_track_ref, replace_default) {
+  add_local_tracks: function(room_id, stream_or_track_ref) {
     // Resolves with a list of track references
     return new Promise(function(res, rej) {
-      var add_now = function(local_track_to_add) {
-        if(stream_or_track_ref.id == 'unknown') {
-          console.log("finding corresponding track");
-          var new_result = (remote.local_tracks || []).find(function(t) { return t.device_id == stream_or_track_ref.device_id; });
-          new_result = new_result || (remote.removed_local_tracks || []).find(function(t) { return t.device_id == stream_or_track_ref.device_id; });
+      remote[remote.backend].add_local_tracks(room_id, stream_or_track_ref).then(function(tracks) {
+        var track_ids = tracks.map(function(t) { return t.id; });
+        remote.removed_local_tracks = (remote.removed_local_tracks || []).filter(function(t) { return track_ids.indexOf(t.id) == -1;  });
+        remote.local_tracks = (remote.local_tracks || []).concat(tracks);
+        res(tracks);
+      }, function(err) {
+        rej(err);
+      });    
+    });
+  },
+  replace_local_track(room_id, track) {
+    // Resolves with {added: track_ref, removed: track_ref_or_null}
+    // (if you don't removed, we can handle that for you)
+    // This should only be used for swapping default video
+    // tracks, which should not require renegotiation. It makes
+    // asssumptions about the type of track you are adding.
+    var fallback = function() {
+      return new Promise(function(res, rej) {
+        var removed_track = null;
+        var add_now = function() {
+          debugger
+          var new_result = (remote.local_tracks || []).find(function(t) { return t.device_id == track.getSettings().deviceId; });
           if(!new_result) {
             console.log("no existing track found");
             var ms = new MediaStream();
-            ms.addTrack(stream_or_track_ref.mediaStreamTrack);
+            ms.addTrack(track);
             new_result = ms;
           }
-          stream_or_track_ref = new_result;
-        }
-        remote[remote.backend].add_local_tracks(room_id, stream_or_track_ref).then(function(tracks) {
-          if(local_track_to_add) {
-            remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.type != local_track_to_add.type; });
+          remote.add_local_tracks(room_id, new_result).then(function(tracks) {
+            remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.type != track.type; });
             remote.default_local_tracks.push(tracks[0]);
-          }
-          var track_ids = tracks.map(function(t) { return t.id; });
-          remote.removed_local_tracks = (remote.removed_local_tracks || []).filter(function(t) { return track_ids.indexOf(t.id) == -1;  });
-          remote.local_tracks = (remote.local_tracks || []).concat(tracks);
-          res(tracks);
-        }, function(err) {
-          rej(err);
-        });    
-      };
-      if(replace_default && stream_or_track_ref.type) {
-        var current_default = (remote.default_local_tracks || []).find(function(t) { return t.type == stream_or_track_ref.type; });
-        if(current_default && current_default.mediaStreamTrack == stream_or_track_ref.mediaStreamTrack) { 
-          console.error("already added local track", stream_or_track_ref)
-          return res([current_default]);
+            res({
+              added: tracks[0],
+              removed: removed_track
+            });
+          }, function(err) {
+            rej(err);
+          });
+        };
+        var current_default = (remote.default_local_tracks || []).find(function(t) { return t.type == track.type; });
+        if(current_default && current_default.mediaStreamTrack == track.mediaStreamTrack) { 
+          console.error("already added local track", track)
+          return res({added: current_default, removed: current_default});
         } else if(current_default) {
+          removed_track = current_default;
           remote.remove_local_track(room_id, current_default).then(function(res) {
-            add_now(stream_or_track_ref);
+            add_now();
           }, function(err) {
             rej(err);
           });
         } else {
-          add_now(stream_or_track_ref);
+          add_now();
         }
+      });
+    };
+    return new Promise(function(res, rej) {
+      var existing_track = (remote.default_local_tracks || []).find(function(t) { return t.type == track.type && t.id != track.id; });
+      if(existing_track && existing_track.mediaStreamTrack == track.mediaStreamTrack) { 
+        console.error("already added local track", track)
+        res({
+          added: existing_track,
+          removed: existing_track
+        });
+      } else if(remote[remote.backend].replace_local_track) {
+        remote[remote.backend].replace_local_track(room_id, track).then(function(data) {
+          remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.type != track.type; });
+          remote.default_local_tracks.push(data.added);
+          data.removed = data.removed || existing_track;
+          res(data);
+        }, function(err) {
+          console.error("could not replace local track, trying fallback", err);
+          fallback().then(function(data) {
+            res(data);
+          }, function(err) {
+            rej(err);s
+          });
+        });
       } else {
-        add_now();
+        fallback().then(function(data) {
+          data.removed = data.removed || existing_track;
+          res(data);
+        }, function(err) {
+          rej(err);
+        });
       }
     });
   },
