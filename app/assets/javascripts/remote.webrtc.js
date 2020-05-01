@@ -158,8 +158,9 @@ remote.webrtc = {
             if(errors.length > 0) {
               rej(errors.length > 1 ? errors : errors[0]);
             } else {
-              remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.kind == track.kind; });
+              remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.kind != track.kind; });
               remote.webrtc.local_tracks.push(track);
+              console.log("SUCCESSFULLY REPLACED TRACK!");
               res({added: track_ref});
             }
           }
@@ -170,10 +171,18 @@ remote.webrtc = {
           for(var track_id in ((main_room.subrooms[subroom_id][pc.id] || {}).tracks || {})) {
             if(track_id.match(/^0-.+/)) {
               var subroom_ref = main_room.subrooms[subroom_id][pc.id].tracks[track_id];
-              if(subroom_ref.sender && subroom_ref.track.kind == track.kind && subroom_ref.track.enabled) {
+              if(subroom_ref.sender && subroom_ref.track.kind == track.kind) {
                 sender = subroom_ref.sender;
               }
             }
+          }
+          if(pc && !sender) {
+            pc.getSenders().forEach(function(s) {
+              if(s.track && s.track.kind == track.kind) {
+                sender = s;
+                console.error("has to resort to fallback lookup for sender");
+              }
+            })
           }
           if(pc && sender) {
             var old_track_id = "0-" + sender.track.id;
@@ -209,6 +218,7 @@ remote.webrtc = {
           if(pc && !track) {
             pc.getSenders().forEach(function(sender) {
               if(sender.track && ('0-' + sender.track.id) == track_ref.id) {
+                console.error("has to resort to fallback lookup for removable track");
                 track = sender.track
               }
             })  
@@ -228,9 +238,10 @@ remote.webrtc = {
             var pc = main_room.subrooms[subroom_id].rtcpc;
             var sender = main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].sender;
             // fallback if we lost the sender
-            if(!sender) {
+            if(pc && !sender) {
               pc.getSenders().forEach(function(s) {
                 if(s.track == track) {
+                  console.error("has to resort for fallback lookup for sender");
                   sender = s;
                 }
               });
