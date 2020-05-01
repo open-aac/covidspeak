@@ -862,10 +862,12 @@ var room = {
     var video_track = remote.local_track('video');
     var current_video_id = room.temp_video_device_id || (video_track && video_track.device_id);
     input.enumerate('video').then(function(list) {
+      var old_ids = room.video_device_ids || [];
       var ids = [];
       if(current_video_id && current_video_id != 'none') { 
-        ids.push(current_video_id);
+        room.first_video_id = room.first_video_id || current_video_id;
       }
+      ids.push(room.first_video_id);
       list.forEach(function(d) {
         ids.push(d.deviceId);
       });
@@ -1480,7 +1482,7 @@ document.addEventListener('click', function(event) {
   if(event.target.classList.contains('text_input')) { return; }
   var $cell = $(event.target).closest('.cell');
   var $button = $(event.target).closest('.button');
-  var $partner = $(event.target).closest('#partner,#nav,#eyes,#no_preview');
+  var $partner = $(event.target).closest('#partner,#eyes,#no_preview');
   var $invite = $(event.target).closest('#invite_partner');
   var $popout = $(event.target).closest('#popout_view');
   var $text_prompt = $(event.target).closest('#text_prompt');

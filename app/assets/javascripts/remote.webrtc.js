@@ -93,6 +93,7 @@ remote.webrtc = {
             var track_ref = {
               id: "0-" + track.id,
               mediaStreamTrack: track,
+              added: (new Date()).getTime(),
               device_id: track.getSettings().deviceId,
               type: track.kind
             };
