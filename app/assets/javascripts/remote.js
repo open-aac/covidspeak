@@ -42,7 +42,6 @@ Object.assign(remote, {
       return new Promise(function(res, rej) {
         var removed_track = null;
         var add_now = function() {
-          debugger
           var new_result = (remote.local_tracks || []).find(function(t) { return t.device_id == track.getSettings().deviceId; });
           if(!new_result) {
             console.log("no existing track found");
@@ -89,6 +88,8 @@ Object.assign(remote, {
         remote[remote.backend].replace_local_track(room_id, track).then(function(data) {
           remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.type != track.kind; });
           remote.default_local_tracks.push(data.added);
+          remote.local_tracks = (remote.local_tracks || []).filter(function(t) { return t.id != existing_track.id; });
+          remote.local_tracks.push(data.added);
           data.removed = data.removed || existing_track;
           res(data);
         }, function(err) {

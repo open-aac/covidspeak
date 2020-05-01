@@ -115,6 +115,8 @@ function getMedia() {
         video.onloadedmetadata = function(e) {
           video.play();
         };  
+        document.querySelector('#middle .preview').innerText = "";
+        document.querySelector('#middle .preview').appendChild(video);
       }
       var aud_track = stream.getAudioTracks()[0];
       if(aud_track) {
@@ -134,11 +136,8 @@ function getMedia() {
             analyser.release();
           }
           // TODO: track audio level
-          console.log("audio level", output);
         }
       }
-      document.querySelector('#middle .preview').innerText = "";
-      document.querySelector('#middle .preview').appendChild(video);
     }, function(err) {
       handled = true;
       room.handle_camera_error(err, status);    
