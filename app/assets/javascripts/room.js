@@ -627,6 +627,33 @@ var room = {
       }
     }
   },
+  load_settings: function() {
+    try {
+      room.settings = JSON.parse(localStorage['vidspeak_settings']);
+    } catch(e) { room.settings = {}; }
+    room.settings = room.settings || {};
+    room.settings.symbol_library = room.settings.symbol_library || 'lessonpix';
+
+    if(room.settings.audio_device_id == 'none' && room.settings.video_device_id == 'none') {
+      room.settings['audio_device_id'] = 'any';
+    }
+    var opts = {audio: room.settings.audio_device_id != 'none', video: room.settings.video_device_id != 'none', data: true, audio_id: room.settings.audio_device_id, video_id: room.settings.video_device_id}
+    room.input_settings = {data: true};
+    if(opts.audio) { 
+      room.input_settings.audio = {autoGainControl: true, echoCancellation: true, noiseSuppression: true}; 
+      if(opts.audio_id) {
+        room.input_settings.audio.deviceId = opts.audio_id;
+      }
+    }
+    if(opts.video) { 
+      room.input_settings.video = {facingMode: {ideal: 'user'}, height: 720}; 
+      if(opts.video_id) {
+        room.input_settings.video.deviceId = opts.device_id;
+      }
+    }
+
+    room.flush();
+  },
   start: function() {
     if(room.camera === false) {
       room.handle_camera_error();
@@ -689,12 +716,7 @@ var room = {
     });
     
     room.room_id = room_id;
-    try {
-      room.settings = JSON.parse(localStorage['vidspeak_settings']);
-    } catch(e) { room.settings = {}; }
-    room.settings = room.settings || {};
-    room.settings.symbol_library = room.settings.symbol_library || 'lessonpix';
-    room.flush();
+    room.load_settings();
     
     // TODO: show an intro video option (always for communicator, once for visitors)
     // TODO: if not over https and not on localhost, pre-empt error
@@ -727,10 +749,7 @@ var room = {
         room.current_user_id = res.user_id;
         remote.backend = res.room.type;
         var local_tried = false;
-        if(room.settings.audio_device_id == 'none' && room.settings.video_device_id == 'none') {
-          room.settings['audio_device_id'] = 'any';
-        }
-        remote.start_local_tracks({audio: room.settings.audio_device_id != 'none', video: room.settings.video_device_id != 'none', data: true, audio_id: room.settings.audio_device_id, video_id: room.settings.video_device_id}).then(function(tracks) {
+        remote.start_local_tracks(room.input_settings).then(function(tracks) {
           local_tried = true;
           for(var idx = 0; idx < tracks.length; idx++) {
             if(tracks[idx].type == 'video') {

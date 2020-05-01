@@ -1,24 +1,10 @@
 var remote = remote || {};
 remote.twilio = {
   start_local_tracks: function(opts) {
-    opts = opts || {audio: true, video: true, data: true};
-    var init = {};
-    if(opts.audio) { 
-      init.audio = true; 
-      if(opts.audio_id) {
-        init.audio = { deviceId: opts.audio_id };
-      }
-    }
-    if(opts.video) { 
-      init.video = true; 
-      if(opts.video_id) { 
-        init.video = { deviceId: opts.video_id };
-      }
-    }
     return new Promise(function(res, rej) {
       var local_track = new Twilio.Video.LocalDataTrack();
       remote.twilio.data_track = local_track;
-      Twilio.Video.createLocalTracks(init).then(function(tracks) {
+      Twilio.Video.createLocalTracks(opts).then(function(tracks) {
         if(opts.data) {
           tracks.push(local_track);
         }

@@ -38,22 +38,8 @@ remote.webrtc = {
     };
   },
   start_local_tracks: function(opts) {
-    opts = opts || {audio: true, video: true, data: true};
-    var init = {};
-    if(opts.audio) { 
-      init.audio = {autoGainControl: true, echoCancellation: true, noiseSuppression: true}; 
-      if(opts.audio_id) {
-        init.audio.deviceId = opts.audio_id;
-      }
-    }
-    if(opts.video) { 
-      init.video = {facingMode: {ideal: 'user'}, height: 720}; 
-      if(opts.video_id) {
-        init.video.deviceId = opts.device_id;
-      }
-    }
     return new Promise(function(res, rej) {
-      navigator.mediaDevices.getUserMedia(init).then(function(stream) {
+      navigator.mediaDevices.getUserMedia(opts).then(function(stream) {
         remote.webrtc.local_tracks = stream.getTracks();
         var result = [];
         remote.webrtc.local_tracks.forEach(function(track) {
@@ -167,8 +153,10 @@ remote.webrtc = {
             var pc = main_room.subrooms[subroom_id].rtcpc;
             var sender = main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].sender;
             if(pc && sender) {
-              pc.removeTrack(sender);
-              main_room.subrooms[subroom_id].renegotiate();
+              setTimeout(function() {
+                pc.removeTrack(sender);
+                main_room.subrooms[subroom_id].renegotiate();  
+              }, 100);
             }
           });
           track.stop();

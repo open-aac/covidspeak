@@ -103,14 +103,38 @@ function getMedia() {
     }
   }, 500);
   if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({video: true}).then(function(stream) {
-      // TODO: track audio level
+    room.load_settings();
+    navigator.mediaDevices.getUserMedia(room.input_settings).then(function(stream) {
       handled = true;
-      var video = document.createElement('video');
-      video.srcObject = stream;
-      video.onloadedmetadata = function(e) {
-        video.play();
-      };
+      var vid_track = stream.getVideoTracks()[0];
+      if(vid_track) {
+        var video = document.createElement('video');
+        var vid_stream = new MediaStream();
+        vid_stream.addTrack(vid_track);
+        video.srcObject = vid_stream;
+        video.onloadedmetadata = function(e) {
+          video.play();
+        };  
+      }
+      var aud_track = stream.getAudioTracks()[0];
+      if(aud_track) {
+        var aud_stream = new MediaStream();
+        aud_stream.addTrack(aud_track);
+        audio.srcObject = aud_stream;
+        audio.preview = true;
+        audio.muted = true;
+        audio.onloadedmetadata = function(e) {
+          audio.play();
+        };
+        analyser = input.track_audio(audio, track, {});
+        analyser.callback = function(output) {
+          if(!audio.parentNode) {
+            analyser.release();
+          }
+          // TODO: track audio level
+          console.log("audio level", output);
+        }
+      }
       document.querySelector('#middle .preview').innerText = "";
       document.querySelector('#middle .preview').appendChild(video);
     }, function(err) {
