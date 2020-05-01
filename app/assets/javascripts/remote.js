@@ -78,14 +78,14 @@ Object.assign(remote, {
       });
     };
     return new Promise(function(res, rej) {
-      var existing_track = (remote.default_local_tracks || []).find(function(t) { return t.type == track.kind && t.mediaStreamTrack == track; });
+      var existing_track = (remote.default_local_tracks || []).find(function(t) { return t.type == track.kind; });
       if(existing_track && existing_track.mediaStreamTrack == track) { 
         console.error("already added local track", track)
         res({
           added: existing_track,
           removed: existing_track
         });
-      } else if(remote[remote.backend].replace_local_track) {
+      } else if(existing_track && remote[remote.backend].replace_local_track) {
         remote[remote.backend].replace_local_track(room_id, track).then(function(data) {
           remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.type != track.kind; });
           remote.default_local_tracks.push(data.added);

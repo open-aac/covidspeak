@@ -848,12 +848,16 @@ var room = {
         room.end_share();
         remote.replace_local_track(room.current_room.id, room.last_preview_audio_track).then(function(data) {
           var track = data.added;
-          // We add to the front of the list so shares don't get interrupted
-          room.local_tracks.unshift(track);
           var old = data.removed;
           if(old) {
             room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != old.id; });
+          } else {
+            var priority_ids = (room.priority_tracks || []).map(function(t) { return t.id; });
+            room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.type != track.type && priority_ids.indexOf(t.mediaStreamTrack.id) == -1; });
+            console.error("had to resort to fallback for removing replaced tracks");
           }
+          // We add to the front of the list so shares don't get interrupted
+          room.local_tracks.unshift(track);
           room.update_preview();
         }, function(err) {
           debugger
@@ -871,12 +875,16 @@ var room = {
       } else if(room.last_preview_video_track && room.last_preview_video_track.getSettings().deviceId == video_device_id) {
         remote.replace_local_track(room.current_room.id, room.last_preview_video_track).then(function(data) {
           var track = data.added;
-          // We add to the front of the list so shares don't get interrupted
-          room.local_tracks.unshift(track);
           var old = data.removed;
           if(old) {
             room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != old.id; });
+          } else {
+            var priority_ids = (room.priority_tracks || []).map(function(t) { return t.id; });
+            room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.type != track.type && priority_ids.indexOf(t.mediaStreamTrack.id) == -1; });
+            console.error("had to resort to fallback for removing replaced tracks");
           }
+          // We add to the front of the list so shares don't get interrupted
+          room.local_tracks.unshift(track);
           room.update_preview();
         }, function(err) {
           debugger
