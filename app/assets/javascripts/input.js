@@ -6,11 +6,13 @@ var input = {
     var res = null;
     if(!volume) {
       volume = document.querySelector('#volume_level');
-      if(location.href.match(/localhost/)) {
-        volume.style.display = 'block';
-      } else {
-        volume.style.display = 'none';
-      }  
+      if(volume) {
+        if(location.href.match(/localhost/)) {
+          volume.style.display = 'block';
+        } else {
+          volume.style.display = 'none';
+        }    
+      }
     }
     preview_volume = document.querySelector('#no_preview .volume .bar');
 

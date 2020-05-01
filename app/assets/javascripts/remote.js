@@ -54,7 +54,7 @@ Object.assign(remote, {
           console.error("already added local track", stream_or_track_ref)
           return res([current_default]);
         } else if(current_default) {
-          remote.remove_local_track(room_id, current_default, true).then(function(res) {
+          remote.remove_local_track(room_id, current_default).then(function(res) {
             add_now(stream_or_track_ref);
           }, function(err) {
             rej(err);

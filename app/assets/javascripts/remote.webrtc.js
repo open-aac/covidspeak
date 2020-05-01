@@ -145,7 +145,7 @@ remote.webrtc = {
 
       if(track && main_room) {
         track.enabled = false;
-        if(!remember) {
+        if(!remember) { 
           // This needs to come before we update the connection
           // to prevent a negotiation race condition
           remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.id != track_ref.id.replace(/^\d+-/, ''); });
@@ -432,7 +432,9 @@ remote.webrtc = {
     var tracks_to_send = [];
     var already_added = false;
     remote.webrtc.local_tracks.forEach(function(track) {
-      if(track.kind == 'video') {
+      // TODO: this is messy, it shouldn't need to check
+      // anything on room object
+      if(track.kind == 'video' && track.enabled) {
         if(room.priority_tracks) {
           if(room.priority_tracks.indexOf(track) != -1) {
             tracks_to_send.push(track);

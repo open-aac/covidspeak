@@ -120,13 +120,15 @@ function getMedia() {
       if(aud_track) {
         var aud_stream = new MediaStream();
         aud_stream.addTrack(aud_track);
+        var audio = document.createElement('audio');
+        document.querySelector('#middle').appendChild(audio);
         audio.srcObject = aud_stream;
         audio.preview = true;
         audio.muted = true;
         audio.onloadedmetadata = function(e) {
           audio.play();
         };
-        analyser = input.track_audio(audio, track, {});
+        analyser = input.track_audio(audio, {mediaStreamTrack: aud_track}, {});
         analyser.callback = function(output) {
           if(!audio.parentNode) {
             analyser.release();
