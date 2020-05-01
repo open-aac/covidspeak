@@ -808,7 +808,7 @@ var room = {
     if(room.settings.audio_device_id != current_audio_id) {
       if(room.settings.audio_device_id == 'none') {
         if(audio_track) {
-          remote.remove_local_track(room.current_room.id, audio_track, true);
+          remote.remove_local_track(room.current_room.id, audio_track);
           room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != audio_track.id; });
           room.update_preview();
         }
@@ -835,7 +835,7 @@ var room = {
     if(video_device_id != current_video_id) {
       if(video_device_id == 'none') {
         if(video_track) {
-          remote.remove_local_track(room.current_room.id, video_track, true);
+          remote.remove_local_track(room.current_room.id, video_track);
           room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != video_track.id; });
           room.update_preview();
         }
@@ -862,23 +862,28 @@ var room = {
     var video_track = remote.local_track('video');
     var current_video_id = room.temp_video_device_id || (video_track && video_track.device_id);
     input.enumerate('video').then(function(list) {
-      var old_ids = room.video_device_ids || [];
       var ids = [];
+      var group_ids = {};
       if(current_video_id && current_video_id != 'none') { 
-        room.first_video_id = room.first_video_id || current_video_id;
+        var track = list.find(function(t) { return t.deviceId == current_video_id});
+        if(track && !room.first_video) {
+          room.first_video = {device_id: track.deviceId, group_id: track.groupId};
+        }
       }
-      ids.push(room.first_video_id);
+      // Limiting to one per groupId for video swap
+      // (you can still go to settings for the full list)
+      if(room.first_video) {
+        ids.push(room.first_video.device_id);
+        group_ids[room.first_video.group_id] = true;
+
+      }
       list.forEach(function(d) {
-        ids.push(d.deviceId);
-      });
-      room.video_device_ids = [];
-      var hash = {};
-      ids.forEach(function(id) {
-        if(!hash[id]) {
-          hash[id] = true;
-          room.video_device_ids.push(id);
+        if(!group_ids[d.groupId]) {
+          ids.push(d.deviceId);
+          group_ids[d.groupId] = true;
         }
       });
+      room.video_device_ids = ids;
       var idx = room.video_device_ids.indexOf(current_video_id);
       var new_idx = idx + 1;
       room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';

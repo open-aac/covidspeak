@@ -73,7 +73,7 @@ Object.assign(remote, {
       remote[remote.backend].remove_local_track(room_id, track, remember).then(function(track) {
         remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.id != track.id; });
         var local = (remote.local_tracks || []).find(function(t) { return t.id == track.id; });
-        if(local) {
+        if(local && remember) {
           remote.removed_local_tracks = (remote.removed_local_tracks || []).filter(function(t) { return t.id != track.id; });
           remote.removed_local_tracks.push(local);
         }
