@@ -2,7 +2,9 @@ var mirror_type = location.href.match(/mirror/);
 var add_dom = function(elem, track, user) {
   if(elem.tagName == 'AUDIO') {
     var analyser = input.track_audio(elem, track, user);
-    analyser.for_volume = true;
+    if(analyser) {
+      analyser.for_volume = true;
+    }
   }
   elem.classList.add("room-" + track.type);
   elem.setAttribute('data-track-id', track.id);
@@ -22,10 +24,20 @@ remote.addEventListener('track_added', function(data) {
   var track = data.track;
   if(track.generate_dom) {
     console.log("adding remote track", track);
-    if(track.type == 'video') { //} || track.type == 'audio') {
+    if(track.type == 'video' || (track.type == 'audio' && track.version_id)) { //} || track.type == 'audio') {
       // Right now we allow multiple audio tracks, so you
       // can talk to someone while showing them a video
-      var priors = document.getElementById('partner').getElementsByClassName("room-" + track.type);
+      var elems = document.getElementById('partner').getElementsByClassName("room-" + track.type);
+      var priors = [];
+      if(track.version_id) {
+        for(var idx = 0; idx < elems.length; idx++) {
+          if(elems[idx].getAttribute('data-version-id') != track.verison_id) {
+            priors.push(elems[idx]);
+          }
+        }
+      } else {
+        priors = elems;
+      }
       for(var idx = 0; idx < priors.length; idx++) {
         if(priors[idx].getAttribute('data-user-id') == data.user_id) {
           priors[idx].parentNode.removeChild(priors[idx]);
@@ -36,6 +48,7 @@ remote.addEventListener('track_added', function(data) {
     }
     var dom = track.generate_dom();
     dom.classList.add('track-' + track.id);
+    dom.setAttribute('data-version-id', track.version_id);
     add_dom(dom, data.track, data.user);
   }
 });

@@ -112,10 +112,10 @@ remote.webrtc = {
                 var pc = main_room.subrooms[subroom_id].rtcpc;
                 if(pc) {
                   var sender = pc.addTrack(track, pc.local_stream);
-                  main_room.subrooms[subroom_id].tracks = main_room.subrooms[subroom_id].tracks || {};
-                  main_room.subrooms[subroom_id].tracks[track_ref.id] = main_room.subrooms[subroom_id].tracks[track_ref.id] || {};
-                  main_room.subrooms[subroom_id].tracks[track_ref.id].track = track;
-                  main_room.subrooms[subroom_id].tracks[track_ref.id].sender = sender;
+                  main_room.subrooms[subroom_id][pc.id].tracks = main_room.subrooms[subroom_id][pc.id].tracks || {};
+                  main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id] = main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id] || {};
+                  main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].track = track;
+                  main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].sender = sender;
                   main_room.subrooms[subroom_id].renegotiate();
                 }
               });
@@ -137,8 +137,8 @@ remote.webrtc = {
           //   var pc = main_room.subrooms[subroom_id].rtcpc;
           //   if(pc) {
           //     var sender = pc.addTrack(track, pc.local_stream);
-          //     main_room.subrooms[subroom_id].tracks[track_ref.id].sender = sender;
-          //     main_room.subrooms[subroom_id].tracks[track_ref.id].track = track;
+          //     main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].sender = sender;
+          //     main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].track = track;
           //     res([track_ref]);
           //   }
           // });
@@ -165,7 +165,7 @@ remote.webrtc = {
           remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.id != track_ref.id.replace(/^\d+-/, ''); });
           main_room.subroom_ids.forEach(function(subroom_id) {
             var pc = main_room.subrooms[subroom_id].rtcpc;
-            var sender = main_room.subrooms[subroom_id].tracks[track_ref.id].sender;
+            var sender = main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].sender;
             if(pc && sender) {
               pc.removeTrack(sender);
               main_room.subrooms[subroom_id].renegotiate();
@@ -197,18 +197,19 @@ remote.webrtc = {
     if(main_room.subrooms[subroom_id].rtcpc) {
       // keep the existing connection running until the new one is activated
       var oldpc = main_room.subrooms[subroom_id].rtcpc;
-      main_room.subrooms[subroom_id].to_close = main_room.subrooms[subroom_id].to_close || []
-      main_room.subrooms[subroom_id].to_close.push(main_room.subrooms[subroom_id].data);
-      main_room.subrooms[subroom_id].to_close.push(oldpc);
-      main_room.subrooms[subroom_id].to_close.push({close: function() {
+      main_room.subrooms[subroom_id][oldpc.id].to_close = main_room.subrooms[subroom_id][oldpc.id].to_close || []
+      main_room.subrooms[subroom_id][oldpc.id].to_close.push(main_room.subrooms[subroom_id].data);
+      main_room.subrooms[subroom_id][oldpc.id].to_close.push(oldpc);
+      main_room.subrooms[subroom_id][oldpc.id].to_close.push({close: function() {
         setTimeout(function() {
-          var tracks = main_room.subrooms[subroom_id].remote_tracks || {};
+          var tracks = main_room.subrooms[subroom_id][oldpc.id].remote_tracks || {};
           for(var key in tracks) {
             if(tracks[key].pc == oldpc) {
               console.log("TRACK REMOVED IN CLEANUP", tracks[key]);
               remote.track_removed(main_room.ref, main_room.users[remote_user_id], tracks[key].ref);
             }
           }
+          delete main_room.subrooms[subroom_id][oldpc.id];
         }, 5000);
       }});
     }
@@ -226,9 +227,10 @@ remote.webrtc = {
     room.pcs.push(pc);
     pc.local_stream = new MediaStream();
     main_room.subrooms[subroom_id].rtcpc = pc;
+    main_room.subrooms[subroom_id][pc.id] = {};
     main_room.subrooms[subroom_id].negotiating = false;
-    main_room.subrooms[subroom_id].remote_tracks = {};
-    main_room.subrooms[subroom_id].tracks = {};
+    main_room.subrooms[subroom_id][pc.id].remote_tracks = {};
+    main_room.subrooms[subroom_id][pc.id].tracks = {};
 
     var local_data = pc.createDataChannel('channel-name');
     local_data.addEventListener('open', function() {
@@ -239,7 +241,7 @@ remote.webrtc = {
     local_data.addEventListener('close', function() {
       // channel was closed
     });
-    main_room.subrooms[subroom_id].data = local_data;
+    main_room.subrooms[subroom_id][pc.id].data = local_data;
 
     main_room.subrooms[subroom_id].renegotiate = function() {
       if(main_room.subrooms[subroom_id].negotiating) { return; }
@@ -303,11 +305,12 @@ remote.webrtc = {
           id: track_id,
           mediaStreamTrack: track,
           device_id: track.getSettings().deviceId,
+          version_id: pc.id,
           type: track.kind,
           added: (new Date()).getTime(),
         };
-        main_room.subrooms[subroom_id].remote_tracks = main_room.subrooms[subroom_id].remote_tracks || {};
-        main_room.subrooms[subroom_id].remote_tracks[track.id] = {ref: track_ref, track: track, pc: pc};
+        main_room.subrooms[subroom_id][pc.id].remote_tracks = main_room.subrooms[subroom_id][pc.id].remote_tracks || {};
+        main_room.subrooms[subroom_id][pc.id].remote_tracks[track.id] = {ref: track_ref, track: track, pc: pc};
         if(event.streams[0] && event.streams[0] != main_room.users[remote_user_id].remote_stream) {
           main_room.users[remote_user_id].remote_stream = event.streams[0];  
         }
@@ -327,7 +330,7 @@ remote.webrtc = {
           // when the new version goes live instead
           console.log("TRACK REMOVED", event.track, track_id);
           var track = event.track;
-          delete main_room.subrooms[subroom_id].remote_tracks[track.id];
+          delete main_room.subrooms[subroom_id][pc.id].remote_tracks[track.id];
           setTimeout(function() {
             remote.track_removed(main_room.ref, main_room.users[remote_user_id], {
               id: track_id,
@@ -379,8 +382,8 @@ remote.webrtc = {
       console.log("CONNECTED", pc.id, pc.user_id);
       if(pc.already_connected) { return; }
       pc.already_connected = true;
-      (main_room.subrooms[pc.subroom_id].to_close || []).forEach(function(ref) { if(ref) { ref.close(); } });
-      main_room.subrooms[pc.subroom_id].to_close = null;
+      (main_room.subrooms[pc.subroom_id][pc.id].to_close || []).forEach(function(ref) { if(ref) { ref.close(); } });
+      main_room.subrooms[pc.subroom_id][pc.id].to_close = null;
       // we should be live!
       remote.user_added(main_room.ref, main_room.users[pc.user_id]);
     };
@@ -464,14 +467,14 @@ remote.webrtc = {
     tracks_to_send.forEach(function(track) {
       console.log("ADDING LOCAL TRACK", track);
       var sender = pc.addTrack(track, pc.local_stream);
-      main_room.subrooms[subroom_id].tracks = main_room.subrooms[subroom_id].tracks || {};
-      main_room.subrooms[subroom_id].tracks["0-" + track.id] = main_room.subrooms[subroom_id].tracks["0-" + track.id] || {};
-      main_room.subrooms[subroom_id].tracks["0-" + track.id].sender = sender;
-      main_room.subrooms[subroom_id].tracks["0-" + track.id].track = track;
+      main_room.subrooms[subroom_id][pc.id].tracks = main_room.subrooms[subroom_id][pc.id].tracks || {};
+      main_room.subrooms[subroom_id][pc.id].tracks["0-" + track.id] = main_room.subrooms[subroom_id][pc.id].tracks["0-" + track.id] || {};
+      main_room.subrooms[subroom_id][pc.id].tracks["0-" + track.id].sender = sender;
+      main_room.subrooms[subroom_id][pc.id].tracks["0-" + track.id].track = track;
     });
-    main_room.subrooms[subroom_id].tracks["0-" + local_data.id] = main_room.subrooms[subroom_id].tracks["0-" + local_data.id] || {};
-    main_room.subrooms[subroom_id].tracks["0-" + local_data.id].sender = null;
-    main_room.subrooms[subroom_id].tracks["0-" + local_data.id].track = local_data;
+    main_room.subrooms[subroom_id][pc.id].tracks["0-" + local_data.id] = main_room.subrooms[subroom_id][pc.id].tracks["0-" + local_data.id] || {};
+    main_room.subrooms[subroom_id][pc.id].tracks["0-" + local_data.id].sender = null;
+    main_room.subrooms[subroom_id][pc.id].tracks["0-" + local_data.id].track = local_data;
     return pc;
   },
   reconnect: function() {
@@ -627,7 +630,8 @@ remote.webrtc = {
       var main_room = remote.webrtc.rooms[room_id];
       if(main_room) {
         main_room.subroom_ids.forEach(function(subroom_id) {
-          var subroom = main_room.subrooms[subroom_id];
+          var rtcpc = main_room.subrooms[subroom_id].rtcpc;
+          var subroom = main_room.subrooms[subroom_id][rtcpc.id];
           if(subroom && subroom.data && subroom.data.readyState == 'open') {
             var str = message;
             subroom.data.send(str);
