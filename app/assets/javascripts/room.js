@@ -902,7 +902,7 @@ var room = {
       if(current_video_id && current_video_id != 'none') { 
         var track = list.find(function(t) { return t.deviceId == current_video_id});
         if(track && !room.first_video) {
-          room.first_video = {device_id: track.deviceId, group_id: track.groupId, facing_mode: track.getSettings().facingMode};
+          room.first_video = {device_id: track.deviceId, group_id: track.groupId, facing_mode: track.facingMode};
         }
       }
       // Limiting to one per groupId/facingMode for video swap

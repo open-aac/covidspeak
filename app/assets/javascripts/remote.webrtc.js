@@ -161,7 +161,7 @@ remote.webrtc = {
               rej(errors.length > 1 ? errors : errors[0]);
             } else {
               var ending_tracks = remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.kind == track.kind; });
-              ending_tracks.forEach(function(t) { t.stop(); });
+              ending_tracks.forEach(function(t) { t.enabled = false; t.stop(); });
               remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.kind != track.kind; });
               remote.webrtc.local_tracks.push(track);
               remote.webrtc.all_local_tracks.push(track);
@@ -196,6 +196,7 @@ remote.webrtc = {
               main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id] = main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id] || {};
               main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].track = track;
               main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].sender = sender;
+              old_track.enabled = false;
               old_track.stop();
               check_done();
             }, function(err) {
@@ -295,6 +296,7 @@ remote.webrtc = {
           for(var key in tracks) {
             if(tracks[key].pc == oldpc) {
               console.log("TRACK REMOVED IN CLEANUP", tracks[key]);
+              tracks[key].track.enabled = false;
               tracks[key].track.stop();
               remote.track_removed(main_room.ref, main_room.users[remote_user_id], tracks[key].ref);
             }
@@ -328,7 +330,7 @@ remote.webrtc = {
     if(old_remote_tracks.length > 0) {
       main_room.subrooms[subroom_id].to_close.push({close: function() {
         setTimeout(function() {
-          old_remote_tracks.forEach(function(t) { t.stop(); });
+          old_remote_tracks.forEach(function(t) { t.enabled = false; t.stop(); });
         }, 5000);
       }});  
     }
@@ -455,6 +457,7 @@ remote.webrtc = {
               id: track_id,
               type: track.kind
             });  
+            track.enabled = false;
             track.stop();
           }, 1000);
         });
