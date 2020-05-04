@@ -98,14 +98,7 @@ remote.addEventListener('user_added', function(data) {
   }, 500);
 });
 remote.addEventListener('user_removed', function(data) {
-  if((room.active_users || {})[data.user.id]) {
-    room.active_users[data.user.id] = false;
-    var sound = new Audio();
-    sound.src = "/sounds/exit.mp3";
-    sound.oncanplay = function() {
-      sound.play();
-    }
-  }
+  room.user_left(data.user);
 });
 remote.addEventListener('message', function(data) {
   room.handle_message(data);
@@ -1406,11 +1399,28 @@ var room = {
           }
         }
       }
+    } else if(json.action && json.action == 'goodbye') {
+      if(data.user) {
+        room.user_left(data.user);
+        // TODO: pro-actively remove tracks and dom elements for user
+      }
+      
     } else {
       // TODO: if more users in the feed, ensure
       // that everyone else sees the communicator's video feed
       console.log("MESSAGE:", json);
     }  
+  },
+  user_left: function(user) {
+    if(user && (room.active_users || {})[user.id]) {
+      room.active_users[user.id] = false;
+      var sound = new Audio();
+      sound.src = "/sounds/exit.mp3";
+      sound.oncanplay = function() {
+        sound.play();
+      }
+    }
+  
   },
   simple_button: function(btn, comp) {
     if(!btn) { return {}; }
@@ -1604,7 +1614,10 @@ document.addEventListener('click', function(event) {
       modal.open("Leave Room?", document.getElementById('confirm_exit'), [
         {label: "Leave Room", action: "leave", callback: function() {
           modal.close();
-          location.href = "/thanks";
+          remote.send_message(room.current_room.id, {action: 'goodbye'}).then(null, function() { });
+          setTimeout(function() {
+            location.href = "/thanks";
+          }, 300);
         }},
         {label: "Cancel", action: "close"}
       ]);
