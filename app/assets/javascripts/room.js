@@ -788,7 +788,8 @@ var room = {
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
             room_session.user_id = res.user_id;
             room_session.room_initiator = (room.room_id == localStorage.room_id);
-            if(room_session.room_initiator) {
+            room_session.as_communicator = true;
+            if(room_session.room_initiator && !miror_type) {
               room_session.as_communicator = (localStorage.self_as_communicator == 'true');
             }
             $(".grid").toggleClass('initiator', room_session.room_initiator)
@@ -1394,10 +1395,12 @@ var room = {
             }
           }
           // check if you were just promoted to communicator
-          var prior = room.current_room.as_communicator;
-          room.current_room.as_communicator = (data.message.communicator_id == room.current_room.user_id);
-          if(prior != room.current_room.as_communicator) {
-            room.show_grid();
+          if(!mirror_type) {
+            var prior = room.current_room.as_communicator;
+            room.current_room.as_communicator = (data.message.communicator_id == room.current_room.user_id);
+            if(prior != room.current_room.as_communicator) {
+              room.show_grid();
+            }  
           }
         }
       }
