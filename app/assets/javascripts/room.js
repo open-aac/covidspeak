@@ -789,9 +789,9 @@ var room = {
             room_session.user_id = res.user_id;
             room_session.room_initiator = (room.room_id == localStorage.room_id);
             if(room_session.room_initiator) {
-              room.session.as_communicator = (localStorage.self_as_communicator == 'true');
+              room_session.as_communicator = (localStorage.self_as_communicator == 'true');
             }
-            $(".grid").toggleClass('communicator', room_session.as_communicator)
+            $(".grid").toggleClass('initiator', room_session.room_initiator)
             room.current_room = room_session;
             room.local_tracks = tracks;
             room.send_update();
