@@ -58,7 +58,10 @@ var input = {
             audio_element: elem,
             release: function() { 
               res.released = true;
-              context.close(); 
+              if(elem) {
+                elem.srcObject = null;
+              }
+              context.close();
             },
             analyser: analyser, 
             audio_track: track,

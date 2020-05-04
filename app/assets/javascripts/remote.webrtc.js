@@ -41,6 +41,7 @@ remote.webrtc = {
     return new Promise(function(res, rej) {
       navigator.mediaDevices.getUserMedia(opts).then(function(stream) {
         remote.webrtc.local_tracks = stream.getTracks();
+        remote.webrtc.all_local_tracks = [].concat(remote.webrtc.local_tracks);
         var result = [];
         remote.webrtc.local_tracks.forEach(function(track) {
           var track_ref = {
@@ -91,6 +92,7 @@ remote.webrtc = {
             if(remote.webrtc.local_tracks.indexOf(track) == -1) {
               new_track = true;
               remote.webrtc.local_tracks.push(track);
+              remote.webrtc.all_local_tracks.push(track);
             }
             track.enabled = true;
             if(new_track) {
@@ -158,8 +160,11 @@ remote.webrtc = {
             if(errors.length > 0) {
               rej(errors.length > 1 ? errors : errors[0]);
             } else {
+              var ending_tracks = remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.kind == track.kind; });
+              ending_tracks.forEach(function(t) { t.stop(); });
               remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.kind != track.kind; });
               remote.webrtc.local_tracks.push(track);
+              remote.webrtc.all_local_tracks.push(track);
               console.log("SUCCESSFULLY REPLACED TRACK!");
               res({added: track_ref});
             }
@@ -185,12 +190,13 @@ remote.webrtc = {
             })
           }
           if(pc && sender) {
-            var old_track_id = "0-" + sender.track.id;
+            var old_track = sender.track;
             sender.replaceTrack(track).then(function(res) {
-              delete main_room.subrooms[subroom_id][pc.id].tracks[old_track_id];
+              delete main_room.subrooms[subroom_id][pc.id].tracks['0-' + old_track.id];
               main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id] = main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id] || {};
               main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].track = track;
               main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].sender = sender;
+              old_track.stop();
               check_done();
             }, function(err) {
               check_done(err);
@@ -233,7 +239,7 @@ remote.webrtc = {
         if(!remember) { 
           // This needs to come before we update the connection
           // to prevent a negotiation race condition
-          remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.id != track_ref.id.replace(/^\d+-/, ''); });
+          remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.id != track.id; });
           main_room.subroom_ids.forEach(function(subroom_id) {
             var pc = main_room.subrooms[subroom_id].rtcpc;
             var sender = main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id].sender;
@@ -277,24 +283,54 @@ remote.webrtc = {
     }
     main_room.subrooms[subroom_id] = main_room.subrooms[subroom_id] || {};
     main_room.subrooms[subroom_id].id_index = main_room.subrooms[subroom_id].id_index || 1;
+    main_room.subrooms[subroom_id].to_close = main_room.subrooms[subroom_id].to_close || []
     if(main_room.subrooms[subroom_id].rtcpc) {
       // keep the existing connection running until the new one is activated
       var oldpc = main_room.subrooms[subroom_id].rtcpc;
-      main_room.subrooms[subroom_id][oldpc.id].to_close = main_room.subrooms[subroom_id][oldpc.id].to_close || []
-      main_room.subrooms[subroom_id][oldpc.id].to_close.push(main_room.subrooms[subroom_id].data);
-      main_room.subrooms[subroom_id][oldpc.id].to_close.push(oldpc);
-      main_room.subrooms[subroom_id][oldpc.id].to_close.push({close: function() {
+      main_room.subrooms[subroom_id].to_close.push(main_room.subrooms[subroom_id].data);
+      main_room.subrooms[subroom_id].to_close.push(oldpc);
+      main_room.subrooms[subroom_id].to_close.push({close: function() {
         setTimeout(function() {
           var tracks = main_room.subrooms[subroom_id][oldpc.id].remote_tracks || {};
           for(var key in tracks) {
             if(tracks[key].pc == oldpc) {
               console.log("TRACK REMOVED IN CLEANUP", tracks[key]);
+              tracks[key].track.stop();
               remote.track_removed(main_room.ref, main_room.users[remote_user_id], tracks[key].ref);
             }
           }
+          if(oldpc.signalingState == 'closed' || oldpc.connectionState == 'closed' ) {
+
+          } else {
+            oldpc.getSenders().forEach(function(s) {
+              if(s.track  ) {
+                oldpc.removeTrack(s);
+              }
+            });
+          }
           delete main_room.subrooms[subroom_id][oldpc.id];
+          oldpc.close();
         }, 5000);
       }});
+    }
+    // Ensure all old remote tracks get cleaned up
+    var old_remote_tracks = [];
+    for(var pc_id in main_room.subrooms[subroom_id]) {
+      if(main_room.subrooms[subroom_id][pc_id] && main_room.subrooms[subroom_id][pc_id].remote_tracks) {
+        var remote_tracks = main_room.subrooms[subroom_id][pc_id].remote_tracks;
+        for(var track_id in remote_tracks) {
+          if(remote_tracks[track_id] && remote_tracks[track_id].track) {
+            old_remote_tracks.push(remote_tracks[track_id].track);
+          }
+        }
+      }
+    }
+    if(old_remote_tracks.length > 0) {
+      main_room.subrooms[subroom_id].to_close.push({close: function() {
+        setTimeout(function() {
+          old_remote_tracks.forEach(function(t) { t.stop(); });
+        }, 5000);
+      }});  
     }
     var config = {};
     config.iceServers = main_room.ice;
@@ -419,6 +455,7 @@ remote.webrtc = {
               id: track_id,
               type: track.kind
             });  
+            track.stop();
           }, 1000);
         });
         // event.streams[0].addEventListener('addtrack', function(event) {
@@ -465,8 +502,8 @@ remote.webrtc = {
       console.log("CONNECTED", pc.id, pc.user_id);
       if(pc.already_connected) { return; }
       pc.already_connected = true;
-      (main_room.subrooms[pc.subroom_id][pc.id].to_close || []).forEach(function(ref) { if(ref) { ref.close(); } });
-      main_room.subrooms[pc.subroom_id][pc.id].to_close = null;
+      (main_room.subrooms[pc.subroom_id].to_close || []).forEach(function(ref) { if(ref) { ref.close(); } });
+      main_room.subrooms[pc.subroom_id].to_close = null;
       // we should be live!
       remote.user_added(main_room.ref, main_room.users[pc.user_id]);
     };
@@ -546,6 +583,7 @@ remote.webrtc = {
     (room.priority_tracks || []).forEach(function(track) {
       if(track.kind == 'audio' && tracks_to_send.indexOf(track) == -1) {
         remote.webrtc.local_tracks.push(track);
+        remote.webrtc.all_local_tracks.push(track);
         tracks_to_send.push(track);
       }
     })
