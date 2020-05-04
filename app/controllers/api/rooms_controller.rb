@@ -131,9 +131,12 @@ class Api::RoomsController < ApplicationController
       return api_error(400, {error: "unrecognized room type, #{room.type}"})
     end
     room.allow_user(trimmed_identity)
-    
+
+    # Optional JavaScript URL to embed on room load
+    js_url = (room.account && room.account.settings['js_url']) || nil
+
     # Generate the token
-    render :json => {:room => {id: room_id, key: room_key, type: room.type}, user_id: trimmed_identity, access: access}
+    render :json => {:room => {id: room_id, key: room_key, type: room.type, high_res: false, js: js_url}, user_id: trimmed_identity, access: access}
   end
 
   def keepalive
