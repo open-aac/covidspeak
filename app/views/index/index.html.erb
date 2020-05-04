@@ -8,7 +8,7 @@
       </button>
     </div>
   </div>
-  <h2>Start a New Room</h2>
+  <h2 style='margin-bottom: 10px;'>Enter your Join Code to Start a New Room</h2>
   <div>
     <form id='join'>
       <input type='text' style='width: calc(100% - 185px);' placeholder='Join Code' id='join_code' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='off'/>
@@ -16,9 +16,18 @@
         <img src="/logo.svg" class='img_logo' style='height: 40px; margin: -10px 0;'/> 
         Start Room
       </button>
+      <div class='big_checkbox' style='margin: 10px 0; padding-left: 52px; text-align: left; padding-top: 0; font-size: 14px; font-size: 18px; padding-top: 10px;'>
+        <label>
+          <input type='checkbox' id='as_communicator' checked='true'/>
+          Add me to the room as the communicator
+        </label>
+      </div>
       <p class='error'></p>
     </form>
-  </div>
+    <div style='margin-top: 20px; text-align: right;'>
+      <a href="#" id='join_code_help'><img class='icon' src='/icons/question-circle.svg' alt='' style='opacity: 0.7;' />        What's a Join Code?</a>
+    </div>
+</div>
   <ul>
 </div>
 <!-- TODO: https://api.adorable.io/avatars/face/eyes9/nose9/mouth9/ffff00 -->
@@ -30,6 +39,10 @@ var ts = parseInt(localStorage.room_set_at || "0", 10);
 if(ts > ((new Date()).getTime() - (30 * 60 * 1000)) && localStorage.room_id && localStorage.user_id) {
   document.querySelector('#existing_room').style.display = 'block';
 }
+document.querySelector('#join_code_help').addEventListener('click', function(event) {
+  event.preventDefault();
+  alert('secret!');
+})
 document.querySelector('#rejoin').addEventListener('click', function(event) {
   event.preventDefault();
   if(localStorage.user_id && localStorage.room_id) {
@@ -53,6 +66,7 @@ document.querySelector('#join').addEventListener('submit', function(event) {
     localStorage.user_id = res.user.id;
     localStorage.room_id = res.user.room_id;
     localStorage.room_set_at = (new Date()).getTime();
+    localStorage.self_as_communicator = document.querySelector('#as_communicator').checked ? 'true' : 'false';
     localStorage.show_images = 'true';
     localStorage.terms_accepted = 'true';
     location.href = '/rooms/' + res.user.room_id;

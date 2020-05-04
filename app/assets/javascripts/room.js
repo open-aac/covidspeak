@@ -91,7 +91,7 @@ remote.addEventListener('user_added', function(data) {
         sound.play();
       }  
     }
-    room.active_users[data.user.id] = true;
+    room.active_users[data.user.id] = (new Date()).getTime();
   }
   setTimeout(function() {
     room.send_update();
@@ -202,7 +202,7 @@ var room = {
     } else {
       document.querySelector('#status_holder').style.display = 'block';
       document.querySelector('#status').innerText = str;
-      if(room.current_room && room.current_room.for_self) {
+      if(room.current_room && room.current_room.room_initiator) {
         if(opts && opts.invite) {
           document.querySelector('#status_invite').style.display = 'block';
         }
@@ -221,7 +221,7 @@ var room = {
       room.active_timeout = setTimeout(function() {
         room.active_timeout = null;
         room.set_active();
-      }, 50000 + Math.round(Math.random() * 20000)); // add jitter
+      }, 40000 + Math.round(Math.random() * 40000)); // add jitter
     };
     session.ajax('/api/v1/rooms/' + room.room_id + '/keepalive', {
       method: 'POST',
@@ -531,7 +531,7 @@ var room = {
     }
     if(!room.current_room) { return; }
     remote.send_message(room.current_room.id, {
-      from_communicator: room.current_room.for_self,
+      from_communicator: room.current_room.as_communicator,
       action: 'image',
       url: image_url,
       text: alt
@@ -567,6 +567,24 @@ var room = {
     }
     if(room.keyboard_state) {
       message.keyboard_state = room.keyboard_state;
+    }
+    if(room.current_room.room_initiator) {
+      if(room.current_room.as_communicator) {
+        message.communicator_id = room.current_room.user_id;
+      } else {
+        var earliest = {};
+        for(var user_id in room.active_users) {
+          if(room.active_users[user_id] && room.active_users[user_id] !== true) {
+            var ts = room.active_users[user_id];
+            if(!earliest['ts'] || earliest['ts'] > ts) {
+              earliest = {user_id: user_id, ts: ts};
+            }
+          }
+        }
+        if(earliest.user_id) {
+          message.communicator_id = earliest.user_id;
+        }
+      }
     }
     remote.send_message(room.current_room.id, message).then(null, function() {
       // prolly not a big deal
@@ -750,13 +768,30 @@ var room = {
               document.getElementById('communicator').appendChild(tracks[idx].generate_dom());
             }
           }
+          // Custom JavaScript as an option for rooms
+          if(res.room.js_url) {
+            if(window.cleanupCustomRoom) {
+              window.cleanupCustomRoom();
+            }
+            var script = document.querySelector('script#room_custom_js');
+            if(script) {
+              script.parentNode.removeChild(script);
+            }
+            script = document.createElement('script');
+            script.id = 'room_custom_js';
+            script.src = res.room.js_url;
+            document.body.appendChild(script);
+          }
           room.status("Connecting...");
           remote.connect_to_remote(res.access, res.room.key).then(function(room_session) {
             room.status('Waiting for Partner...', {invite: true});
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
             room_session.user_id = res.user_id;
-            room_session.for_self = room.room_id == localStorage.room_id;
-            $(".grid").toggleClass('communicator', room_session.for_self)
+            room_session.room_initiator = (room.room_id == localStorage.room_id);
+            if(room_session.room_initiator) {
+              room.session.as_communicator = (localStorage.self_as_communicator == 'true');
+            }
+            $(".grid").toggleClass('communicator', room_session.as_communicator)
             room.current_room = room_session;
             room.local_tracks = tracks;
             room.send_update();
@@ -980,7 +1015,7 @@ var room = {
   },
   show_grid: function() {
     if(!room.buttons) { return; }
-    var for_communicator = room.current_room && room.current_room.for_self;
+    var for_communicator = room.current_room && room.current_room.as_communicator;
     var window_height = window.innerHeight;
     var video_height = window_height - ((window_height / 3) - 7) - (window_height * .12) - 21;
     // document.getElementById('partner').parentNode.style.height = video_height + "px";
@@ -1285,7 +1320,7 @@ var room = {
     }
     $nav.css('opacity', force ? 1 : 0);
     $text_prompt.css('opacity', force ? 1 : 0);
-    if(room.current_room && !room.current_room.for_self) {
+    if(room.current_room && !room.current_room.as_communicator) {
       document.querySelector('#eyes').style.opacity = force ? 1 : 0;
     }
     $nav[0].shown_at = now;
@@ -1319,11 +1354,11 @@ var room = {
       });
     } else if(json && json.action == 'image') {
       var big_image = false;
-      if(data.message.from_communicator && !room.current_room.for_self) {
+      if(data.message.from_communicator && !room.current_room.as_communicator) {
         // if sent by the communicator, who is not you
         // show a big version of the image
         big_image = true;
-      } else if(!data.message.from_communicator && room.current_room.for_self) {
+      } else if(!data.message.from_communicator && room.current_room.as_communicator) {
         // or if sent by someone else and you are the communicator
         // show a big version of the image
         big_image = true;
@@ -1349,6 +1384,21 @@ var room = {
           document.querySelector('#no_preview').style.display = 'block';
           document.querySelector('#eyes').style.display = 'none';
           // show the animated preview
+        }
+        if(data.message.communicator_id) {
+          // clean up users that hacen't checked in for a while
+          var cutoff = (new Date()).getTime() - 60000;
+          for(var user_id in room.active_users) {
+            if(room.active_users[user_id] !== true && room.active_users[user_id] < cutoff) {
+              room.active_users[user_id] = true;
+            }
+          }
+          // check if you were just promoted to communicator
+          var prior = room.current_room.as_communicator;
+          room.current_room.as_communicator = (data.message.communicator_id == room.current_room.user_id);
+          if(prior != room.current_room.as_communicator) {
+            room.show_grid();
+          }
         }
       }
       if(data.user && data.user.ts_offset != null && json.asserted_buttons) {
@@ -1413,7 +1463,7 @@ var room = {
   },
   user_left: function(user) {
     if(user && (room.active_users || {})[user.id]) {
-      room.active_users[user.id] = false;
+      delete room.active_users[user.id];
       var sound = new Audio();
       sound.src = "/sounds/exit.mp3";
       sound.oncanplay = function() {
@@ -1680,7 +1730,7 @@ document.addEventListener('click', function(event) {
         }}
       ]);
       content = document.querySelector('.modal .content');
-      if(!room.current_room.for_self) {
+      if(!room.current_room.as_communicator) {
         content.querySelector('.reverse').style.display = 'inline';
       }
       content.addEventListener('click', function(event) {
