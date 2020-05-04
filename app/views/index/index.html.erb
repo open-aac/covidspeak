@@ -33,6 +33,25 @@
 <!-- TODO: https://api.adorable.io/avatars/face/eyes9/nose9/mouth9/ffff00 -->
 <!-- TODO: do this ^ through a CDN proxy -->
 
+<div id="join_code_modal" class="content">
+  <p style='margin-top: -10px;'>
+    <img src="/logo.svg" class='img_logo' style='height: 100px; margin: 0 10px 10px 0; float: left;'/> 
+    To start a Co-VidSpeak room you will need access to
+    a join code.
+    Co-VidSpeak rooms are created on-demand. You start
+    the room which then creates a unique share link
+    for that room. You can text, email, or copy and
+    paste that link to the other person, and then they
+    can access the room by loading the page in their
+    web browser.
+  </p>
+  <p style='margin-top: 20px;'>
+    Need a join code?
+    <a href="https://www.covidspeak.org/contact.html">Contact Us</a>
+    for more information.
+  </p>
+</div>
+
 <script>
 var ts = parseInt(localStorage.room_set_at || "0", 10);
 // Allow re-joining the last room for a max of 30 minutes
@@ -41,7 +60,7 @@ if(ts > ((new Date()).getTime() - (30 * 60 * 1000)) && localStorage.room_id && l
 }
 document.querySelector('#join_code_help').addEventListener('click', function(event) {
   event.preventDefault();
-  alert('secret!');
+  modal.open("What is a Join Code?", document.querySelector('#join_code_modal'));
 })
 document.querySelector('#rejoin').addEventListener('click', function(event) {
   event.preventDefault();
