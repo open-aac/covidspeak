@@ -898,23 +898,28 @@ var room = {
     input.enumerate('video').then(function(list) {
       var ids = [];
       var group_ids = {};
+      var facing_modes = {};
       if(current_video_id && current_video_id != 'none') { 
         var track = list.find(function(t) { return t.deviceId == current_video_id});
         if(track && !room.first_video) {
-          room.first_video = {device_id: track.deviceId, group_id: track.groupId};
+          room.first_video = {device_id: track.deviceId, group_id: track.groupId, facing_mode: track.getSettings().facingMode};
         }
       }
-      // Limiting to one per groupId for video swap
+      // Limiting to one per groupId/facingMode for video swap
       // (you can still go to settings for the full list)
       if(room.first_video) {
         ids.push(room.first_video.device_id);
         group_ids[room.first_video.group_id] = true;
-
+        if(room.first_video.facing_mode) {
+          facing_modes[room.first_video.facing_mode] = true;
+        }
       }
       list.forEach(function(d) {
-        if(!group_ids[d.groupId]) {
+        var facing = d.getSettings().facingMode;
+        if(!group_ids[d.groupId] && (!facing || !facing_modes[facing])) {
           ids.push(d.deviceId);
           group_ids[d.groupId] = true;
+          facing_modes[facing] = true;
         }
       });
       room.video_device_ids = ids;
