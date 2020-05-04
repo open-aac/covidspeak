@@ -11,11 +11,13 @@ class Api::UsersController < ApplicationController
         identity = Account.generate_user
       end
     end
-    identity = nil unless Account.valid_user_id?(identity)
+    identity = nil unless identity && Account.valid_user_id?(identity)
     return api_error(400, {error: "no user generated"}) unless identity
     room = Room.find_by(code: params['room_id'])
     room ||= account.generate_room(identity) if params['join_code']
     raise api_error(400, {error: "no room generated"}) unless room
+    raise api_error(400, {error: "no room slots available", throttled: room.throttled?}) if room.throttled?
+    room.save!
     
     # Generate the token
     render :json => {:user => {id: identity, room_id: room.code}}

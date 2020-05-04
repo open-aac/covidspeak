@@ -30,15 +30,32 @@ class Account < ApplicationRecord
   end
 
   def generate_room(user_id_or_hash)
-    # TODO: throttling, only allow generating a new room
-    # if there haven't been too many concurrent rooms
-    # recently based on this account's settings
     str = user_id_or_hash
     if !user_id_or_hash.match(/^r/)
       str = "r" + GoSecure.sha512(user_id_or_hash, 'room_id for user')[0, 40]
     end
     str = str + ":" + GoSecure.sha512(str, 'room_id confirmation')[0, 40]
-    Room.find_or_create_by(code: str, account_id: self.id)
+    room = Room.find_or_initialize_by(code: str, account_id: self.id)
+    max_live_rooms = self.settings['max_concurrent_rooms']
+    max_daily_rooms = self.settings['max_daily_rooms']
+    if !room.id && (max_live_rooms || max_daily_rooms)
+      live_rooms = 0
+      daily_rooms = 0
+      recent_rooms = Room.where(account_id: self.id).where(['updated_at > ?', 24.hours.ago]).each do |room|
+        if room.setttings['ended_at'] && room.settings['duration'] && room.settings['duration'] > 3
+          daily_rooms += 1
+          if room.settings['ended_at'] > 3.minutes.ago.to_i
+            live_rooms += 1
+          end
+        end
+      end
+      if max_live_rooms && live_rooms >= max_live_rooms
+        return Room.throttle_response('too_many_live')
+      elsif max_daily_rooms && daily_rooms >= max_daily_rooms
+        return Room.throttle_response('too_many_daily')
+      end
+    end
+    room
   end
 
   def self.valid_room_id?(room_id)

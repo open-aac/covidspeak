@@ -72,7 +72,17 @@ document.querySelector('#join').addEventListener('submit', function(event) {
     location.href = '/rooms/' + res.user.room_id;
   }, function(err) {
     document.querySelector('#join button').innerText = "Start Room";
-    error.innerText = "Please re-check your join code";
+    if(err && err.responseJSON && err.responseJSON.throttled) {
+      if(err.responseJSON.throttled == 'too_many_live') {
+        error.innerText = "All rooms are in use for this join code";
+      } else if(err.responseJSON.throttled == 'too_many_daily') {
+        error.innerText = "Daily room limit has been reached for this join code";
+      } else {
+        error.innerText = "No rooms are available for this join code";
+      }
+    } else {
+      error.innerText = "Please re-check your join code";
+    }
     console.error("User confirmation error: ", err);
   });
 });

@@ -13,6 +13,16 @@ class Room < ApplicationRecord
     find_by(code: code)
   end
 
+  def throttled?
+    !!@throttled
+  end
+
+  def self.throttle_response(throttle)
+    res = Room.new
+    res.instance_variable_set('@throttled', throttle)
+    res
+  end
+
   def allow_user(user_id)
     self.settings ||= {}
     self.settings['allowed_user_ids'] ||= []

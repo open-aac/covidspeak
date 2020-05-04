@@ -41,8 +41,13 @@ class Api::RoomsController < ApplicationController
         account = room.account
         if !Account.valid_user_id?(identity)
           return api_error(400, {error: "invalid user id, #{identity}"})
-        elsif room != account.generate_room(identity)
-          return api_error(400, {error: "wrong user id for room"})
+        else
+          ref_room = account.generate_room(identity)
+          if room != ref_room
+            return api_error(400, {error: "wrong user id for room"})
+          elsif ref_room && ref_room.throttled?
+            return api_error(400, {error: "no room slots available", throttled: ref_room.throttled?})
+          end
         end
       end
 
