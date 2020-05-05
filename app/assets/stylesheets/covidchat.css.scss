@@ -1193,4 +1193,18 @@ strong {
       height: calc(100% - 20px);
     }    
   }
+  #contents .grid .menu {
+    width: 60px;
+    .button {
+      .grids .grid_option {
+        height: 80px;
+      }
+      .extras {
+        width: 428px;
+      }
+      .reactions img {
+        height: 60px;
+      }
+    }
+  }
 }
