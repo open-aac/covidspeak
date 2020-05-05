@@ -1112,7 +1112,7 @@ strong {
     }
   }
 }
-@media (max-width: 650px) {
+@media (max-width: 700px) {
   #contents .grid {
     .cell {
       .text {
@@ -1174,6 +1174,12 @@ strong {
       padding: 0;
       &.mute,&.unmute,&.toggle {
         margin-right: 0;
+      }
+      img.icon {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 0;
+        height: calc(100% - 20px);
       }
     }
   }
