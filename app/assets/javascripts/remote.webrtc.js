@@ -545,15 +545,18 @@ remote.webrtc = {
       pc_ref.already_connected = false;
       main_room.already = false;
       remote.user_removed(main_room.ref, main_room.users[pc_ref.user_id]);
-      setTimeout(function() {
+      var check_for_reconnect = function() {
         var latest_pc_ref = remote.webrtc.pc_ref((main_room.subrooms[pc_ref.subroom_id] || {}).pc_id || pc.id || pc_id);
         // If we still haven't managed a healthy connection, try again
         if(latest_pc_ref && latest_pc_ref.refState != 'connected') {
           if(main_room.subrooms[latest_pc_ref.subroom_id]) {
             main_room.subrooms[latest_pc_ref.subroom_id].renegotiate();
           }
+        } else if(latest_pc_ref && ['new', 'checking', 'connecting'].indexOf(latest_pc_ref.refState) != -1) {
+          setTimeout(check_for_reconnect, 5000);
         }
-      }, 5000);
+      };
+      setTimeout(check_for_reconnect, 5000);
     };
     pc.addEventListener('connectionstatechange', function(e) {
       // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceConnectionState
@@ -827,4 +830,3 @@ remote.webrtc = {
     });
   }
 };
-'
