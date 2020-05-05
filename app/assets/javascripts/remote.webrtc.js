@@ -344,6 +344,7 @@ remote.webrtc = {
     pc.id = Math.round(Math.random() * 9999) + ""  + (new Date()).getTime();
     pc.user_id = remote_user_id;
     pc.subroom_id = subroom_id;
+    pc.room_id = room_id;
     room.pcs = room.pcs || [];
     room.pcs.push(pc);
     pc.local_stream = new MediaStream();
@@ -418,8 +419,10 @@ remote.webrtc = {
     });
     pc.addEventListener('track', function(event) {
       var track = event.track;
-      var subroom_id = event.target.subroom_id;
-      var remote_user_id = event.target.user_id;
+      var rtcpc = (event.target && event.target.id) ? event.target : pc;
+      var main_room = remote.webrtc.rooms[rtcpc.room_id];
+      var subroom_id = rtcpc.subroom_id;
+      var remote_user_id = rtcpc.user_id;
       var add_track = function(track) {
         var track_id = main_room.subrooms[subroom_id].id_index + "-" + track.id;
         var track_ref = {
@@ -430,8 +433,8 @@ remote.webrtc = {
           type: track.kind,
           added: (new Date()).getTime(),
         };
-        main_room.subrooms[subroom_id][pc.id].remote_tracks = main_room.subrooms[subroom_id][pc.id].remote_tracks || {};
-        main_room.subrooms[subroom_id][pc.id].remote_tracks[track.id] = {ref: track_ref, track: track, pc: pc};
+        main_room.subrooms[subroom_id][rtcpc.id].remote_tracks = main_room.subrooms[subroom_id][pc.id].remote_tracks || {};
+        main_room.subrooms[subroom_id][rtcpc.id].remote_tracks[track.id] = {ref: track_ref, track: track, pc: pc};
         if(event.streams[0] && event.streams[0] != main_room.users[remote_user_id].remote_stream) {
           main_room.users[remote_user_id].remote_stream = event.streams[0];  
         }
@@ -451,7 +454,7 @@ remote.webrtc = {
           // when the new version goes live instead
           console.log("TRACK REMOVED", event.track, track_id);
           var track = event.track;
-          delete main_room.subrooms[subroom_id][pc.id].remote_tracks[track.id];
+          delete main_room.subrooms[subroom_id][rtcpc.id].remote_tracks[track.id];
           setTimeout(function() {
             remote.track_removed(main_room.ref, main_room.users[remote_user_id], {
               id: track_id,

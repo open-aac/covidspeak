@@ -88,7 +88,9 @@ remote.addEventListener('user_added', function(data) {
       var sound = new Audio();
       sound.src = "/sounds/enter.mp3";
       sound.oncanplay = function() {
-        sound.play();
+        sound.play().then(null, function(e) {
+          // NotAllowedError possibly
+        });
       }  
     }
     room.active_users[data.user.id] = (new Date()).getTime();
@@ -1470,7 +1472,9 @@ var room = {
       var sound = new Audio();
       sound.src = "/sounds/exit.mp3";
       sound.oncanplay = function() {
-        sound.play();
+        sound.play().then(null, function(e) {
+          // NotAllowedError possible
+        });
       }
     }
   
