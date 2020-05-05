@@ -1141,8 +1141,8 @@ strong {
       .extras {
         width: 217px;
       }
-      .grids {
-        max-width: calc(100vw - 100px);
+      .grids,.reactions {
+        max-width: calc(100vw - 60px);
       }
       .grids .grid_option {
         width: 76px;
