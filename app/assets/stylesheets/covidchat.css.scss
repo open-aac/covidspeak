@@ -1112,6 +1112,21 @@ strong {
     }
   }
 }
+@media (max-width: 1000px) {
+  .grid .mid .preview #nav {
+    .pres {
+      display: block;
+      text-align: left;
+    }
+    button {
+      width: 45px;
+      padding: 0;
+      &.mute,&.unmute,&.toggle {
+        margin-right: 0;
+      }
+    }
+  }
+}
 @media (max-width: 700px) {
   #contents .grid {
     .cell {
@@ -1162,19 +1177,6 @@ strong {
     }
     button {
       height: auto;
-    }
-  }
-  .grid .mid .preview #nav {
-    .pres {
-      display: block;
-      text-align: left;
-    }
-    button {
-      width: 45px;
-      padding: 0;
-      &.mute,&.unmute,&.toggle {
-        margin-right: 0;
-      }
     }
   }
 
