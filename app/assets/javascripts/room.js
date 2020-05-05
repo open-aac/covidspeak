@@ -784,16 +784,16 @@ var room = {
           }
           room.status("Connecting...");
           remote.connect_to_remote(res.access, res.room.key).then(function(room_session) {
+            room_session.room_initiator = (room.room_id == localStorage.room_id);
+            room.current_room = room_session;
             room.status('Waiting for Partner...', {invite: true});
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
             room_session.user_id = res.user_id;
-            room_session.room_initiator = (room.room_id == localStorage.room_id);
             room_session.as_communicator = true;
-            if(room_session.room_initiator && !miror_type) {
+            if(room_session.room_initiator && !mirror_type) {
               room_session.as_communicator = (localStorage.self_as_communicator == 'true');
             }
             $(".grid").toggleClass('initiator', room_session.room_initiator)
-            room.current_room = room_session;
             room.local_tracks = tracks;
             room.send_update();
             room.show_grid();
