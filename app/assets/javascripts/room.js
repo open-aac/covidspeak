@@ -9,7 +9,7 @@ var add_dom = function(elem, track, user) {
   elem.classList.add("room-" + track.type);
   elem.setAttribute('data-track-id', track.id);
   elem.setAttribute('data-user-id', user.id);
-  document.getElementById('partner').appendChild(elem);
+  document.getElementById('partner').prepend(elem);
   if(track.type == 'video') {
     elem.addEventListener('resize', function() {
       room.size_video();
@@ -46,10 +46,12 @@ remote.addEventListener('track_added', function(data) {
         }
       }
     }
-    var dom = track.generate_dom();
-    dom.classList.add('track-' + track.id);
-    dom.setAttribute('data-version-id', track.version_id);
-    add_dom(dom, data.track, data.user);
+    if(track.generate_dom) {
+      var dom = track.generate_dom();
+      dom.classList.add('track-' + track.id);
+      dom.setAttribute('data-version-id', track.version_id);
+      add_dom(dom, data.track, data.user);  
+    }
   }
 });
 
@@ -946,7 +948,7 @@ var room = {
         }
       }
       list.forEach(function(d) {
-        var facing = d.getSettings().facingMode;
+        var facing = d.facingMode;
         if(!group_ids[d.groupId] && (!facing || !facing_modes[facing])) {
           ids.push(d.deviceId);
           group_ids[d.groupId] = true;
@@ -1475,9 +1477,22 @@ var room = {
         sound.play().then(null, function(e) {
           // NotAllowedError possible
         });
+      };
+      var elems = document.getElementById('partner').querySelectorAll('audio,video');
+      var to_remove = [];
+      for(var idx = 0; idx < elems.length; idx++) {
+        if(elems[idx].getAttribute('data-user-id') == user.id) {
+          to_remove.push(elems[idx]);
+        }
       }
+      setTimeout(function() {
+        if(!(room.active_users || {})[user.id]) {
+          to_remove.forEach(function(e) {
+            e.parentNode.removeChild(e);
+          });    
+        }
+      }, 2000);
     }
-  
   },
   simple_button: function(btn, comp) {
     if(!btn) { return {}; }

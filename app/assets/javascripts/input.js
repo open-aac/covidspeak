@@ -92,8 +92,12 @@ var input = {
         list.forEach(function(dev) {
           if(dev.kind == kind && !ids[dev.id]) {
             if(!result.find(function(d) { return d.label.replace(/Default - /, '') == dev.label && dev.groupId == d.groupId; })) {
-              if(!dev.facingMode && dev.label.match(/facing front/)) {
+              if(!dev.facingMode && dev.label.match(/facing front/i)) {
                 dev.facingMode = 'user';
+              } else if(!dev.facingMode && dev.label.match(/front camera/i)) {
+                dev.facingMode = 'user';
+              } else if(!dev.facingMode && dev.label.match(/back camera/i)) {
+                dev.facingMode = 'environment';
               } else if(!dev.facingMode && dev.label.match(/facing back/)) {
                 dev.facingMode = 'environment';
               }

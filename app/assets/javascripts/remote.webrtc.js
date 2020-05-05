@@ -375,6 +375,7 @@ remote.webrtc = {
     main_room.subrooms[subroom_id][pc_ref.id].tracks = {};
 
     var local_data = pc.createDataChannel('channel-name');
+    local_data.id = local_data.id || '111';
     local_data.addEventListener('open', function() {
       if(local_data.readyState == 'open') {
         // channel is live!
