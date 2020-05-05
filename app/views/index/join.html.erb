@@ -23,18 +23,18 @@
     <img src="/logo.svg" class='img_logo' style='height: 50px; margin: -10px 0;'/>
     Join the Room
     <div id="accept_reminder" style='color: #800; font-size: 14px; visibility: hidden;'>
-      You must accept the terms before entering the room
+      You must accept the terms before entering
     </div>
   </a>
   <div class='buttons'>
-    <button id='copy' style='width: 50%; height: 55px;'>
+    <button id='copy'>
       <img class='icon' src='/icons/clipboard.svg' alt='' style='height: 25px; vertical-align: bottom;'/>
       Copy Link to Share
       <div id="copy_confirm" style='color: #19558a; font-size: 14px; display: none;'>
         Copied to clipboard!
       </div>
     </button>
-    <button id='share' style='width: calc(50% - 10px); height: 55px; float: right; margin-right: 0;'>
+    <button id='share'>
       <img class='icon' src='/icons/reply.svg' alt='' style='height: 25px; vertical-align: bottom;'/>
       Share Link
     </button>
@@ -48,9 +48,9 @@ if(localStorage.terms_accepted) {
   document.querySelector('#accept').checked = true;
 }
 if(!navigator.share) {
+
   document.querySelector('#share').style.display = 'none';
-  document.querySelector('#copy').style.width = '100%';
-  document.querySelector('#copy').style.height = '70px';
+  document.querySelector('#copy').classList.add('solo')
 }
 
 document.addEventListener('click', function(event) {
