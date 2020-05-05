@@ -1541,7 +1541,7 @@ document.addEventListener('mousemove', function(event) {
   if($(event.target).closest('#partner').length > 0 && event.buttons == 1) {
     event.preventDefault();
     shift(event);
-  } else if(event.target.closest('#partner,#nav,#eyes,#no_preview,#status_holder')) {
+  } else if(event.target.closest('#partner,#nav,#eyes,#no_preview,#status_holder') && !event.target.closest('a,button')) {
     // if moving the mouse more than 1.5s, show controls
     if(!room.partner_hover) {
       clearTimeout(room.partner_hover);
@@ -1632,7 +1632,7 @@ document.addEventListener('click', function(event) {
     } else {
       room.toggle_video();
     }
-  } else if($partner.length > 0) {
+  } else if($partner.length > 0 && !event.target.closest('a,button')) {
     if(room.partner_hover) {
       clearTimeout(room.partner_hover);
       room.partner_hover = false;
