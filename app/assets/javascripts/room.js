@@ -207,7 +207,7 @@ var room = {
       document.querySelector('#status_holder').style.display = 'block';
       document.querySelector('#status').innerText = str;
       if(room.current_room && room.current_room.room_initiator) {
-        if(opts && opts.invite) {
+        if(opts && opts.invite && !mirror_type) {
           document.querySelector('#status_invite').style.display = 'block';
         }
       }
@@ -1517,6 +1517,10 @@ window.addEventListener('resize', function() {
 });
 var shift = function(event) {
   room.manual_zoom = true;
+  if(event.touches) {
+    event.clientX = event.touches[0].clientX;
+    event.clientY = event.touches[0].clientY;
+  }
   room.shift_x = event.clientX - (room.drag_x || event.clientX);
   room.shift_y = event.clientY - (room.drag_y || event.clientY);
   room.size_video();
@@ -1524,6 +1528,10 @@ var shift = function(event) {
   // console.log("drag", room.shift_x, room.shift_y);
 }
 var drag = function(event) {
+  if(event.touches) {
+    event.clientX = event.touches[0].clientX;
+    event.clientY = event.touches[0].clientY;
+  }
   room.drag_x = event.clientX - (room.shift_x || 0);
   room.drag_y = event.clientY - (room.shift_y || 0);
 };
@@ -1533,7 +1541,7 @@ document.addEventListener('mousemove', function(event) {
   if($(event.target).closest('#partner').length > 0 && event.buttons == 1) {
     event.preventDefault();
     shift(event);
-  } else if(event.target.closest('#partner,#nav,#eyes,#no_preview')) {
+  } else if(event.target.closest('#partner,#nav,#eyes,#no_preview,#status_holder')) {
     // if moving the mouse more than 1.5s, show controls
     if(!room.partner_hover) {
       clearTimeout(room.partner_hover);
@@ -1608,7 +1616,7 @@ document.addEventListener('click', function(event) {
   if(event.target.classList.contains('text_input')) { return; }
   var $cell = $(event.target).closest('.cell');
   var $button = $(event.target).closest('.button');
-  var $partner = $(event.target).closest('#partner,#eyes,#no_preview');
+  var $partner = $(event.target).closest('#partner,#eyes,#no_preview,#status_holder');
   var $invite = $(event.target).closest('#invite_partner');
   var $popout = $(event.target).closest('#popout_view');
   var $text_prompt = $(event.target).closest('#text_prompt');

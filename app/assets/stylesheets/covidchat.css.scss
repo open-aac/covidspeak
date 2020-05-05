@@ -499,6 +499,9 @@ strong {
         #status_popout {
           margin-top: -15px;
         }
+        button {
+          margin: 0 5px;
+        }
       }
       #communicator {
         position: absolute;
@@ -862,12 +865,9 @@ strong {
     margin: 0 auto;
     width: 500px;
     height: 500px;
-    max-width: 48vh;
+    max-width: 60vw;
     max-height: 48vh;
   }
-}
-#big {
-
 }
 #middle.join {
   text-align: center;
@@ -1141,6 +1141,9 @@ strong {
       .extras {
         width: 217px;
       }
+      .grids {
+        max-width: calc(100vw - 100px);
+      }
       .grids .grid_option {
         width: 76px;
       }
@@ -1148,6 +1151,17 @@ strong {
         width: 77px;
         margin: 5px;
       }
+    }
+  }
+  .grid .mid .preview #status_holder {
+    #status {
+      padding: 5px;
+      margin-left: 5px;
+      margin-right: 5px;
+      width: auto;
+    }
+    button {
+      height: auto;
     }
   }
   .grid .mid .preview #nav {
@@ -1162,5 +1176,8 @@ strong {
         margin-right: 0;
       }
     }
+  }
+  .grid .mid #eyes > div {
+    margin-left: -100px;
   }
 }
