@@ -391,12 +391,13 @@ remote.webrtc = {
       main_room.subrooms[subroom_id].negotiating = true;
       setTimeout(function() {
         main_room.subrooms[subroom_id].negotiating = false;
-      }, 1000);
+      }, 3000);
       var rtcpc = pc;
       var pc_ref = remote.webrtc.pc_ref(rtcpc.id || pc_id);
+      var latest_pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
       if(!initiator) {
         // don't trigger a renegotiation when one is already going on
-        if(pc_ref && pc_ref.refState == 'connected') { 
+        if(latest_pc_ref && latest_pc_ref.refState != 'connected') { 
           main_room.send({
             author_id: main_room.user_id,
             target_id: remote_user_id,
@@ -545,9 +546,12 @@ remote.webrtc = {
       main_room.already = false;
       remote.user_removed(main_room.ref, main_room.users[pc_ref.user_id]);
       setTimeout(function() {
-        var pc_ref = remote.webrtc.pc_ref(pc.id || pc_id || (main_room.subrooms[pc_ref.subroom_id] || {}).pc_id);
-        if(pc_ref && pc_ref.refState != 'connected') {
-          main_room.subrooms[pc_ref.subroom_id].renegotiate();
+        var latest_pc_ref = remote.webrtc.pc_ref((main_room.subrooms[pc_ref.subroom_id] || {}).pc_id || pc.id || pc_id);
+        // If we still haven't managed a healthy connection, try again
+        if(latest_pc_ref && latest_pc_ref.refState != 'connected') {
+          if(main_room.subrooms[latest_pc_ref.subroom_id]) {
+            main_room.subrooms[latest_pc_ref.subroom_id].renegotiate();
+          }
         }
       }, 5000);
     };
@@ -667,7 +671,13 @@ remote.webrtc = {
         var pc = pc_ref && pc_ref.pc;
         if(!force && main_room.already && pc_ref && pc_ref.refState == 'connected') { console.log("SKIPPING reconnection because already active"); return; }
         if(pc_ref && ['new'].indexOf(pc_ref.refState) != -1) { console.log("SKIPPING CONNECTION because already in progress"); return; }
-        main_room.already = true;
+        var already_id = (new Date()).getTime();
+        main_room.already = already_id;
+        setTimeout(function() {
+          if(main_room.already == already_id) {
+            main_room.already = false;
+          }
+        }, 15000);
         console.log("ROOM has both parties", force, remote_user_id, subroom_id, main_room.already, pc_ref && pc_ref.refState);
         if(room_owner == main_room.user_id) {
           console.log("STARTING ROOM AS OWNER");
@@ -817,3 +827,4 @@ remote.webrtc = {
     });
   }
 };
+'
