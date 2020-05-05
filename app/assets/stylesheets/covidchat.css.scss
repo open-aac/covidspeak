@@ -1175,15 +1175,20 @@ strong {
       &.mute,&.unmute,&.toggle {
         margin-right: 0;
       }
-      img.icon {
-        width: 100%;
-        margin-left: 0;
-        margin-top: 0;
-        height: calc(100% - 20px);
-      }
     }
   }
+
   .grid .mid #eyes > div {
     margin-left: -100px;
+  }
+}
+@media (max-height: 450px) {
+  #contents .grid .menu {
+    .button img.icon {
+      width: 100%;
+      margin-left: 0;
+      margin-top: 0;
+      height: calc(100% - 20px);
+    }    
   }
 }
