@@ -42,14 +42,14 @@ Object.assign(remote, {
       return new Promise(function(res, rej) {
         var removed_track = null;
         var add_now = function() {
-          var new_result = (remote.local_tracks || []).find(function(t) { return t.device_id == track.getSettings().deviceId; });
-          if(!new_result) {
+          var track_ref_or_stream = (remote.local_tracks || []).find(function(t) { return t.device_id == track.getSettings().deviceId; });
+          if(!track_ref_or_stream) {
             console.log("no existing track found");
             var ms = new MediaStream();
             ms.addTrack(track);
-            new_result = ms;
+            track_ref_or_stream = ms;
           }
-          remote.add_local_tracks(room_id, new_result).then(function(tracks) {
+          remote.add_local_tracks(room_id, track_ref_or_stream).then(function(tracks) {
             remote.default_local_tracks = (remote.default_local_tracks || []).filter(function(t) { return t.type != track.kind; });
             remote.default_local_tracks.push(tracks[0]);
             res({
@@ -101,6 +101,11 @@ Object.assign(remote, {
           });
         });
       } else {
+        if(!existing_track) {
+          console.log("no local track to replace");
+        } else {
+          console.log("backend doesn't support replace, falling back");
+        }
         fallback().then(function(data) {
           data.removed = data.removed || existing_track;
           res(data);

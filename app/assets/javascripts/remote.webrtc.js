@@ -807,7 +807,7 @@ remote.webrtc = {
               force = true;
             }
             console.log("RECEIVED PING", subroom_id, msg);
-            if(!force && room_owner == main_room.user_id && pc_ref && pc_ref.prevent_reconnect_until && pc_ref.prevent_reconnect_until > (new Date()).getTime()) {
+            if(room_owner == main_room.user_id && pc_ref && pc_ref.prevent_reconnect_until && pc_ref.prevent_reconnect_until > (new Date()).getTime()) {
               console.log("IGNORING PING because already working on a connection", subroom_id);
             } else {
               console.log("SENDING PONG", subroom_id, pong);
@@ -822,7 +822,7 @@ remote.webrtc = {
               force = true;
             }
             console.log("RECEIVED PONG", msg);
-            if(!force && room_owner == main_room.user_id && pc_ref && pc_ref.prevent_reconnect_until && pc_ref.prevent_reconnect_until > (new Date()).getTime()) {
+            if(room_owner == main_room.user_id && pc_ref && pc_ref.prevent_reconnect_until && pc_ref.prevent_reconnect_until > (new Date()).getTime()) {
               console.log("IGNORING PONG because already working on a connection", subroom_id);
             } else {
               main_room.ready(subroom_id, msg.author_id, force);
