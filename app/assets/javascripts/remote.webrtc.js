@@ -3,14 +3,23 @@ var remote = remote || {};
 remote.webrtc = {
   rooms: {},
   start_processsing: function(track, callback) {
+    // This method will cause track_added to not be
+    // triggered until the stream goes live, to help
+    // prevent time with a black screen
     if(track.kind == 'video' || track.kind == 'audio') {
       var stream = new MediaStream();
       stream.addTrack(track);
       var elem = document.createElement(track.kind);
       elem.srcObject = stream;
-      elem.onloadedmetadata = function(e) {
-        callback(remote.webrtc.dom_generator(track));
-      }
+      var loaded_meta = false;
+      var do_it = function() {
+        if(!loaded_meta) {
+          loaded_meta = true;
+          callback(remote.webrtc.dom_generator(track));
+        }
+      };
+      elem.onloadedmetadata = do_it;
+      setTimeout(do_it, 1000);
     } else {
       callback(null);
     }
@@ -65,6 +74,7 @@ remote.webrtc = {
   add_local_tracks: function(room_id, stream_or_track) {
     var track_ref = stream_or_track;
     var main_room = remote.webrtc.rooms[room_id];
+    console.log("ADDING LOCAL TRACKS", stream_or_track);
     return new Promise(function(res, rej) {
       if(stream_or_track.getTracks) {
         var tracks = [];
@@ -137,6 +147,7 @@ remote.webrtc = {
     });
   },
   replace_local_track: function(room_id, track) {
+    console.log("REPLACING LOCAL TRACK", track);
     return new Promise(function(res, rej) {
       var main_room = remote.webrtc.rooms[room_id];
       if(track && main_room) {
@@ -213,12 +224,14 @@ remote.webrtc = {
     });
   },
   remove_local_track: function(room_id, track_ref, remember) {
+    console.log("REMOVING LOCAL TRACK", track_ref);
     if(!track_ref) { debugger }
     return new Promise(function(res, rej) {
       var track = (remote.webrtc.local_tracks || []).find(function(t) { return ("0-" + t.id) == track_ref.id; });
       if(track_ref.device_id) {
         track = track || (remote.webrtc.local_tracks || []).find(function(t) { return t.getSettings().deviceId == track_ref.device_id; });
       }
+      var main_room = remote.webrtc.rooms[room_id];
       if(!track) {
         // fallback for unexpected removal
         main_room.subroom_ids.forEach(function(subroom_id) {
@@ -234,7 +247,6 @@ remote.webrtc = {
         });
         
       }
-      var main_room = remote.webrtc.rooms[room_id];
 
       if(track && main_room) {
         track.enabled = false;
@@ -270,6 +282,31 @@ remote.webrtc = {
         rej({error: 'failed to unpublish'});
       }
     })
+  },
+  refresh_remote_tracks: function(room_id, missing_type) {
+    var main_room = remote.webrtc.rooms[room_id];
+    if(main_room && main_room.subroom_ids) {
+      main_room.subroom_ids.forEach(function(subroom_id) {
+        var pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
+        if(pc_ref && pc_ref.pc) {
+          pc_ref.pc.getReceivers().forEach(function(rec) {
+            if(rec.track && rec.track.readyState != 'ended' && rec.track.enabled) {
+              // Track is active, now check that it's not already been added
+              main_room.subrooms[subroom_id][pc_ref.id].remote_tracks = main_room.subrooms[subroom_id][pc_ref.id].remote_tracks || {};
+              if(!main_room.subrooms[subroom_id][pc_ref.id].remote_tracks[rec.track.id]) {
+                var track = rec.track;
+                var stream = new MediaStream();
+                console.log("MISSED A TRACK! ADDING NOW...", track);
+                stream.addTrack(track);
+                main_room.add_track(track, stream, pc_ref.id);  
+              } else {
+                console.log("FOUND A KNOWN TRACK");
+              }
+            }
+          });
+        }
+      });
+    }
   },
   pc_ref: function(type, id) {
     return (remote.webrtc.pcs || []).filter(function(ref) { 
@@ -358,6 +395,7 @@ remote.webrtc = {
       user_id: remote_user_id,
       subroom_id: subroom_id,
       room_id: room_id,
+      prevent_reconnect_until: (new Date()).getTime() + 5000,
       pc: pc
     }
     pc.id = pc_ref.id;
@@ -426,10 +464,10 @@ remote.webrtc = {
           });
           // TODO: re-send if things don't progress
         }, function(err) {
-          // TODO: err...
+          remote.webrtc.connection_error(main_room.ref, main_room.users[remote_user_id]);
         });
       }, function(err) {
-        // TODO: err...
+        remote.webrtc.connection_error(main_room.ref, main_room.users[remote_user_id]);
       });
     };
 
@@ -440,59 +478,78 @@ remote.webrtc = {
         remote.message_received(main_room.ref, main_room.users[remote_user_id], {id: "0-" + local_data.id}, e.data);
       });
     });
-    pc.addEventListener('track', function(event) {
-      var track = event.track;
-      var rtcpc = (event.target && event.target.id) ? event.target : pc;
-      var pc_ref = remote.webrtc.pc_ref(rtcpc.id || pc.id || pc_id);
+    main_room.add_track = function(track, stream, pc_id) {
+      var pc_ref = remote.webrtc.pc_ref(pc_id);
+
       var main_room = remote.webrtc.rooms[pc_ref.room_id];
+      if(!pc_ref || !track) {
+        console.error("REMOTE TRACK ADD FAILED", track, pc_ref);
+        return;
+      }
       var subroom_id = pc_ref.subroom_id;
       var remote_user_id = pc_ref.user_id;
+      console.log("REMOTE TRACK ADDED", track, pc_ref);
       var add_track = function(track) {
-        var track_id = main_room.subrooms[subroom_id].id_index + "-" + track.id;
-        var track_ref = {
-          id: track_id,
-          mediaStreamTrack: track,
-          device_id: track.getSettings().deviceId,
-          version_id: pc_ref.id,
-          type: track.kind,
-          added: (new Date()).getTime(),
+        try {
+          var track_id = main_room.subrooms[subroom_id].id_index + "-" + track.id;
+          var track_ref = {
+            id: track_id,
+            mediaStreamTrack: track,
+            device_id: track.getSettings().deviceId,
+            version_id: pc_ref.id,
+            type: track.kind,
+            added: (new Date()).getTime(),
+          };
+          if(stream && main_room.users[remote_user_id] && stream != main_room.users[remote_user_id].remote_stream) {
+            main_room.users[remote_user_id].remote_stream = stream;
+          }
+          remote.webrtc.start_processsing(track, function(generator) {
+            console.log("REMOTE TRACK PROCESSED", track);
+            track_ref.generate_dom = generator;
+            remote.track_added(main_room.ref, main_room.users[remote_user_id], track_ref);
+            main_room.subrooms[subroom_id][pc_ref.id].remote_tracks = main_room.subrooms[subroom_id][pc_ref.id].remote_tracks || {};
+            main_room.subrooms[subroom_id][pc_ref.id].remote_tracks[track.id] = {ref: track_ref, track: track, pc: pc_ref.pc};
+          });  
+        } catch(e) {
+          if(location.hostname == 'localhost') {
+            alert("track didn't get added! check for the error!");
+          }
+          console.error("CAUGHT TRACK ADDING ERROR", e);
         };
-        main_room.subrooms[subroom_id][pc_ref.id].remote_tracks = main_room.subrooms[subroom_id][pc_ref.id].remote_tracks || {};
-        main_room.subrooms[subroom_id][pc_ref.id].remote_tracks[track.id] = {ref: track_ref, track: track, pc: pc};
-        if(event.streams[0] && event.streams[0] != main_room.users[remote_user_id].remote_stream) {
-          main_room.users[remote_user_id].remote_stream = event.streams[0];  
-        }
-        remote.webrtc.start_processsing(track, function(generator) {
-          track_ref.generate_dom = generator;
-          remote.track_added(main_room.ref, main_room.users[remote_user_id], track_ref);
-        })
       };
       var track_id = main_room.subrooms[subroom_id].id_index + "-" + track.id;
-      if(!event.streams[0]) { debugger}
+      if(!stream) { debugger}
       else {
-        remote.webrtc.streams = (remote.webrtc.streams || []).concat(event.streams);
+        remote.webrtc.streams = (remote.webrtc.streams || []).concat([stream]);
         // TODO: this doesn't fire on Safari
-        event.streams[0].addEventListener('removetrack', function(event) {
-          // TODO: if this is being replaced by a newer version,
-          // then don't call track_removed here, call it
-          // when the new version goes live instead
-          console.log("TRACK REMOVED", event.track, track_id);
-          var track = event.track;
-          delete main_room.subrooms[subroom_id][pc_ref.id].remote_tracks[track.id];
-          setTimeout(function() {
-            remote.track_removed(main_room.ref, main_room.users[remote_user_id], {
-              id: track_id,
-              type: track.kind
-            });  
-            track.enabled = false;
-            track.stop();
-          }, 1000);
-        });
-        // event.streams[0].addEventListener('addtrack', function(event) {
-        //   add_track(event.track);
-        // });
+        if(!stream.remover_watching) {
+          stream.remover_watching = true;
+          stream.addEventListener('removetrack', function(event) {
+            // TODO: if this is being replaced by a newer version,
+            // then don't call track_removed here, call it
+            // when the new version goes live instead
+            console.log("TRACK REMOVED", event.track, track_id);
+            var track = event.track;
+            delete main_room.subrooms[subroom_id][pc_ref.id].remote_tracks[track.id];
+            setTimeout(function() {
+              remote.track_removed(main_room.ref, main_room.users[remote_user_id], {
+                id: track_id,
+                type: track.kind
+              });  
+              track.enabled = false;
+              track.stop();
+            }, 1000);
+          });
+          // stream.addEventListener('addtrack', function(event) {
+          //   add_track(event.track);
+          // });  
+        }
       }
       add_track(track);
+    }
+    pc.addEventListener('track', function(event) {
+      var rtcpc = (event.target && event.target.id) ? event.target : pc;
+      main_room.add_track(event.track, (event.streams || [])[0], rtcpc.id || pc.id || pc_id);
     });
     // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/signalingState
     pc.addEventListener('icecandidate', function(e) {
@@ -565,6 +622,7 @@ remote.webrtc = {
       pc_ref.refState = e.target.connectionState;
       main_room.subrooms[subroom_id].id_index++;
       if(e.target.connectionState == 'failed' || e.target.connectionState == 'disconnected') { 
+        if(main_room && main_room.status) { main_room.status({connection_failed: true}); }
         disconnected(e.target);
       } else if(e.target.connectionState == 'connected') {
         connected(e.target);
@@ -580,6 +638,11 @@ remote.webrtc = {
         } else if(e.target.iceConnectionState == 'connected') {
           connected(e.target);
         }
+      }
+      if(e.target.iceConnectionState == 'checking') {
+        if(main_room && main_room.status) { main_room.status({server_checking: true})}        
+      } else if(e.target.iceConnectionState == 'connected') {
+        if(main_room && main_room.status) { main_room.status({server_found: true})}        
       }
       // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceConnectionState
     });
@@ -651,12 +714,9 @@ remote.webrtc = {
       });  
     }
   },
-  connect_to_remote: function(access, room_key) {
+  connect_to_remote: function(access, room_key, update) {
     return new Promise(function(res, rej) {
       var main_room = remote.join_room(room_key);
-      // setTimeout(function() {
-      //   main_room.send({type: 'users'});
-      // }, 100);
       main_room.subrooms = {};
       main_room.subroom_ids = [];
       main_room.ice = access.ice_servers;
@@ -668,7 +728,9 @@ remote.webrtc = {
         id: room_key
       }
       main_room.ref = room_ref;
+      main_room.status = update;
       main_room.ready = function(subroom_id, remote_user_id, force) {
+        main_room.status({partner_negotiating: true});
         var room_owner = subroom_id.split(/::/)[1];
         var pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
         var pc = pc_ref && pc_ref.pc;
@@ -700,6 +762,9 @@ remote.webrtc = {
               main_room.users[remote_user.id] = main_room.users[remote_user.id] || remote_user;
               if(!main_room.user_alerts[remote_user.id]) {
                 main_room.user_alerts[remote_user.id] = true;
+                if(window.room && window.room.current_room && window.room.current_room.user_id && remote_user.id != window.room.current_room.user_id) {
+                  main_room.status({partner_found: true});
+                }
                 remote.user_added(room_ref, main_room.users[remote_user.id], false);
               }
               if(remote_user.id == me.id) { return; }
@@ -742,18 +807,26 @@ remote.webrtc = {
               force = true;
             }
             console.log("RECEIVED PING", subroom_id, msg);
-            console.log("SENDING PONG", subroom_id, pong);
-            main_room.ready(subroom_id, msg.author_id, force);
+            if(!force && room_owner == main_room.user_id && pc_ref && pc_ref.prevent_reconnect_until && pc_ref.prevent_reconnect_until > (new Date()).getTime()) {
+              console.log("IGNORING PING because already working on a connection", subroom_id);
+            } else {
+              console.log("SENDING PONG", subroom_id, pong);
+              main_room.ready(subroom_id, msg.author_id, force);
+            }
           } if(msg.type == 'pong') {
             // if I'm the initiator and the other user ponged me
-            // saying they have no connection, I should toss the old stuff
+            // saying they have no connection, I should clean up the old stuff
             var force = false;
             var room_owner = subroom_id.split(/::/)[1];
             if(room_owner == main_room.user_id && msg.pong.no_existing_connection) {
               force = true;
             }
             console.log("RECEIVED PONG", msg);
-            main_room.ready(subroom_id, msg.author_id, force);
+            if(!force && room_owner == main_room.user_id && pc_ref && pc_ref.prevent_reconnect_until && pc_ref.prevent_reconnect_until > (new Date()).getTime()) {
+              console.log("IGNORING PONG because already working on a connection", subroom_id);
+            } else {
+              main_room.ready(subroom_id, msg.author_id, force);
+            }
           } else if(msg.type == 'offer') {
             console.log("OFFER RECEIVED, INITIALIZING ROOM ON MY SIDE", msg.offer);
             // TODO: if(pc.signalingState == 'stable') { console.error("Received offer when stable"); }

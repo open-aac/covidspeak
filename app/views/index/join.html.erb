@@ -131,11 +131,12 @@ function getMedia() {
           audio.play();
         };
         analyser = input.track_audio(audio, {mediaStreamTrack: aud_track}, {});
-        analyser.callback = function(output) {
-          if(!audio.parentNode) {
-            analyser.release();
-          }
-          // TODO: track audio level
+        if(analyser) {
+          analyser.callback = function(output) {
+            if(!audio.parentNode) {
+              analyser.release();
+            }
+          }  
         }
       }
     }, function(err) {

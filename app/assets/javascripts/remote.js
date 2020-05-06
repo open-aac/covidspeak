@@ -127,6 +127,13 @@ Object.assign(remote, {
       });
     });
   },
+  refresh_remote_tracks: function(room_id, missing_type) {
+    if(remote[remote.backend].refresh_remote_tracks) {
+      remote[remote.backend].refresh_remote_tracks(room_id, missing_type);
+    } else {
+      console.log("BACKEND DOESN'T HANDLE REFRESHING REMOTE TRACKS");
+    }
+  },
   reconnect: function() {
     return remote[remote.backend].reconnect();
   },
@@ -140,11 +147,11 @@ Object.assign(remote, {
     }
     return remote[remote.backend].send_message(room_id, str);
   },
-  connect_to_remote: function(access, room_key) {
+  connect_to_remote: function(access, room_key, update) {
     // Resolves an object with the following attributes
     // { id: "", 
     return new Promise(function(res, rej) {
-      remote[remote.backend].connect_to_remote(access, room_key).then(function(room) {
+      remote[remote.backend].connect_to_remote(access, room_key, update).then(function(room) {
         remote.rooms = remote.rooms || {};
         remote.rooms[room.id] = remote.rooms[room.id] || {};
         remote.rooms[room.id].room = room;
@@ -187,19 +194,30 @@ Object.assign(remote, {
       room: remote.rooms[room.id].room,
       room_id: room.id
     });
-    var any_not_removed = false;
+    var someone_left = false;
     for(var user_id in remote.rooms[room.id].users) {
-      if(!remote.rooms[room.id].users[user_id].removed) {
-        any_not_removed = true;
+      if(window.room.current_room && user_id == window.room.current_room.user_id) {
+      } else {
+        if(!remote.rooms[room.id].users[user_id].user.removed) {
+          someone_left = true;
+        }
       }
     }
-    if(!any_not_removed) {
+    if(!someone_left) {
       remote.notify('room_empty', {
         room: remote.rooms[room.id].room,
         room_id: room.id
       });
   
     }
+  },
+  connection_error: function(room, user) {
+    remote.notify('connection_error', {
+      room: room,
+      user: user,
+      user_id: user.id,
+      room_id: room.id
+    });
   },
   track_added: function(room, user, track) {
     track.added_at = (new Date()).getTime();

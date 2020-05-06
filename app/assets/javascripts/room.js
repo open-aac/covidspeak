@@ -22,6 +22,8 @@ var add_dom = function(elem, track, user) {
 }
 remote.addEventListener('track_added', function(data) {
   var track = data.track;
+  room.all_remote_tracks = room.all_remote_tracks || [];
+  room.all_remote_tracks.push({type: track.type, id: track.id, user_id: data.user_id});
   if(track.generate_dom) {
     console.log("adding remote track", track);
     if(track.type == 'video' || (track.type == 'audio' && track.version_id)) { //} || track.type == 'audio') {
@@ -46,17 +48,19 @@ remote.addEventListener('track_added', function(data) {
         }
       }
     }
-    if(track.generate_dom) {
-      var dom = track.generate_dom();
-      dom.classList.add('track-' + track.id);
-      dom.setAttribute('data-version-id', track.version_id);
-      add_dom(dom, data.track, data.user);  
-    }
+    var dom = track.generate_dom();
+    dom.classList.add('track-' + track.id);
+    dom.setAttribute('data-version-id', track.version_id);
+    add_dom(dom, data.track, data.user);  
+  } else {
+    console.log("remote track added with no DOM", track);
   }
 });
 
 remote.addEventListener('track_removed', function(data) {
   var track = data.track;
+  room.all_remote_tracks = (room.all_remote_tracks || []).filter(function(t) { return t.type != track.type || t.id != track.id || t.user_id != data.user_id; });
+
   var elems = document.getElementById('partner').getElementsByClassName('track-' + track.id);
   var found = false;
   for(var idx = 0; idx < elems.length; idx++) {
@@ -77,12 +81,15 @@ remote.addEventListener('track_removed', function(data) {
   }
 });
 remote.addEventListener('room_empty', function(data) {
-  room.status('No One is Here');
+  room.status('No One is Here', {invite: true});
+  room.active = false;
 });
 remote.addEventListener('user_added', function(data) {
   // TODO: keep a rotation of helpers for the communicator,
   // and keep communicators on everyone else's view
   if(data.user.id != room.current_room.user_id) {
+    if(!room.active) {
+    }
     room.active_users = room.active_users || {};
     room.set_active();
     room.status('ready');
@@ -103,6 +110,11 @@ remote.addEventListener('user_added', function(data) {
 });
 remote.addEventListener('user_removed', function(data) {
   room.user_left(data.user);
+});
+remote.addEventListener('connection_error', function(data) {
+  if(!room.active) {
+    room.status('Having Some Trouble...', {invite: true});
+  }
 });
 remote.addEventListener('message', function(data) {
   room.handle_message(data);
@@ -227,14 +239,21 @@ var room = {
         room.set_active();
       }, 40000 + Math.round(Math.random() * 40000)); // add jitter
     };
-    session.ajax('/api/v1/rooms/' + room.room_id + '/keepalive', {
-      method: 'POST',
-      data: {user_id: room.current_user_id} 
-    }).then(function(res) {
-      resume();
-    }, function(err) {
-      resume();
-    });
+    // TODO: check if the room has any active streams,
+    // and don't ping if so
+    room.active = true;
+    if(room.active) {
+      session.ajax('/api/v1/rooms/' + room.room_id + '/keepalive', {
+        method: 'POST',
+        data: {user_id: room.current_user_id} 
+      }).then(function(res) {
+        resume();
+      }, function(err) {
+        resume();
+      });
+    } else {
+      setTimeout(room.set_active, 15000);
+    }
   },
   toggle_self_mute: function(mute) {
     var previous_mute = !!room.mute_audio;
@@ -549,15 +568,10 @@ var room = {
       room.update_timeout = null;
     }
     if(!room.current_room) { return; }
-    var track_ids = [];
-    for(var idx = 0; idx < (room.local_tracks || []).length; idx++) {
-      track_ids.push(room.local_tracks[idx].id);
-    }
     // TODO: send muted state
     var message = {
       action: 'update',
-      user_id: room.current_room.user_id,
-      tracks: track_ids
+      user_id: room.current_room.user_id
     }
     if(room.local_tracks.find(function(t) { return t.type == 'audio' && t.mediaStreamTrack && t.mediaStreamTrack.enabled; })) {
       message.audio = true;
@@ -787,7 +801,21 @@ var room = {
             document.body.appendChild(script);
           }
           room.status("Connecting...");
-          remote.connect_to_remote(res.access, res.room.key).then(function(room_session) {
+          remote.connect_to_remote(res.access, res.room.key, function(status) {
+            if(!room.active) {
+              if(status.partner_found) {
+                room.status("Partner Found!");
+              } else if(status.partner_negotiating) {
+                room.status("Partner Connecting...")
+              } else if(status.connection_failed) {
+                room.status("Partner Failed to Connect")  
+              } else if(status.server_checking) {
+                room.status("Finding a Streaming Server...")  
+              } else if(status.server_found) {
+                room.status("Finalizing Connection..")                  
+              }  
+            }
+          }).then(function(room_session) {
             room_session.room_initiator = (room.room_id == localStorage.room_id);
             room.current_room = room_session;
             room.status('Waiting for Partner...', {invite: true});
@@ -1378,12 +1406,20 @@ var room = {
         if(data.message.video) {
           document.querySelector('#no_preview').style.display = 'none';
           document.querySelector('#eyes').style.display = 'block';
-          // show the video feed (and audio indicator?)
+          // TODO: show the video feed (and audio indicator?)
+          // If no video feed present, send a request for it
+          if(!room.all_remote_tracks.find(function(t) { return t.type == 'video' && t.user_id == data.user.id; })) {
+            remote.refresh_remote_tracks(room.current_room.id, 'video');
+          }
         } else if(data.message.audio) {
           document.querySelector('#no_preview').style.display = 'block';
           document.querySelector('#eyes').style.display = 'none';
           document.querySelector('#no_preview').classList.remove('dancing');
-          // show the unanimated preview w/ animated audio
+          // TODO: show the unanimated preview w/ animated audio
+          // If no audio feed present, send a request for it
+          if(!room.all_remote_tracks.find(function(t) { return t.type == 'audio' && t.user_id == data.user.id; })) {
+            remote.refresh_remote_tracks(room.current_room.id, 'audio');
+          }
         } else {
           document.querySelector('#no_preview').classList.add('dancing');
           document.querySelector('#no_preview').style.display = 'block';
@@ -1391,7 +1427,7 @@ var room = {
           // show the animated preview
         }
         if(data.message.communicator_id) {
-          // clean up users that hacen't checked in for a while
+          // clean up users that haven't checked in for a while
           var cutoff = (new Date()).getTime() - 60000;
           for(var user_id in room.active_users) {
             if(room.active_users[user_id] !== true && room.active_users[user_id] < cutoff) {
@@ -1488,7 +1524,9 @@ var room = {
       setTimeout(function() {
         if(!(room.active_users || {})[user.id]) {
           to_remove.forEach(function(e) {
-            e.parentNode.removeChild(e);
+            if(e.parentNode) {
+              e.parentNode.removeChild(e);
+            }
           });    
         }
       }, 2000);
@@ -1895,8 +1933,10 @@ document.addEventListener('click', function(event) {
             audio.play();
           };
           analyser = input.track_audio(audio, track, {});
-          analyser.callback = function(output) {
-            level.style.height = Math.min(95, output) + "%";
+          if(analyser) {
+            analyser.callback = function(output) {
+              level.style.height = Math.min(95, output) + "%";
+            }  
           }
         }
         var track = remote.local_track('audio');
