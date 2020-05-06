@@ -145,7 +145,7 @@ class Api::RoomsController < ApplicationController
       room.in_use
       render json: {updated: true}
     else
-      api_error({error: "room or user not found"})
+      api_error(400, {error: "room or user not found"})
     end
   end
 end

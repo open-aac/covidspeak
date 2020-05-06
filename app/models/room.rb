@@ -28,7 +28,7 @@ class Room < ApplicationRecord
     self.settings['allowed_user_ids'] ||= []
     self.settings['allowed_user_ids'] << user_id
     self.settings['allowed_user_ids'].uniq!
-    self.save
+    self.save!
   end
 
   def user_allowed?(user_id)

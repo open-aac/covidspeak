@@ -11,12 +11,16 @@ remote.twilio = {
         remote.twilio.local_tracks = tracks;
         var result = [];
         tracks.forEach(function(track) {
+          var device_id = track.name;
+          if(track.mediaStreamTrack && track.mediaStreamTrack.getSettings) {
+            device_id = track.mediaStreamTrack.getSettings().deviceId;
+          }
           result.push({
             type: track.kind,
             id: track.name,
             added: (new Date()).getTime(),
             mediaStreamTrack: track.mediaStreamTrack,
-            device_id: track.mediaStreamTrack.getSettings().deviceId,
+            device_id: device_id,
             generate_dom: track.attach ? function() { return track.attach(); } : null,
           });
         });
@@ -45,11 +49,15 @@ remote.twilio = {
             var list = [];
             local_track_pubs.forEach(function(local_track_pub) {
               remote.twilio.local_tracks.push(local_track_pub.track);
+              var device_id = local_track_pub.name;
+              if(local_track_pub.track.mediaStreamTrack && local_track_pub.track.mediaStreamTrack.getSettings) {
+                device_id = local_track_pub.track.mediaStreamTrack.getSettings().deviceId;
+              }
               track_ref = {
                 type: local_track_pub.track.kind,
                 id: local_track_pub.track.name,
                 mediaStreamTrack: local_track_pub.track.mediaStreamTrack,
-                device_id: local_track_pub.track.mediaStreamTrack.getSettings().deviceId,
+                device_id: device_id,
                 added: (new Date()).getTime(),
                 generate_dom: local_track_pub.track.attach ? function() { return local_track_pub.track.attach(); } : null,
               };
@@ -121,11 +129,15 @@ remote.twilio = {
           };
           remote.user_added(room_ref, participant_ref);
           var add_track = function(track) {
+            var device_id = track.name;
+            if(track.mediaStreamTrack && track.mediaStreamTrack.getSettings) {
+              device_id = track.mediaStreamTrack.getSettings().deviceId;
+            }
             var track_ref = {
               type: track.kind,
               id: track.name,
               mediaStreamTrack: track.mediaStreamTrack,
-              device_id: track.mediaStreamTrack.getSettings().deviceId,
+              device_id: device_id,
               generate_dom: track.attach ? function() { return track.attach(); } : null
             };
             // TODO: can we figure out the video dimensions here?
@@ -144,9 +156,13 @@ remote.twilio = {
             add_track(track);
           });  
           participant.on('trackUnsubscribed', function(track) {
+            var device_id = track.name;
+            if(track.mediaStreamTrack && track.mediaStreamTrack.getSettings) {
+              device_id = track.mediaStreamTrack.getSettings().deviceId;
+            }
             var track_ref = {
               type: track.kind,
-              device_id: track.getSettings().deviceId,
+              device_id: device_id,
               id: track.name
             };
             remote.track_removed(room_ref, participant_ref, track_ref);
