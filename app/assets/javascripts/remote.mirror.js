@@ -46,7 +46,7 @@ remote.mirror = {
       return null;
     };
   },
-  start_local_tracks: function(opts) {s
+  start_local_tracks: function(opts) {
     return new Promise(function(res, rej) {
       input.request_media(opts).then(function(stream) {
         remote.mirror.local_tracks = stream.getTracks();
