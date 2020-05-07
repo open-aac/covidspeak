@@ -568,15 +568,18 @@ var room = {
       room.update_timeout = null;
     }
     if(!room.current_room) { return; }
-    // TODO: send muted state
     var message = {
       action: 'update',
       user_id: room.current_room.user_id
     }
-    if(room.local_tracks.find(function(t) { return t.type == 'audio' && t.mediaStreamTrack && t.mediaStreamTrack.enabled; })) {
+    var audio = room.local_tracks.find(function(t) { return t.type == 'audio'; });
+    if(audio && !audio.enabled) {
+      message.audio_muted = true;
+    }
+    if(room.local_tracks.find(function(t) { return t.type == 'audio' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted; })) {
       message.audio = true;
     }
-    if(room.local_tracks.find(function(t) { return t.type == 'video' && t.mediaStreamTrack && t.mediaStreamTrack.enabled; })) {
+    if(room.local_tracks.find(function(t) { return t.type == 'video' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted; })) {
       message.video = true;
     }
     if(room.asserted_buttons) {
@@ -893,6 +896,65 @@ var room = {
       status("Can't accesss the camera, your device may not support video calling, or you have it disabled.", {big: true});
     }
   },
+  wire_track: function(elem, track) {
+    track = track.mediaStreamTrack || track;
+    if(elem.tagName == 'VIDEO') {
+      room.last_preview_video_track = track;
+    } else if(elem.tagName == 'AUDIO') {
+      room.last_preview_audio_track = track;
+      if(room.modal_analyser) { room.modal_analyser.release(); }
+      room.modal_analyser = input.track_audio(elem, {mediaStreamTrack: track}, {});
+      if(room.modal_analyser) {
+        var level = document.querySelector('.modal .content #settings_audio_level');
+        if(level) {
+          room.modal_analyser.callback = function(output) {
+            level.style.height = Math.min(95, output) + "%";
+          }    
+        }
+      }
+      elem.preview = true;
+      elem.muted = true;
+    }
+    var stream = new MediaStream();
+    stream.addTrack(track);
+    elem.srcObject = stream;
+    elem.onloadedmetadata = function(e) {
+      elem.play();
+    };
+  },
+  handle_input_switch: function(value, elem, callback) {
+    if(value == 'none') {
+      elem.srcObject = null;
+      if(elem.tagName == 'AUDIO') {
+        if(room.modal_analyser) { 
+          room.modal_analyser.release(); 
+          room.modal_analyser = null;
+        }
+        elem.src = '';
+        var level = document.querySelector('.modal .content #settings_audio_level');
+        if(level) {
+          setTimeout(function() {
+            level.style.height = '0px';
+          }, 1000);    
+        }
+      }
+      callback(null);
+    } else {
+      var opts = {video: {deviceId: value}};
+      if(elem.tagName == 'audio') {
+        opts = {audio: {deviceId: value}};
+      }
+      navigator.mediaDevices.getUserMedia(opts).then(function(stream) {
+        var track = stream.getTracks()[0];
+        if(track) {
+          room.wire_track(elem, track);
+          callback(track);
+        }
+      }, function(err) {
+        // TODO: err...
+      });
+    }
+  },
   update_from_settings: function() {
     var video_track = remote.local_track('video'); 
     var audio_track = remote.local_track('audio');
@@ -987,23 +1049,13 @@ var room = {
       var idx = room.video_device_ids.indexOf(current_video_id);
       var new_idx = idx + 1;
       room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';
-      if(room.temp_video_device_id != 'none') {
-        navigator.mediaDevices.getUserMedia({
-          video: {deviceId: room.temp_video_device_id}
-        }).then(function(stream) {
-          var track = stream.getVideoTracks()[0];
-          if(track) {
-            room.temp_video_device_id = track.getSettings().deviceId;
-            room.last_preview_video_track = track;
-            room.update_from_settings();
-          }
-        }, function(err) {
-          // TODO: err...
+      
+      var video = document.querySelector('#communicator video') || document.createElement('video');
+      setTimeout(function() {
+        room.handle_input_switch(room.temp_video_device_id, video, function(track) {
+          room.update_from_settings();
         });
-
-      } else {
-        room.update_from_settings();
-      }
+      }, 500);
     }, function(err) {
       console.error('video swap failed', err);
     });
@@ -1339,6 +1391,7 @@ var room = {
     modal.open("Invite a Visitor", document.getElementById('invite_modal'), actions);
     if(window.QRCode) {
       var qr = new window.QRCode(document.querySelector('.modal #invite_modal .qr_code'), url);
+      document.querySelector('.modal #invite_modal .qr_code').setAttribute('title', '');
     }
   },
   toggle_controls: function(force) {
@@ -1408,7 +1461,7 @@ var room = {
           document.querySelector('#eyes').style.display = 'block';
           // TODO: show the video feed (and audio indicator?)
           // If no video feed present, send a request for it
-          if(!room.all_remote_tracks.find(function(t) { return t.type == 'video' && t.user_id == data.user.id; })) {
+          if(!room.all_remote_tracks.find(function(t) { return t.type == 'video' && t.user_id == data.user.id && !t.mediaStreamTrack.muted; })) {
             remote.reconnect();
             // remote.refresh_remote_tracks(room.current_room.id, 'video');
           // } else {
@@ -1421,7 +1474,7 @@ var room = {
           document.querySelector('#no_preview').classList.remove('dancing');
           // TODO: show the unanimated preview w/ animated audio
           // If no audio feed present, send a request for it
-          if(!room.all_remote_tracks.find(function(t) { return t.type == 'audio' && t.user_id == data.user.id; })) {
+          if(!room.all_remote_tracks.find(function(t) { return t.type == 'audio' && t.user_id == data.user.id && !t.mediaStreamTrack.muted; })) {
             remote.reconnect();
             // remote.refresh_remote_tracks(room.current_room.id, 'audio');
           // } else {
@@ -1868,7 +1921,7 @@ document.addEventListener('click', function(event) {
         room.update_from_settings();
       };
       var elem = document.getElementById('settings_modal');
-      var analyser = null;
+      room.modal_analyser = null;
       elem.onattached = function(content) {
         modal_content = content;
         var video_track = remote.local_track('video');
@@ -1914,88 +1967,23 @@ document.addEventListener('click', function(event) {
         content.querySelector('#symbol_select').value = room.settings.symbol_library;
 
         var video = content.querySelector('#settings_video_preview');
-        video.wire_track = function(track) {
-          room.last_preview_video_track = track.mediaStreamTrack;
-          var stream = new MediaStream();
-          stream.addTrack(track.mediaStreamTrack);
-          video.srcObject = stream;
-          video.onloadedmetadata = function(e) {
-            video.play();
-          };
-        };
         var track = remote.local_track('video');
         if(track && track.mediaStreamTrack) {
-          video.wire_track(track);
+          room.wire_track(video, track);
         }
-        var level = content.querySelector('#settings_audio_level');
         var audio = content.querySelector('#settings_audio_preview');
-        audio.wire_track = function(track) {
-          room.last_preview_audio_track = track.mediaStreamTrack;
-          if(analyser) { analyser.release(); }
-          var stream = new MediaStream();
-          stream.addTrack(track.mediaStreamTrack);
-          audio.srcObject = stream;
-          audio.preview = true;
-          audio.muted = true;
-          audio.onloadedmetadata = function(e) {
-            audio.play();
-          };
-          analyser = input.track_audio(audio, track, {});
-          if(analyser) {
-            analyser.callback = function(output) {
-              level.style.height = Math.min(95, output) + "%";
-            }  
-          }
-        }
         var track = remote.local_track('audio');
         if(track && track.mediaStreamTrack) {
-          audio.wire_track(track);
+          room.wire_track(audio, track);
         }
 
         content.querySelector('#audio_select').addEventListener('change', function(e) {
           var value = e.target.value;
-          if(value == 'none') {
-            if(analyser) { 
-              analyser.release(); 
-              analyser = null;
-            }
-            video.src = '';
-            setTimeout(function() {
-              level.style.height = '0px';
-            }, 1000);
-            update_tracks();
-          } else {
-            navigator.mediaDevices.getUserMedia({
-              audio: {deviceId: value}
-            }).then(function(stream) {
-              var track = stream.getAudioTracks()[0];
-              if(track) {
-                audio.wire_track({mediaStreamTrack: track});
-                update_tracks();
-              }
-            }, function(err) {
-              // TODO: err...
-            });
-          }
+          room.handle_input_switch(value, audio, update_tracks);
         });
         content.querySelector('#video_select').addEventListener('change', function(e) {
           var value = e.target.value;
-          if(value == 'none') {
-            video.srcObject = null;
-            update_tracks();
-          } else {
-            navigator.mediaDevices.getUserMedia({
-              video: {deviceId: value}
-            }).then(function(stream) {
-              var track = stream.getVideoTracks()[0];
-              if(track) {
-                video.wire_track({mediaStreamTrack: track});
-                update_tracks();
-              }
-            }, function(err) {
-              // TODO: err...
-            });
-          }
+          room.handle_input_switch(value, video, update_tracks);
         });
         content.querySelector('#symbol_select').addEventListener('change', function(e) {
           content.querySelector('#settings_symbol_preview').className = e.target.value;
@@ -2010,9 +1998,9 @@ document.addEventListener('click', function(event) {
         select.dispatchEvent(event);
       };
       modal.open("Call Settings", elem, actions).then(function() {
-        if(analyser) { analyser.release(); }
+        if(room.modal_analyser) { room.modal_analyser.release(); }
       }, function() {
-        if(analyser) { analyser.release(); }
+        if(room.modal_analyser) { room.modal_analyser.release(); }
       });
     } else if(action == 'quick') {
       room.assert_grid(room.default_buttons, 'quick', true);
