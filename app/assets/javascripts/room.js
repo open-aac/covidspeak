@@ -803,8 +803,8 @@ var room = {
           room.status("Connecting...");
           remote.connect_to_remote(res.access, res.room.key, function(status) {
             if(!room.active) {
-              if(status.partner_found) {
-                room.status("Partner Found!");
+              if(status.potential_partner_found) {
+                room.status("Searching for Partner...");
               } else if(status.partner_negotiating) {
                 room.status("Partner Connecting...")
               } else if(status.connection_failed) {

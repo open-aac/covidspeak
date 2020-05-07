@@ -796,7 +796,7 @@ remote.webrtc = {
               if(!main_room.user_alerts[remote_user.id]) {
                 main_room.user_alerts[remote_user.id] = true;
                 if(window.room && window.room.current_room && window.room.current_room.user_id && remote_user.id != window.room.current_room.user_id) {
-                  main_room.status({partner_found: true});
+                  main_room.status({potential_partner_found: true});
                 }
                 remote.user_added(room_ref, main_room.users[remote_user.id], false);
               }

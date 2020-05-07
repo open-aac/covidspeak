@@ -94,9 +94,7 @@ class Api::RoomsController < ApplicationController
         servers = [
           {
             url: "stun:#{account.settings['address']}:#{port}?transport=udp",
-            urls: "stun:#{account.settings['address']}:#{port}?transport=udp",
-            username: trimmed_identity,
-            credential: cred
+            urls: "stun:#{account.settings['address']}:#{port}?transport=udp"
           }
         ]
         if account.settings['udp'] != false
