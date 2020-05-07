@@ -28,18 +28,11 @@ remote.webrtc = {
     stream = new MediaStream();
     stream.addTrack(track);  
     return function() {
-      if(track.kind == 'audio') {
-        var elem = document.createElement('audio');
+      if(track.kind == 'audio' || track.kind == 'video') {
+        var elem = document.createElement(track.kind);
         elem.srcObject = stream;
         elem.onloadedmetadata = function(e) {
           elem.play();
-        };        
-        return elem;
-      } else if(track.kind == 'video') {
-        var elem = document.createElement('video');
-        elem.srcObject = stream;
-        elem.onloadedmetadata = function(e) {
-           elem.play();
         };        
         return elem;
       }
