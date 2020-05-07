@@ -23,7 +23,7 @@ var add_dom = function(elem, track, user) {
 remote.addEventListener('track_added', function(data) {
   var track = data.track;
   room.all_remote_tracks = room.all_remote_tracks || [];
-  room.all_remote_tracks.push({type: track.type, id: track.id, user_id: data.user_id});
+  room.all_remote_tracks.push({type: track.type, id: track.id, user_id: data.user_id, mediaStreamTrack: track.mediaStreamTrack});
   if(track.generate_dom) {
     console.log("adding remote track", track);
     if(track.type == 'video' || (track.type == 'audio' && track.version_id)) { //} || track.type == 'audio') {
@@ -1461,7 +1461,7 @@ var room = {
           document.querySelector('#eyes').style.display = 'block';
           // TODO: show the video feed (and audio indicator?)
           // If no video feed present, send a request for it
-          if(!room.all_remote_tracks.find(function(t) { return t.type == 'video' && t.user_id == data.user.id && !t.mediaStreamTrack.muted; })) {
+          if(!room.all_remote_tracks.find(function(t) { return t.type == 'video' && t.user_id == data.user.id && !(t.mediaStreamTrack || {}).muted; })) {
             remote.reconnect();
             // remote.refresh_remote_tracks(room.current_room.id, 'video');
           // } else {
@@ -1474,7 +1474,7 @@ var room = {
           document.querySelector('#no_preview').classList.remove('dancing');
           // TODO: show the unanimated preview w/ animated audio
           // If no audio feed present, send a request for it
-          if(!room.all_remote_tracks.find(function(t) { return t.type == 'audio' && t.user_id == data.user.id && !t.mediaStreamTrack.muted; })) {
+          if(!room.all_remote_tracks.find(function(t) { return t.type == 'audio' && t.user_id == data.user.id && !(t.mediaStreamTrack || {}).muted; })) {
             remote.reconnect();
             // remote.refresh_remote_tracks(room.current_room.id, 'audio');
           // } else {

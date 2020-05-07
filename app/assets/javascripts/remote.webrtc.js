@@ -46,6 +46,24 @@ remote.webrtc = {
       return null;
     };
   },
+  track_ref: function(track, stream, id_index) {
+    if(!track) { return null; }
+    var device_id = track.name;
+    if(track.getSettings) {
+      device_id = track.getSettings().deviceId;
+    }
+    var ref = {
+      type: track.kind,
+      mediaStreamTrack: track,
+      device_id: device_id,
+      id: id_index + '-' + track.id,
+      added: (new Date()).getTime()
+    }
+    if(track.kind == 'audio' || track.kind == 'video') {
+      ref.generate_dom = remote.webrtc.dom_generator(track, stream);
+    }
+    return ref;
+  },
   start_local_tracks: function(opts) {
     return new Promise(function(res, rej) {
       input.request_media(opts).then(function(stream) {
@@ -53,17 +71,7 @@ remote.webrtc = {
         remote.webrtc.all_local_tracks = [].concat(remote.webrtc.local_tracks);
         var result = [];
         remote.webrtc.local_tracks.forEach(function(track) {
-          var track_ref = {
-            type: track.kind,
-            mediaStreamTrack: track,
-            device_id: track.getSettings().deviceId,
-            id: "0-" + track.id,
-            added: (new Date()).getTime(),
-          };
-          if(track.kind == 'audio' || track.kind == 'video') {
-            track_ref.generate_dom = remote.webrtc.dom_generator(track, stream);
-          }
-          result.push(track_ref);
+          result.push(remote.webrtc.track_ref(track, stream, 0));
         });
         res(result);
       }, function(err) {
@@ -87,17 +95,7 @@ remote.webrtc = {
         if(tracks.length > 0) {
           var list = [];
           tracks.forEach(function(track) {
-            var track_ref = {
-              id: "0-" + track.id,
-              mediaStreamTrack: track,
-              added: (new Date()).getTime(),
-              device_id: track.getSettings().deviceId,
-              type: track.kind
-            };
-            if(track.kind == 'audio' || track.kind == 'video') {
-              track_ref.generate_dom = remote.webrtc.dom_generator(track);
-            }
-            list.push(track_ref);
+            list.push(remote.webrtc.track_ref(track, null, 0));
             var new_track = false;
             if(remote.webrtc.local_tracks.indexOf(track) == -1) {
               new_track = true;
@@ -177,16 +175,7 @@ remote.webrtc = {
     return new Promise(function(res, rej) {
       var main_room = remote.webrtc.rooms[room_id];
       if(track && main_room) {
-        var track_ref = {
-          type: track.kind,
-          mediaStreamTrack: track,
-          device_id: track.getSettings().deviceId,
-          id: "0-" + track.id,
-          added: (new Date()).getTime(),
-        };
-        if(track.kind == 'audio' || track.kind == 'video') {
-          track_ref.generate_dom = remote.webrtc.dom_generator(track);
-        }
+        var track_ref = remote.webrtc.track_ref(track, null, 0);
         var finished = 0, errors = [];
         var check_done = function(error) {
           finished++;
@@ -523,15 +512,7 @@ remote.webrtc = {
       console.log("REMOTE TRACK ADDED", track, pc_ref);
       var add_track = function(track) {
         try {
-          var track_id = main_room.subrooms[subroom_id].id_index + "-" + track.id;
-          var track_ref = {
-            id: track_id,
-            mediaStreamTrack: track,
-            device_id: track.getSettings().deviceId,
-            version_id: pc_ref.id,
-            type: track.kind,
-            added: (new Date()).getTime(),
-          };
+          var track_ref = remote.webrtc.track_ref(track, null, main_room.subrooms[subroom_id].id_index);
           if(stream && main_room.users[remote_user_id] && stream != main_room.users[remote_user_id].remote_stream) {
             main_room.users[remote_user_id].remote_stream = stream;
           }
