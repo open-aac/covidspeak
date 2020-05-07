@@ -807,7 +807,7 @@ var room = {
           remote.connect_to_remote(res.access, res.room.key, function(status) {
             if(!room.active) {
               if(status.potential_partner_found) {
-                room.status("Searching for Partner...");
+                room.status("Searching for Partner...", {invite: true});
               } else if(status.partner_negotiating) {
                 room.status("Partner Connecting...")
               } else if(status.connection_failed) {
@@ -1026,14 +1026,21 @@ var room = {
       room.video_device_ids = ids;
       var idx = room.video_device_ids.indexOf(current_video_id);
       var new_idx = idx + 1;
-      room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';
-      
-      var video = document.createElement('video');
+      // room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';
+      room.temp_video_device_id = null;
+      room.settings.video_device_id = room.video_device_ids[new_idx] || 'none';
+      localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
+
+      var video = document.querySelector('#swap_video') || document.createElement('video');
+      video.id = 'swap_video';
+      video.style.position = 'absolute';
+      video.style.left = '-1000px';
+      document.body.appendChild(video);
       setTimeout(function() {
         room.handle_input_switch(room.temp_video_device_id, video, function(track) {
           room.update_from_settings();
         });
-      }, 500);
+      }, 1500);
     }, function(err) {
       console.error('video swap failed', err);
     });
