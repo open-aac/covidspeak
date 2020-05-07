@@ -1176,6 +1176,7 @@ var room = {
   },
   show_keyboard: function() {
     var edit = document.querySelector('.preview .text_input');
+    var show = document.querySelector('.preview .text_display');
     var prompt = document.querySelector('.preview .prompt');
 
     prompt.style.display = 'block';
@@ -1191,19 +1192,32 @@ var room = {
     }
     if(str) {
       edit.tmp_id = null;
-      edit.style.display = 'block';
+      if(edit.style.display != 'block' && show.style.display != 'block') {
+        show.style.display = 'block';
+      }
       edit.style.opacity = 1.0;
       edit.value = str;
+      show.style.opacity = 1.0;
+      show.innerText = str;
       room.editing = true;
       document.querySelector('#text_prompt').classList.add('active');
       if(lingering) {
         edit.classList.add('lingering');
+        show.classList.add('lingering');
       } else {
         edit.classList.remove('lingering');
+        show.classList.remove('lingering');
       }
       if(!edit.focus_watch) {
         edit.focus_watch = true;
         edit.addEventListener('focus', function(event) {
+        });
+        edit.addEventListener('blur', function(event) {
+          if(!edit.auto_blur) {
+            edit.style.display = 'none';
+            show.style.display = 'block';  
+          }
+          edit.auto_blur = false;
         });
       }
       // TODO: measure text and resize accordingly
@@ -1211,6 +1225,7 @@ var room = {
       var tmp_id = Math.round(Math.random() * 99999);
       edit.tmp_id = tmp_id;
       if(document.activeElement != edit) {
+        edit.auto_blur = true;
         edit.blur();
         edit.style.opacity = 0.0;
       }
@@ -1219,13 +1234,15 @@ var room = {
           edit.value = "";
           edit.tmp_id = null;
           edit.style.display = 'none';
+          show.style.display = 'none';
         }
       }, 2000);
     }
   },
-  toggle_input: function() {
+  toggle_input: function(force) {
     var edit = document.querySelector('.preview .text_input');
-    if(room.editing) {
+    var show = document.querySelector('.preview .text_display');
+    if(room.editing && !force) {
       room.add_key({clear: true});
     } else {
       edit.tmp_id = null;
@@ -1233,6 +1250,7 @@ var room = {
       edit.style.opacity = 1.0;
       edit.focus();
       edit.selectionStart = edit.selectionEnd = 100000;
+      show.style.display = 'none';
     }
   },
   add_key: function(str) {
@@ -1246,6 +1264,7 @@ var room = {
       room.editing = false;
       document.querySelector('.preview .text_input').blur();
       document.querySelector('.preview .text_input').value = '';
+      document.querySelector('.preview .text_display').innerText = '';
     } else if(str.confirm) {
       if(room.keyboard_state.string) {
         room.keyboard_state.linger = {}
@@ -1268,6 +1287,7 @@ var room = {
       document.querySelector('#text_prompt').classList.remove('active');
       document.querySelector('.preview .text_input').blur();
       document.querySelector('.preview .text_input').value = '';
+      document.querySelector('.preview .text_display').innerText = '';
     } else if(str.string != null) {
       room.keyboard_state.string = str.string;
     } else {
@@ -1705,6 +1725,7 @@ document.addEventListener('click', function(event) {
   var $invite = $(event.target).closest('#invite_partner');
   var $popout = $(event.target).closest('#popout_view');
   var $text_prompt = $(event.target).closest('#text_prompt');
+  var $text_display = $(event.target).closest('.text_display');
   var $communicator = $(event.target).closest('#communicator');
   var $zoom = $(event.target).closest('.zoom');
   if($(event.target).closest("#nav").css('opacity') == '0') {
@@ -1735,6 +1756,9 @@ document.addEventListener('click', function(event) {
   } else if($text_prompt.length > 0) {
     event.preventDefault();
     room.toggle_input();
+  } else if($text_display.length > 0) {
+    event.preventDefault();
+    room.toggle_input(true);
   } else if($cell.length > 0) {
     if(room.current_room) {
       remote.send_message(room.current_room.id, {action: 'click', button: {id: $cell[0].button.id }}).then(null, function() {

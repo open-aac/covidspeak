@@ -597,8 +597,8 @@ strong {
         }
         .nobody {
           background: #67b0c7;
-          width: 10vw;
-          height: 20vh;
+          width: min(10vw, 20vh);
+          height: min(20vw, 20vh);
           img {
             filter: invert(1);
             width: 70%;
@@ -681,7 +681,7 @@ strong {
             }
           }
         }
-        .text_input {
+        .text_input,.text_display {
           border: 0;
           background: transparent;
           position: absolute;
@@ -708,6 +708,9 @@ strong {
             color: #ff0;
             -webkit-text-fill-color: #ff0;
           }
+        }
+        .text_display {
+          overflow: hidden;
         }
       }
       img.reaction {
@@ -1158,6 +1161,17 @@ strong {
       &.text_only .text {
         font-size: 24px;
       }
+    }
+  }
+  #contents .grid .mid .preview #text {
+    .text_input,.text_display {
+      font-size: 20px;
+      color: #fff;
+      text-shadow: -3px 3px 0px #000, 3px 3px 0px #000, 3px -3px #000, -3px -3px 0 #000, -3px 3px 2px #000, 3px 3px 2px #000, 3px -3px 2px #000, -3px -3px 2px #000;
+      text-stroke: 0px #fff;
+      -webkit-text-stroke: 0px #fff;
+      -webkit-text-fill-color: #fff;
+
     }
   }
   #contents .grid .menu {
