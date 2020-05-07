@@ -961,9 +961,9 @@ var room = {
     var current_video_id = video_track && video_track.device_id || 'none';
     var current_audio_id = audio_track && audio_track.device_id || 'none';
     var current_tracks = {audio: audio_track, video: video_track};
-    var current_ids = {audio: current_audio_id, video: current_video_id}
+    var current_ids = {audio: current_audio_id, video: current_video_id};
     ['audio', 'video'].forEach(function(type) {
-      var type_device_id = room.settings[type + '_device_id']
+      var type_device_id = room['temp_' + type + '_device_id'] || room.settings[type + '_device_id']
       var last_preview_track = room['last_preview_' + type + '_track'];
       if(type_device_id != current_ids[type]) {
         if(type_device_id == 'none') {
@@ -972,24 +972,24 @@ var room = {
             room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != current_tracks[type].id; });
             room.update_preview();
           }
+        } else if(last_preview_track && last_preview_track.getSettings().deviceId == type_device_id) {
+          remote.replace_local_track(room.current_room.id, last_preview_track).then(function(data) {
+            var track = data.added;
+            var old = data.removed;
+            if(old) {
+              room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != old.id; });
+            } else {
+              var priority_ids = (room.priority_tracks || []).map(function(t) { return t.id; });
+              room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.type != track.type && (!t.mediaStreamTrack || priority_ids.indexOf(t.mediaStreamTrack.id) == -1); });
+              console.error("had to resort to fallback for removing replaced " + type + " tracks");
+            }
+            // We add to the front of the list so shares don't get interrupted
+            room.local_tracks.unshift(track);
+            room.update_preview();
+          }, function(err) {
+            debugger
+          });
         }
-      } else if(last_preview_track && last_preview_track.getSettings().deviceId == type_device_id) {
-        remote.replace_local_track(room.current_room.id, last_preview_track).then(function(data) {
-          var track = data.added;
-          var old = data.removed;
-          if(old) {
-            room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != old.id; });
-          } else {
-            var priority_ids = (room.priority_tracks || []).map(function(t) { return t.id; });
-            room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.type != track.type && (!t.mediaStreamTrack || priority_ids.indexOf(t.mediaStreamTrack.id) == -1); });
-            console.error("had to resort to fallback for removing replaced " + type + " tracks");
-          }
-          // We add to the front of the list so shares don't get interrupted
-          room.local_tracks.unshift(track);
-          room.update_preview();
-        }, function(err) {
-          debugger
-        });
       }
     });
   },

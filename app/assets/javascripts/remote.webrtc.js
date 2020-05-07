@@ -344,7 +344,7 @@ remote.webrtc = {
     remote.webrtc.last_room_id = room_id;
     var room_owner = subroom_id.split(/::/)[1];
     var initiator = main_room.user_id == room_owner;
-    console.log("RTC: setting up room", initiator);
+    console.log("RTC: SETTING UP room", initiator);
     main_room.subroom_ids = main_room.subroom_ids || [];
     if(main_room.subroom_ids.indexOf(subroom_id) == -1) {
       main_room.subroom_ids.push(subroom_id);
@@ -363,7 +363,7 @@ remote.webrtc = {
           var tracks = main_room.subrooms[subroom_id][oldpc_ref.id].remote_tracks || {};
           for(var key in tracks) {
             if(tracks[key].pc == oldpc) {
-              console.log("RTC: track removed in cleanup", tracks[key]);
+              console.log("RTC: remote track removed in cleanup", tracks[key]);
               tracks[key].track.enabled = false;
               tracks[key].track.stop();
               remote.track_removed(main_room.ref, main_room.users[remote_user_id], tracks[key].ref);
