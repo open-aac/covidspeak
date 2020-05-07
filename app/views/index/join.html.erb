@@ -104,7 +104,7 @@ function getMedia() {
   }, 500);
   if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     room.load_settings();
-    navigator.mediaDevices.getUserMedia(room.input_settings).then(function(stream) {
+    input.request_media(room.input_settings).then(function(stream) {
       handled = true;
       var vid_track = stream.getVideoTracks()[0];
       if(vid_track) {

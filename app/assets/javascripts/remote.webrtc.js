@@ -48,7 +48,7 @@ remote.webrtc = {
   },
   start_local_tracks: function(opts) {
     return new Promise(function(res, rej) {
-      navigator.mediaDevices.getUserMedia(opts).then(function(stream) {
+      input.request_media(opts).then(function(stream) {
         remote.webrtc.local_tracks = stream.getTracks();
         remote.webrtc.all_local_tracks = [].concat(remote.webrtc.local_tracks);
         var result = [];
@@ -109,12 +109,38 @@ remote.webrtc = {
               main_room.subroom_ids.forEach(function(subroom_id) {
                 var pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
                 if(pc_ref) {
-                  var sender = pc_ref.pc.addTrack(track, pc_ref.local_stream);
+                  var senders = pc_ref.pc.getSenders();
+                  var types = {};
+                  var blank_sender = null;
+                  senders.forEach(function(s) {
+                    if(s.track && !s.track.muted) { types[s.track.kind] = true; }
+                    if(!s.track || (s.track.kind == track.kind && s.track.muted)) { blank_sender = s; }
+                  });
                   main_room.subrooms[subroom_id][pc_ref.id].tracks = main_room.subrooms[subroom_id][pc_ref.id].tracks || {};
                   main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id] = main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id] || {};
                   main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id].track = track;
-                  main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id].sender = sender;
-                  main_room.subrooms[subroom_id].renegotiate();
+                  if(!types[track.kind] && blank_sender) {
+                    blank_sender.replaceTrack(track).then(function() {
+                      setTimeout(function() {
+                        main_room.subrooms[subroom_id].renegotiate();
+                      }, 100);
+                      // success!
+                    }, function(err) {
+                      // try the fallback approach
+                      var sender = pc_ref.pc.addTrack(track, pc_ref.local_stream);
+                      main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id].sender = sender;
+                      setTimeout(function() {
+                        main_room.subrooms[subroom_id].renegotiate();
+                      }, 100);
+                    });
+                  } else {
+                    var sender = pc_ref.pc.addTrack(track, pc_ref.local_stream);
+                    main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id].sender = sender;
+                    // TODO: on the ipad it wasn't renegotiating at this point, why not???
+                    setTimeout(function() {
+                      main_room.subrooms[subroom_id].renegotiate();
+                    }, 100);
+                }
                 }
               });
             }
@@ -197,7 +223,7 @@ remote.webrtc = {
             pc.getSenders().forEach(function(s) {
               if(s.track && s.track.kind == track.kind) {
                 sender = s;
-                console.error("has to resort to fallback lookup for sender");
+                console.error("had to resort to fallback lookup for sender");
               }
             })
           }
@@ -271,7 +297,9 @@ remote.webrtc = {
               setTimeout(function() {
                 pc.removeTrack(sender);
                 delete main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id];
-                main_room.subrooms[subroom_id].renegotiate();  
+                setTimeout(function() {
+                  main_room.subrooms[subroom_id].renegotiate();  
+                }, 100);
               }, 100);
             }
           });
@@ -464,10 +492,10 @@ remote.webrtc = {
           });
           // TODO: re-send if things don't progress
         }, function(err) {
-          remote.webrtc.connection_error(main_room.ref, main_room.users[remote_user_id]);
+          remote.connection_error(main_room.ref, main_room.users[remote_user_id]);
         });
       }, function(err) {
-        remote.webrtc.connection_error(main_room.ref, main_room.users[remote_user_id]);
+        remote.connection_error(main_room.ref, main_room.users[remote_user_id]);
       });
     };
 

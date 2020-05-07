@@ -2,6 +2,35 @@ var audio_analysers = [];
 var volume = null;
 var preview_volume = null;
 var input = {
+  request_media: function(opts) {
+    if(opts.video && !opts.video.deviceId) {
+      delete opts.video.deviceId;
+    }
+    return new Promise(function(res, rej) {
+      navigator.mediaDevices.getUserMedia(opts).then(function(media) {
+        res(media);
+      }, function(err) {
+        var updated = false;
+        if(opts.video && opts.video.deviceId) {
+          delete opts.video.deviceId;
+          updated = true;
+        }
+        if(opts.audio && opts.audio.deviceId) {
+          delete opts.audio.deviceId;
+          updated = true;
+        }
+        if(updated) {
+          navigator.mediaDevices.getUserMedia(opts).then(function(media) {
+            res(media);
+          }, function(err) {
+            rej(err);
+          });
+        } else {
+          rej(err);
+        }
+      });
+    })
+  },
   track_audio: function(elem, track, user) {
     var res = null;
     if(!volume) {

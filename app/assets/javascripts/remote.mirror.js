@@ -46,23 +46,9 @@ remote.mirror = {
       return null;
     };
   },
-  start_local_tracks: function(opts) {
-    opts = opts || {audio: true, video: true, data: true};
-    var init = {};
-    if(opts.audio) { 
-      init.audio = {autoGainControl: true, echoCancellation: true, noiseSuppression: true}; 
-      if(opts.audio_id) {
-        init.audio.deviceId = opts.audio_id;
-      }
-    }
-    if(opts.video) { 
-      init.video = {facingMode: {ideal: 'user'}, height: 720}; 
-      if(opts.video_id) {
-        init.video.deviceId = opts.device_id;
-      }
-    }
+  start_local_tracks: function(opts) {s
     return new Promise(function(res, rej) {
-      navigator.mediaDevices.getUserMedia(init).then(function(stream) {
+      input.request_media(opts).then(function(stream) {
         remote.mirror.local_tracks = stream.getTracks();
         var result = [];
         remote.mirror.local_tracks.forEach(function(track) {
