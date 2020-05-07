@@ -1003,7 +1003,7 @@ var room = {
       if(current_video_id && current_video_id != 'none') { 
         var track = list.find(function(t) { return t.deviceId == current_video_id});
         if(track && !room.first_video) {
-          room.first_video = {device_id: track.deviceId, group_id: track.groupId, facing_mode: track.facingMode};
+          room.first_video = {device_id: track.deviceId, group_id: track.groupId || track.deviceId, facing_mode: track.facingMode};
         }
       }
       // Limiting to one per groupId/facingMode for video swap
@@ -1017,9 +1017,10 @@ var room = {
       }
       list.forEach(function(d) {
         var facing = d.facingMode;
-        if(!group_ids[d.groupId] && (!facing || !facing_modes[facing])) {
+        var group_id = d.groupId || d.deviceId;
+        if(!group_ids[group_id] && (!facing || !facing_modes[facing])) {
           ids.push(d.deviceId);
-          group_ids[d.groupId] = true;
+          group_ids[group_id] = true;
           facing_modes[facing] = true;
         }
       });

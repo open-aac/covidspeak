@@ -274,7 +274,7 @@ remote.webrtc = {
           main_room.subroom_ids.forEach(function(subroom_id) {
             var pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
             var pc = pc_ref && pc_ref.pc;
-            var sender = main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id].sender;
+            var sender = pc_ref && track_ref && main_room.subrooms[subroom_id][pc_ref.id] && main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id] && main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id].sender;
             // fallback if we lost the sender
             if(pc && !sender) {
               pc.getSenders().forEach(function(s) {
@@ -349,7 +349,7 @@ remote.webrtc = {
     if(main_room.subroom_ids.indexOf(subroom_id) == -1) {
       main_room.subroom_ids.push(subroom_id);
     }
-    remote.webrtc.clean_old_connections(main_room, subroom_id);
+    remote.webrtc.clean_old_connections(main_room, subroom_id, remote_user_id);
 
     var config = {};
     config.iceServers = main_room.ice;
@@ -671,7 +671,7 @@ remote.webrtc = {
     setTimeout(remote.webrtc.poll_status, 15000);
     return pc;
   },
-  clean_old_connections(main_room, subroom_id) {
+  clean_old_connections(main_room, subroom_id, remote_user_id) {
     main_room.subrooms[subroom_id] = main_room.subrooms[subroom_id] || {};
     main_room.subrooms[subroom_id].id_index = main_room.subrooms[subroom_id].id_index || 1;
     main_room.subrooms[subroom_id].to_close = main_room.subrooms[subroom_id].to_close || []
