@@ -75,7 +75,11 @@ remote.webrtc = {
   add_local_tracks: function(room_id, stream_or_track) {
     var track_ref = stream_or_track;
     var main_room = remote.webrtc.rooms[room_id];
-    console.log("ADDING LOCAL TRACKS", stream_or_track);
+    // If the connection has an empty sender
+    // an no active sender sending the current kind,
+    // first try replaceTrack on the sender and only
+    // if it rejects should you try adding a new track
+    console.log("RTC: adding local tracks", stream_or_track);
     return new Promise(function(res, rej) {
       if(stream_or_track.getTracks) {
         var tracks = [];
@@ -148,6 +152,11 @@ remote.webrtc = {
         if(track && pc) {
           track.enabled = true;
           res([track_ref]);
+          if(track.kind == 'video') {
+            setTimeout(function() {
+              main_room.subrooms[subroom_id].renegotiate();
+            }, 100);
+          }
           // main_room.subroom_ids.forEach(function(subroom_id) {
           //   var pc = main_room.subrooms[subroom_id].rtcpc;
           //   if(pc) {
@@ -164,7 +173,7 @@ remote.webrtc = {
     });
   },
   replace_local_track: function(room_id, track) {
-    console.log("REPLACING LOCAL TRACK", track);
+    console.log("RTC: replacing local track", track);
     return new Promise(function(res, rej) {
       var main_room = remote.webrtc.rooms[room_id];
       if(track && main_room) {
@@ -184,7 +193,7 @@ remote.webrtc = {
               remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.kind != track.kind; });
               remote.webrtc.local_tracks.push(track);
               remote.webrtc.all_local_tracks.push(track);
-              console.log("SUCCESSFULLY REPLACED TRACK!");
+              console.log("RTC: successfully replaced track!");
               res({added: track_ref});
             }
           }
@@ -205,7 +214,7 @@ remote.webrtc = {
             pc.getSenders().forEach(function(s) {
               if(s.track && s.track.kind == track.kind) {
                 sender = s;
-                console.error("had to resort to fallback lookup for sender");
+                console.error("RTC: had to resort to fallback lookup for sender");
               }
             })
           }
@@ -232,7 +241,7 @@ remote.webrtc = {
     });
   },
   remove_local_track: function(room_id, track_ref, remember) {
-    console.log("REMOVING LOCAL TRACK", track_ref);
+    console.log("RTC: removing local track", track_ref);
     if(!track_ref) { debugger }
     return new Promise(function(res, rej) {
       var track = (remote.webrtc.local_tracks || []).find(function(t) { return ("0-" + t.id) == track_ref.id; });
@@ -247,7 +256,7 @@ remote.webrtc = {
           if(pc && !track) {
             pc.getSenders().forEach(function(sender) {
               if(sender.track && ('0-' + sender.track.id) == track_ref.id) {
-                console.error("has to resort to fallback lookup for removable track");
+                console.error("RTC: had to resort to fallback lookup for removable track");
                 track = sender.track
               }
             })  
@@ -270,7 +279,7 @@ remote.webrtc = {
             if(pc && !sender) {
               pc.getSenders().forEach(function(s) {
                 if(s.track == track) {
-                  console.error("has to resort for fallback lookup for sender");
+                  console.error("RTC: had to resort for fallback lookup for sender");
                   sender = s;
                 }
               });
@@ -306,11 +315,11 @@ remote.webrtc = {
               if(!main_room.subrooms[subroom_id][pc_ref.id].remote_tracks[rec.track.id]) {
                 var track = rec.track;
                 var stream = new MediaStream();
-                console.log("MISSED A TRACK! ADDING NOW...", track);
+                console.log("RTC: MISSED A TRACK! adding now...", track);
                 stream.addTrack(track);
                 main_room.add_track(track, stream, pc_ref.id);  
               } else {
-                console.log("FOUND A KNOWN TRACK");
+                console.log("RTC: found a known track");
               }
             }
           });
@@ -335,7 +344,7 @@ remote.webrtc = {
     remote.webrtc.last_room_id = room_id;
     var room_owner = subroom_id.split(/::/)[1];
     var initiator = main_room.user_id == room_owner;
-    console.log("SETTING UP ROOM", initiator);
+    console.log("RTC: setting up room", initiator);
     main_room.subroom_ids = main_room.subroom_ids || [];
     if(main_room.subroom_ids.indexOf(subroom_id) == -1) {
       main_room.subroom_ids.push(subroom_id);
@@ -354,7 +363,7 @@ remote.webrtc = {
           var tracks = main_room.subrooms[subroom_id][oldpc_ref.id].remote_tracks || {};
           for(var key in tracks) {
             if(tracks[key].pc == oldpc) {
-              console.log("TRACK REMOVED IN CLEANUP", tracks[key]);
+              console.log("RTC: track removed in cleanup", tracks[key]);
               tracks[key].track.enabled = false;
               tracks[key].track.stop();
               remote.track_removed(main_room.ref, main_room.users[remote_user_id], tracks[key].ref);
@@ -436,10 +445,10 @@ remote.webrtc = {
 
     main_room.subrooms[subroom_id].renegotiate = function() {
       if(main_room.subrooms[subroom_id].negotiating) { 
-        console.log("already negotiating");
+        console.log("RTC: already negotiating");
         return; 
       }
-      console.log("negotiating...")
+      console.log("RTC: negotiating...")
       main_room.subrooms[subroom_id].negotiating = true;
       setTimeout(function() {
         main_room.subrooms[subroom_id].negotiating = false;
@@ -463,13 +472,13 @@ remote.webrtc = {
         // We can set up a brand new connection which
         // will prevent the old session from pausing while
         // we negotiate
-        console.log("STARTING NEW RTC CONNECTION DUE TO RENEGOTIATE REQUEST");
+        console.log("RTC: starting new connection due to renegotiate request");
         rtcpc = remote.webrtc.initialize(remote_user_id, main_room.ref.id);
       }
       rtcpc.createOffer({  offerToReceiveAudio: 1, offerToReceiveVideo: 1}).then(function(desc) {
-        // if(rtcpc.signalingState != "stable") { console.error("initializing when NOT STABLE", rtcpc.signalingState); return; }
+        // if(rtcpc.signalingState != "stable") { console.error("RTC: initializing when NOT STABLE", rtcpc.signalingState); return; }
         rtcpc.setLocalDescription(desc).then(function() {
-          console.log("OFFER SENT", remote_user_id);
+          console.log("RTC: offer sent", remote_user_id);
           main_room.send({
             target_id: remote_user_id, 
             author_id: main_room.user_id,
@@ -497,12 +506,12 @@ remote.webrtc = {
 
       var main_room = remote.webrtc.rooms[pc_ref.room_id];
       if(!pc_ref || !track) {
-        console.error("REMOTE TRACK ADD FAILED", track, pc_ref);
+        console.error("RTC: remote track add failed", track, pc_ref);
         return;
       }
       var subroom_id = pc_ref.subroom_id;
       var remote_user_id = pc_ref.user_id;
-      console.log("REMOTE TRACK ADDED", track, pc_ref);
+      console.log("RTC: remote track added", track, pc_ref);
       var add_track = function(track) {
         try {
           var track_ref = remote.webrtc.track_ref(track, null, main_room.subrooms[subroom_id].id_index);
@@ -510,7 +519,7 @@ remote.webrtc = {
             main_room.users[remote_user_id].remote_stream = stream;
           }
           remote.webrtc.start_processsing(track, function(generator) {
-            console.log("REMOTE TRACK PROCESSED", track);
+            console.log("RTC: remote track processed", track);
             track_ref.generate_dom = generator;
             remote.track_added(main_room.ref, main_room.users[remote_user_id], track_ref);
             main_room.subrooms[subroom_id][pc_ref.id].remote_tracks = main_room.subrooms[subroom_id][pc_ref.id].remote_tracks || {};
@@ -534,7 +543,7 @@ remote.webrtc = {
             // TODO: if this is being replaced by a newer version,
             // then don't call track_removed here, call it
             // when the new version goes live instead
-            console.log("TRACK REMOVED", event.track, track_id);
+            console.log("RTC: track removed due to event", event.track, track_id);
             var track = event.track;
             delete main_room.subrooms[subroom_id][pc_ref.id].remote_tracks[track.id];
             setTimeout(function() {
@@ -590,12 +599,12 @@ remote.webrtc = {
       }
     });
     pc.addEventListener('negotiationneeded', function(e) {
-      console.log("NEEDS NEGOTIATION");
+      console.log("RTC: needs negotiation");
       main_room.subrooms[subroom_id].renegotiate();
     });
     connected = function(pc) {
       var pc_ref = remote.webrtc.pc_ref(pc.id || pc_id);
-      console.log("CONNECTED", pc_ref.id, pc_ref.user_id);
+      console.log("RTC: connected", pc_ref.id, pc_ref.user_id);
       if(pc_ref.already_connected) { return; }
       pc_ref.already_connected = true;
       (main_room.subrooms[pc_ref.subroom_id].to_close || []).forEach(function(ref) { if(ref) { ref.close(); } });
@@ -624,7 +633,7 @@ remote.webrtc = {
     };
     pc.addEventListener('connectionstatechange', function(e) {
       // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceConnectionState
-      console.log("STATE CHANGE", e.target.connectionState);
+      console.log("RTC: state change", e.target.connectionState);
       var pc_ref = remote.webrtc.pc_ref(e.target.id || pc.id || pc_id);
       pc_ref.refState = e.target.connectionState;
       main_room.subrooms[subroom_id].id_index++;
@@ -636,7 +645,7 @@ remote.webrtc = {
       }
     });
     pc.addEventListener('iceconnectionstatechange', function(e) {
-      console.log("ICE CHANGE", e.target.iceConnectionState);
+      console.log("RTC: ice change", e.target.iceConnectionState);
       if(e.target.connectionState === undefined && ['connected', 'disconnected', 'failed'].indexOf(e.target.iceConnectionState) != -1) {
         var pc_ref = remote.webrtc.pc_ref(e.target.id || pc.id || pc_id);
         pc_ref.refState = e.target.iceConnectionState;
@@ -654,13 +663,13 @@ remote.webrtc = {
       // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceConnectionState
     });
     pc.addEventListener('icegatheringstatechange', function(e) {
-      console.log("ICE GATHER CHANGE", e.target.iceGatheringState);
+      console.log("RTC: ice gather change", e.target.iceGatheringState);
       if(pc.iceGatheringState != 'complete') { return; }
       // see: https://github.com/webrtc/samples/blob/59aea35498839806af937e8ce6aa99aa0bdb9e46/src/content/peerconnection/trickle-ice/js/main.js#L197
 
     });
     pc.addEventListener('icecandidateerror', function(e) {
-      console.log("CANDIDATE ERROR", e.errorCode, e.target);
+      console.log("RTC: candidate error", e.errorCode, e.target);
       if (e.errorCode >= 300 && e.errorCode <= 699) {
         // STUN errors are in the range 300-699. See RFC 5389, section 15.6
         // for a list of codes. TURN adds a few more error codes; see
@@ -670,7 +679,7 @@ remote.webrtc = {
         // provided but these are not yet specified.
       }
     });
-    console.log("ADDING INITIAL LOCAL TRACKS", room.share_tracks, remote.webrtc.local_tracks);
+    console.log("RTC: adding initial local tracks", room.share_tracks, remote.webrtc.local_tracks);
     // Safari only allows streaming one video track, it seems, so add the later ones first
     var tracks_to_send = [];
     var already_added = false;
@@ -699,7 +708,7 @@ remote.webrtc = {
       }
     })
     tracks_to_send.forEach(function(track) {
-      console.log("ADDING LOCAL TRACK", track);
+      console.log("RTC: adding local track", track);
       var sender = pc.addTrack(track, pc_ref.local_stream);
       main_room.subrooms[subroom_id][pc_ref.id].tracks = main_room.subrooms[subroom_id][pc_ref.id].tracks || {};
       main_room.subrooms[subroom_id][pc_ref.id].tracks["0-" + track.id] = main_room.subrooms[subroom_id][pc_ref.id].tracks["0-" + track.id] || {};
@@ -741,8 +750,8 @@ remote.webrtc = {
         var room_owner = subroom_id.split(/::/)[1];
         var pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
         var pc = pc_ref && pc_ref.pc;
-        if(!force && main_room.already && pc_ref && pc_ref.refState == 'connected') { console.log("SKIPPING reconnection because already active"); return; }
-        if(pc_ref && ['new'].indexOf(pc_ref.refState) != -1) { console.log("SKIPPING CONNECTION because already in progress"); return; }
+        if(!force && main_room.already && pc_ref && pc_ref.refState == 'connected') { console.log("RTC: SKIPPING reconnection because already active"); return; }
+        if(pc_ref && ['new'].indexOf(pc_ref.refState) != -1) { console.log("RTC: SKIPPING CONNECTION because already in progress"); return; }
         var already_id = (new Date()).getTime();
         main_room.already = already_id;
         setTimeout(function() {
@@ -750,16 +759,15 @@ remote.webrtc = {
             main_room.already = false;
           }
         }, 15000);
-        console.log("ROOM has both parties", force, remote_user_id, subroom_id, main_room.already, pc_ref && pc_ref.refState);
+        console.log("RTC: room has both parties", force, remote_user_id, subroom_id, main_room.already, pc_ref && pc_ref.refState);
         if(room_owner == main_room.user_id) {
-          console.log("STARTING ROOM AS OWNER");
+          console.log("RTC: starting room as owner");
           var pc = remote.webrtc.initialize(remote_user_id, room_ref.id);
         } else {
-          console.log("WAITING FOR OFFER FROM ROOM OWNER...");
+          console.log("RTC: waiting for offer from room owner...");
         }
       };
       main_room.onmessage = function(msg) {
-        // console.log("MESSAGE", msg);
         if(msg.type == 'users') {
           main_room.raw_users = msg.list;
           main_room.users = main_room.users || {};
@@ -784,7 +792,7 @@ remote.webrtc = {
                 if(room_owner == main_room.user_id) { ping.mine = true; }
                 if(!pc_ref || pc_ref.refState != 'connected') { ping.no_existing_connection = true; }
 
-                console.log("PING TO", remote_user_id, ping);
+                console.log("RTC: PING to", remote_user_id, ping);
                 main_room.send({
                   author_id: main_room.user_id,
                   target_id: remote_user_id,
@@ -813,11 +821,11 @@ remote.webrtc = {
             if(pong.mine && msg.ping.no_existing_connection) {
               force = true;
             }
-            console.log("RECEIVED PING", subroom_id, msg);
+            console.log("RTC: received PING", subroom_id, msg);
             if(room_owner == main_room.user_id && pc_ref && pc_ref.prevent_reconnect_until && pc_ref.prevent_reconnect_until > (new Date()).getTime()) {
-              console.log("IGNORING PING because already working on a connection", subroom_id);
+              console.log("RTC: ignoring PING because already working on a connection", subroom_id);
             } else {
-              console.log("SENDING PONG", subroom_id, pong);
+              console.log("RTC: sending PONG", subroom_id, pong);
               main_room.ready(subroom_id, msg.author_id, force);
             }
           } if(msg.type == 'pong') {
@@ -828,22 +836,22 @@ remote.webrtc = {
             if(room_owner == main_room.user_id && msg.pong.no_existing_connection) {
               force = true;
             }
-            console.log("RECEIVED PONG", msg);
+            console.log("RTC: received PONG", msg);
             if(room_owner == main_room.user_id && pc_ref && pc_ref.prevent_reconnect_until && pc_ref.prevent_reconnect_until > (new Date()).getTime()) {
-              console.log("IGNORING PONG because already working on a connection", subroom_id);
+              console.log("RTC: ignoring PONG because already working on a connection", subroom_id);
             } else {
               main_room.ready(subroom_id, msg.author_id, force);
             }
           } else if(msg.type == 'offer') {
-            console.log("OFFER RECEIVED, INITIALIZING ROOM ON MY SIDE", msg.offer);
+            console.log("RTC: offer received, initializing room on my side", msg.offer);
             // TODO: if(pc.signalingState == 'stable') { console.error("Received offer when stable"); }
             var pc = remote.webrtc.initialize(msg.author_id, room_ref.id);
             pc.setRemoteDescription(msg.offer).then(function() {
-              console.log("REMOTE SET");
+              console.log("RTC: remote set");
               pc.createAnswer().then(function(desc) {
-                console.log("ANSWER CREATED");
+                console.log("RTC: answer created");
                 pc.setLocalDescription(desc).then(function() {
-                  console.log("SENDING ANSWER", desc);
+                  console.log("RTC: sending answer", desc);
                   main_room.send({
                     target_id: msg.author_id,
                     author_id: main_room.user_id,
@@ -860,20 +868,20 @@ remote.webrtc = {
           } else if(main_room.subrooms[subroom_id]) {
             var pc = main_room.subrooms[subroom_id].rtcpc;
             if(msg.type == 'answer' && pc) {
-              console.log("ANSWER RECEIVED", msg.answer);
+              console.log("RTC: answer received", msg.answer);
               pc.setRemoteDescription(msg.answer).then(function() {
                 // web call should just start, yes?
               }, function(err) {
 
               });
             } else if(msg.type == 'candidate' && pc) {
-              console.log("CANDIDATE", msg.candidate);
+              console.log("RTC: candidate received", msg.candidate);
               pc.addIceCandidate(msg.candidate || '').then(function() {
-                console.log("CANDIDATE ADDED");
+                console.log("RTC: candidate added");
                 // something happens automagically??
               }, function(err) {
                 if(msg.candidate != null) {
-                  console.error("Candidate error", err, msg);
+                  console.error("RTC: candidate error", err, msg);
                 }
               });
             }
