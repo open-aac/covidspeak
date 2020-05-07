@@ -94,14 +94,16 @@ class Api::RoomsController < ApplicationController
         servers = [
           {
             url: "stun:#{account.settings['address']}:#{port}?transport=udp",
-            urls: "stun:#{account.settings['address']}:#{port}?transport=udp"
+            urls: "stun:#{account.settings['address']}:#{port}?transport=udp",
+            username: timed_trimmed_identity,
+            credential: cred
           }
         ]
         if account.settings['udp'] != false
           servers << {
             url: "turn:#{account.settings['address']}:#{port}?transport=udp",
             urls: "turn:#{account.settings['address']}:#{port}?transport=udp",
-            username: trimmed_identity,
+            username: timed_trimmed_identity,
             credential: cred
           }
         end
@@ -109,13 +111,13 @@ class Api::RoomsController < ApplicationController
           servers << {
             url: "turn:#{account.settings['address']}:#{port}?transport=tcp",
             urls: "turn:#{account.settings['address']}:#{port}?transport=tcp",
-            username: trimmed_identity,
+            username: timed_trimmed_identity,
             credential: cred
           }
           servers << {
             url: "turn:#{account.settings['address']}:443?transport=tcp",
             urls: "turn:#{account.settings['address']}:443?transport=tcp",
-            username: trimmed_identity,
+            username: timed_trimmed_identity,
             credential: cred
           }
         end
