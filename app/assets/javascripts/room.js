@@ -1037,10 +1037,10 @@ var room = {
       video.style.left = '-1000px';
       document.body.appendChild(video);
       setTimeout(function() {
-        room.handle_input_switch(room.temp_video_device_id, video, function(track) {
+        room.handle_input_switch(room.temp_video_device_id || room.settings.video_device_id, video, function(track) {
           room.update_from_settings();
         });
-      }, 1500);
+      }, 500);
     }, function(err) {
       console.error('video swap failed', err);
     });
@@ -2035,7 +2035,9 @@ document.addEventListener('click', function(event) {
       room.zoom(false);
     }
   } else if(event.target.closest('.toggle') != null) {
-    room.swap_video();    
+    setTimeout(function() {
+      room.swap_video();    
+    }, 100);
   } else if(event.target.closest('.unmute,.mute') != null) {
     room.toggle_self_mute();
   }
