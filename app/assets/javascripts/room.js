@@ -749,6 +749,7 @@ var room = {
     
     room.room_id = room_id;
     room.load_settings();
+    room.check_inputs();
     
     // TODO: show an intro video option (always for communicator, once for visitors)
     // TODO: if not over https and not on localhost, pre-empt error
@@ -865,6 +866,18 @@ var room = {
       enter_room();
     }
   },
+  check_inputs: function() {
+    return input.enumerate('input').then(function(list) {
+      room.audio_inputs = [];
+      room.video_inputs = [];
+      list.forEach(function(input) {
+        if(input.type && room[input.type + '_inputs']) {
+          room[input.type + '_inputs'].push(input);
+        }
+      });
+      return list;
+    });
+  },
   handle_camera_error: function(err, callback) {
     var android_webview = navigator.userAgent.match(/Chrome\/.+Mobile/) && navigator.userAgent.match(/wv/);
     var userAgent = window.navigator.userAgent.toLowerCase();
@@ -881,7 +894,7 @@ var room = {
       if(android_webview || ios_webview) {
         status("Camera permission required", {popout: true});
       } else {
-        status("Camera permission not granted");
+        status("Camera permission not granted, you may need to enable camera access for the browser through your device's settings");
       }
     } else if(err && err.name == 'NotFoundError') {
       if(android_webview || ios_webview) {
@@ -996,56 +1009,54 @@ var room = {
   swap_video: function() {
     var video_track = remote.local_track('video');
     var current_video_id = room.temp_video_device_id || (video_track && video_track.device_id);
-    input.enumerate('video').then(function(list) {
-      var ids = [];
-      var group_ids = {};
-      var facing_modes = {};
-      if(current_video_id && current_video_id != 'none') { 
-        var track = list.find(function(t) { return t.deviceId == current_video_id});
-        if(track && !room.first_video) {
-          room.first_video = {device_id: track.deviceId, group_id: track.groupId || track.deviceId, facing_mode: track.facingMode};
-        }
-      }
-      // Limiting to one per groupId/facingMode for video swap
-      // (you can still go to settings for the full list)
-      if(room.first_video) {
-        ids.push(room.first_video.device_id);
-        group_ids[room.first_video.group_id] = true;
-        if(room.first_video.facing_mode) {
-          facing_modes[room.first_video.facing_mode] = true;
-        }
-      }
-      list.forEach(function(d) {
-        var facing = d.facingMode;
-        var group_id = d.groupId || d.deviceId;
-        if(!group_ids[group_id] && (!facing || !facing_modes[facing])) {
-          ids.push(d.deviceId);
-          group_ids[group_id] = true;
-          facing_modes[facing] = true;
-        }
-      });
-      room.video_device_ids = ids;
-      var idx = room.video_device_ids.indexOf(current_video_id);
-      var new_idx = idx + 1;
-      room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';
-      // room.temp_video_device_id = null;
-      // room.settings.video_device_id = room.video_device_ids[new_idx] || 'none';
-      // localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
 
-      var video = document.querySelector('#swap_video') || document.createElement('video');
-      video.id = 'swap_video';
-      video.style.position = 'absolute';
-      video.style.left = '-1000px';
-      document.body.appendChild(video);
-      setTimeout(function() {
-        room.handle_input_switch(room.temp_video_device_id || room.settings.video_device_id, video, function(track) {
-          room.update_from_settings();
-        });
-      }, 500);
-    }, function(err) {
-      console.error('video swap failed', err);
+    var list = (room.video_inputs || []);
+    var ids = [];
+    var group_ids = {};
+    var facing_modes = {};
+    if(current_video_id && current_video_id != 'none') { 
+      var track = list.find(function(t) { return t.deviceId == current_video_id});
+      if(track && !room.first_video) {
+        room.first_video = {device_id: track.deviceId, group_id: track.groupId || track.deviceId, facing_mode: track.facingMode};
+      }
+    }
+    // Limiting to one per groupId/facingMode for video swap
+    // (you can still go to settings for the full list)
+    if(room.first_video) {
+      ids.push(room.first_video.device_id);
+      group_ids[room.first_video.group_id] = true;
+      if(room.first_video.facing_mode) {
+        facing_modes[room.first_video.facing_mode] = true;
+      }
+    }
+    list.forEach(function(d) {
+      var facing = d.facingMode;
+      var group_id = d.groupId || d.deviceId;
+      if(!group_ids[group_id] && (!facing || !facing_modes[facing])) {
+        ids.push(d.deviceId);
+        group_ids[group_id] = true;
+        facing_modes[facing] = true;
+      }
     });
-  },
+    room.video_device_ids = ids;
+    var idx = room.video_device_ids.indexOf(current_video_id);
+    var new_idx = idx + 1;
+    room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';
+    // room.temp_video_device_id = null;
+    // room.settings.video_device_id = room.video_device_ids[new_idx] || 'none';
+    // localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
+
+    var video = document.querySelector('#swap_video') || document.createElement('video');
+    video.id = 'swap_video';
+    video.style.position = 'absolute';
+    video.style.left = '-1000px';
+    document.body.appendChild(video);
+    setTimeout(function() {
+      room.handle_input_switch(room.temp_video_device_id || room.settings.video_device_id, video, function(track) {
+        room.update_from_settings();
+      });
+    }, 500);
+s  },
   filled_grid: function(lookups, transpose) {
     if(lookups.length == 6) {
       lookups = [
@@ -1938,41 +1949,30 @@ document.addEventListener('click', function(event) {
         var audio_track = remote.local_track('audio');
         var current_video_id = video_track && video_track.device_id;
         var current_audio_id = audio_track && audio_track.device_id;
+        var current_ids = {audio: current_audio_id, video: current_video_id};
         if(room.settings.audio_device_id != 'none') {
           room.settings.audio_device_id = current_audio_id || 'none';
         }
         if(room.settings.video_device_id != 'none') {
           room.settings.video_device_id = current_video_id || 'none';
         }
-        input.enumerate('audio').then(function(list) {
-          var select = content.querySelector('#audio_select');
-          select.innerHTML = '';
-          list.forEach(function(input) {
+        room.check_inputs().then(function() {
+          ['Audio', 'Video'].forEach(function(str) {
+            var type = str.toLowerCase();
+            var select = content.querySelector('#' + type + '_select');
+            select.innerHTML = '';
+            (room[type + '_inputs'] || []).forEach(function(input) {
+              var option = document.createElement('option');
+              option.value = input.deviceId;
+              option.innerText = input.label;
+              select.appendChild(option);
+            });
             var option = document.createElement('option');
-            option.value = input.deviceId;
-            option.innerText = input.label;
+            option.value = 'none';
+            option.innerText = "No " + str;
             select.appendChild(option);
+            select.value = current_ids[type] || 'none';
           });
-          var option = document.createElement('option');
-          option.value = 'none';
-          option.innerText = "No Audio";
-          select.appendChild(option);
-          content.querySelector('#audio_select').value = current_audio_id || 'none';
-        });
-        input.enumerate('video').then(function(list) {
-          var select = content.querySelector('#video_select');
-          select.innerHTML = '';
-          list.forEach(function(input) {
-            var option = document.createElement('option');
-            option.value = input.deviceId;
-            option.innerText = input.label;
-            select.appendChild(option);
-          });
-          var option = document.createElement('option');
-          option.value = 'none';
-          option.innerText = "No Video";
-          select.appendChild(option);
-          content.querySelector('#video_select').value = current_video_id || 'none';
         });
         content.querySelector('#symbol_select').value = room.settings.symbol_library;
 
