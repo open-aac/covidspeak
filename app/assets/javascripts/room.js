@@ -1026,10 +1026,10 @@ var room = {
       room.video_device_ids = ids;
       var idx = room.video_device_ids.indexOf(current_video_id);
       var new_idx = idx + 1;
-      // room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';
-      room.temp_video_device_id = null;
-      room.settings.video_device_id = room.video_device_ids[new_idx] || 'none';
-      localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
+      room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';
+      // room.temp_video_device_id = null;
+      // room.settings.video_device_id = room.video_device_ids[new_idx] || 'none';
+      // localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
 
       var video = document.querySelector('#swap_video') || document.createElement('video');
       video.id = 'swap_video';
