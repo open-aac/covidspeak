@@ -349,59 +349,8 @@ remote.webrtc = {
     if(main_room.subroom_ids.indexOf(subroom_id) == -1) {
       main_room.subroom_ids.push(subroom_id);
     }
-    main_room.subrooms[subroom_id] = main_room.subrooms[subroom_id] || {};
-    main_room.subrooms[subroom_id].id_index = main_room.subrooms[subroom_id].id_index || 1;
-    main_room.subrooms[subroom_id].to_close = main_room.subrooms[subroom_id].to_close || []
-    if(main_room.subrooms[subroom_id].rtcpc) {
-      // keep the existing connection running until the new one is activated
-      var oldpc = main_room.subrooms[subroom_id].rtcpc;
-      var oldpc_ref = remote.webrtc.pc_ref(oldpc.id);
-      main_room.subrooms[subroom_id].to_close.push(main_room.subrooms[subroom_id].data);
-      main_room.subrooms[subroom_id].to_close.push(oldpc);
-      main_room.subrooms[subroom_id].to_close.push({close: function() {
-        setTimeout(function() {
-          var tracks = main_room.subrooms[subroom_id][oldpc_ref.id].remote_tracks || {};
-          for(var key in tracks) {
-            if(tracks[key].pc == oldpc) {
-              console.log("RTC: remote track removed in cleanup", tracks[key]);
-              tracks[key].track.enabled = false;
-              tracks[key].track.stop();
-              remote.track_removed(main_room.ref, main_room.users[remote_user_id], tracks[key].ref);
-            }
-          }
-          if(oldpc.signalingState == 'closed' || oldpc.connectionState == 'closed' ) {
+    remote.webrtc.clean_old_connections(main_room, subroom_id);
 
-          } else {
-            oldpc.getSenders().forEach(function(s) {
-              if(s.track  ) {
-                oldpc.removeTrack(s);
-              }
-            });
-          }
-          delete main_room.subrooms[subroom_id][oldpc_ref.id];
-          oldpc.close();
-        }, 5000);
-      }});
-    }
-    // Ensure all old remote tracks get cleaned up
-    var old_remote_tracks = [];
-    for(var pc_id in main_room.subrooms[subroom_id]) {
-      if(main_room.subrooms[subroom_id][pc_id] && main_room.subrooms[subroom_id][pc_id].remote_tracks) {
-        var remote_tracks = main_room.subrooms[subroom_id][pc_id].remote_tracks;
-        for(var track_id in remote_tracks) {
-          if(remote_tracks[track_id] && remote_tracks[track_id].track) {
-            old_remote_tracks.push(remote_tracks[track_id].track);
-          }
-        }
-      }
-    }
-    if(old_remote_tracks.length > 0) {
-      main_room.subrooms[subroom_id].to_close.push({close: function() {
-        setTimeout(function() {
-          old_remote_tracks.forEach(function(t) { t.enabled = false; t.stop(); });
-        }, 5000);
-      }});  
-    }
     var config = {};
     config.iceServers = main_room.ice;
     config.iceTransportPolicy = 'all';
@@ -457,6 +406,7 @@ remote.webrtc = {
       var pc_ref = remote.webrtc.pc_ref(rtcpc.id || pc_id);
       var latest_pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
       if(!initiator) {
+        console.log("RTC: pinging to ask for new connection");
         // don't trigger a renegotiation when one is already going on
         if(latest_pc_ref && latest_pc_ref.refState != 'connected') { 
           main_room.send({
@@ -718,7 +668,80 @@ remote.webrtc = {
     main_room.subrooms[subroom_id][pc_ref.id].tracks["0-" + local_data.id] = main_room.subrooms[subroom_id][pc_ref.id].tracks["0-" + local_data.id] || {};
     main_room.subrooms[subroom_id][pc_ref.id].tracks["0-" + local_data.id].sender = null;
     main_room.subrooms[subroom_id][pc_ref.id].tracks["0-" + local_data.id].track = local_data;
+    setTimeout(remote.webrtc.poll_status, 15000);
     return pc;
+  },
+  clean_old_connections(main_room, subroom_id) {
+    main_room.subrooms[subroom_id] = main_room.subrooms[subroom_id] || {};
+    main_room.subrooms[subroom_id].id_index = main_room.subrooms[subroom_id].id_index || 1;
+    main_room.subrooms[subroom_id].to_close = main_room.subrooms[subroom_id].to_close || []
+    if(main_room.subrooms[subroom_id].rtcpc) {
+      // keep the existing connection running until the new one is activated
+      var oldpc = main_room.subrooms[subroom_id].rtcpc;
+      var oldpc_ref = remote.webrtc.pc_ref(oldpc.id);
+      main_room.subrooms[subroom_id].to_close.push(main_room.subrooms[subroom_id].data);
+      main_room.subrooms[subroom_id].to_close.push(oldpc);
+      main_room.subrooms[subroom_id].to_close.push({close: function() {
+        setTimeout(function() {
+          var tracks = main_room.subrooms[subroom_id][oldpc_ref.id].remote_tracks || {};
+          for(var key in tracks) {
+            if(tracks[key].pc == oldpc) {
+              console.log("RTC: remote track removed in cleanup", tracks[key]);
+              tracks[key].track.enabled = false;
+              tracks[key].track.stop();
+              remote.track_removed(main_room.ref, main_room.users[remote_user_id], tracks[key].ref);
+            }
+          }
+          if(oldpc.signalingState == 'closed' || oldpc.connectionState == 'closed' ) {
+          } else {
+            oldpc.getSenders().forEach(function(s) {
+              if(s.track  ) {
+                oldpc.removeTrack(s);
+              }
+            });
+          }
+          delete main_room.subrooms[subroom_id][oldpc_ref.id];
+          oldpc.close();
+        }, 5000);
+      }});
+    }
+    // Ensure all old remote tracks get cleaned up
+    var old_remote_tracks = [];
+    for(var pc_id in main_room.subrooms[subroom_id]) {
+      if(main_room.subrooms[subroom_id][pc_id] && main_room.subrooms[subroom_id][pc_id].remote_tracks) {
+        var remote_tracks = main_room.subrooms[subroom_id][pc_id].remote_tracks;
+        for(var track_id in remote_tracks) {
+          if(remote_tracks[track_id] && remote_tracks[track_id].track) {
+            old_remote_tracks.push(remote_tracks[track_id].track);
+          }
+        }
+      }
+    }
+    if(old_remote_tracks.length > 0) {
+      main_room.subrooms[subroom_id].to_close.push({close: function() {
+        setTimeout(function() {
+          old_remote_tracks.forEach(function(t) { t.enabled = false; t.stop(); });
+        }, 5000);
+      }});  
+    }
+  },
+  poll_status: function() {
+    if(remote.webrtc.poll_status.timer) {
+      clearTimeout(remote.webrtc.poll_status.timer);
+    }
+    console.log("RTC: checking all connections");
+    var all_connections_ended = true;
+    remote.webrtc.pcs = remote.webrtc.pcs || [];
+    remote.webrtc.pcs.forEach(function(pc_ref) {
+      if(pc_ref && pc_ref.pc && pc_ref.pc.connectionState != 'closed' && pc_ref.pc.connectionState != 'failed') {
+        all_connections_ended = false;
+      }
+    });
+    if(remote.webrtc.pcs.length > 0 && all_connections_ended) {
+      console.log("RTC: no active connections, try to reconnect");
+      remote.webrtc.reconnect();
+    }
+    remote.webrtc.poll_status.timer = setTimeout(remote.webrtc.poll_status, 10000);
   },
   reconnect: function() {
     if(remote.webrtc.last_room_id && remote.webrtc.rooms[remote.webrtc.last_room_id]) {

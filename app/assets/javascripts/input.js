@@ -119,6 +119,9 @@ var input = {
       var ids = {};
       navigator.mediaDevices.enumerateDevices().then(function(list) {
         list.forEach(function(dev) {
+          if(!dev.groupId || dev.groupId == "") {
+            dev.groupId = dev.deviceId;
+          }
           if(dev.kind == kind && !ids[dev.id]) {
             if(!result.find(function(d) { return d.label.replace(/Default - /, '') == dev.label && dev.groupId == d.groupId; })) {
               if(!dev.facingMode && dev.label.match(/facing front/i)) {
