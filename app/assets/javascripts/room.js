@@ -960,16 +960,21 @@ var room = {
     var audio_track = remote.local_track('audio');
     var current_video_id = video_track && video_track.device_id || 'none';
     var current_audio_id = audio_track && audio_track.device_id || 'none';
-    if(room.settings.audio_device_id != current_audio_id) {
-      if(room.settings.audio_device_id == 'none') {
-        if(audio_track) {
-          remote.remove_local_track(room.current_room.id, audio_track);
-          room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != audio_track.id; });
-          room.update_preview();
+    var current_tracks = {audio: audio_track, video: video_track};
+    var current_ids = {audio: current_audio_id, video: current_video_id}
+    ['audio', 'video'].forEach(function(type) {
+      var type_device_id = room.settings[type + '_device_id']
+      var last_preview_track = room['last_preview_' + type + '_track'];
+      if(type_device_id != current_ids[type]) {
+        if(type_device_id == 'none') {
+          if(current_tracks[type]) {
+            remote.remove_local_track(room.current_room.id, current_tracks[type]);
+            room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != current_tracks[type].id; });
+            room.update_preview();
+          }
         }
-      } else if(room.last_preview_audio_track && room.last_preview_audio_track.getSettings().deviceId == room.settings.audio_device_id) {
-        room.end_share();
-        remote.replace_local_track(room.current_room.id, room.last_preview_audio_track).then(function(data) {
+      } else if(last_preview_track && last_preview_track.getSettings().deviceId == type_device_id) {
+        remote.replace_local_track(room.current_room.id, last_preview_track).then(function(data) {
           var track = data.added;
           var old = data.removed;
           if(old) {
@@ -977,7 +982,7 @@ var room = {
           } else {
             var priority_ids = (room.priority_tracks || []).map(function(t) { return t.id; });
             room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.type != track.type && (!t.mediaStreamTrack || priority_ids.indexOf(t.mediaStreamTrack.id) == -1); });
-            console.error("had to resort to fallback for removing replaced audio tracks");
+            console.error("had to resort to fallback for removing replaced " + type + " tracks");
           }
           // We add to the front of the list so shares don't get interrupted
           room.local_tracks.unshift(track);
@@ -986,34 +991,7 @@ var room = {
           debugger
         });
       }
-    }
-    var video_device_id = room.temp_video_device_id || room.settings.video_device_id;
-    if(video_device_id != current_video_id) {
-      if(video_device_id == 'none') {
-        if(video_track) {
-          remote.remove_local_track(room.current_room.id, video_track);
-          room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != video_track.id; });
-          room.update_preview();
-        }
-      } else if(room.last_preview_video_track && room.last_preview_video_track.getSettings().deviceId == video_device_id) {
-        remote.replace_local_track(room.current_room.id, room.last_preview_video_track).then(function(data) {
-          var track = data.added;
-          var old = data.removed;
-          if(old) {
-            room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != old.id; });
-          } else {
-            var priority_ids = (room.priority_tracks || []).map(function(t) { return t.id; });
-            room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.type != track.type && (!t.mediaStreamTrack || priority_ids.indexOf(t.mediaStreamTrack.id) == -1); });
-            console.error("had to resort to fallback for removing replaced video tracks");
-          }
-          // We add to the front of the list so shares don't get interrupted
-          room.local_tracks.unshift(track);
-          room.update_preview();
-        }, function(err) {
-          debugger
-        });
-      }
-    }
+    });
   },
   swap_video: function() {
     var video_track = remote.local_track('video');
@@ -1050,7 +1028,7 @@ var room = {
       var new_idx = idx + 1;
       room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';
       
-      var video = document.querySelector('#communicator video') || document.createElement('video');
+      var video = document.createElement('video');
       setTimeout(function() {
         room.handle_input_switch(room.temp_video_device_id, video, function(track) {
           room.update_from_settings();
@@ -1967,14 +1945,12 @@ document.addEventListener('click', function(event) {
         content.querySelector('#symbol_select').value = room.settings.symbol_library;
 
         var video = content.querySelector('#settings_video_preview');
-        var track = remote.local_track('video');
-        if(track && track.mediaStreamTrack) {
-          room.wire_track(video, track);
+        if(video_track && video_track.mediaStreamTrack) {
+          room.wire_track(video, video_track);
         }
         var audio = content.querySelector('#settings_audio_preview');
-        var track = remote.local_track('audio');
-        if(track && track.mediaStreamTrack) {
-          room.wire_track(audio, track);
+        if(audio_track && audio_track.mediaStreamTrack) {
+          room.wire_track(audio, audio_track);
         }
 
         content.querySelector('#audio_select').addEventListener('change', function(e) {

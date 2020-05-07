@@ -614,7 +614,7 @@ remote.webrtc = {
     };
     disconnected = function(pc) {
       var pc_ref = remote.webrtc.pc_ref(pc.id || pc_id);
-      console.log("DISCONNECTED", pc_ref.id, pc_ref.user_id);
+      console.log("RTC: disconnected", pc_ref.id, pc_ref.user_id);
       pc_ref.already_connected = false;
       main_room.already = false;
       remote.user_removed(main_room.ref, main_room.users[pc_ref.user_id]);
