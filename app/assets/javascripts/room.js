@@ -915,7 +915,7 @@ var room = {
           } else {
             var priority_ids = (room.priority_tracks || []).map(function(t) { return t.id; });
             room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.type != track.type && (!t.mediaStreamTrack || priority_ids.indexOf(t.mediaStreamTrack.id) == -1); });
-            console.error("had to resort to fallback for removing replaced tracks");
+            console.error("had to resort to fallback for removing replaced audio tracks");
           }
           // We add to the front of the list so shares don't get interrupted
           room.local_tracks.unshift(track);
@@ -942,7 +942,7 @@ var room = {
           } else {
             var priority_ids = (room.priority_tracks || []).map(function(t) { return t.id; });
             room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.type != track.type && (!t.mediaStreamTrack || priority_ids.indexOf(t.mediaStreamTrack.id) == -1); });
-            console.error("had to resort to fallback for removing replaced tracks");
+            console.error("had to resort to fallback for removing replaced video tracks");
           }
           // We add to the front of the list so shares don't get interrupted
           room.local_tracks.unshift(track);
@@ -1409,7 +1409,11 @@ var room = {
           // TODO: show the video feed (and audio indicator?)
           // If no video feed present, send a request for it
           if(!room.all_remote_tracks.find(function(t) { return t.type == 'video' && t.user_id == data.user.id; })) {
-            remote.refresh_remote_tracks(room.current_room.id, 'video');
+            remote.reconnect();
+            // remote.refresh_remote_tracks(room.current_room.id, 'video');
+          // } else {
+          //   debugger
+          //   remote.reconnect();
           }
         } else if(data.message.audio) {
           document.querySelector('#no_preview').style.display = 'block';
@@ -1418,7 +1422,11 @@ var room = {
           // TODO: show the unanimated preview w/ animated audio
           // If no audio feed present, send a request for it
           if(!room.all_remote_tracks.find(function(t) { return t.type == 'audio' && t.user_id == data.user.id; })) {
-            remote.refresh_remote_tracks(room.current_room.id, 'audio');
+            remote.reconnect();
+            // remote.refresh_remote_tracks(room.current_room.id, 'audio');
+          // } else {
+          //   debugger
+          //   remote.reconnect();
           }
         } else {
           document.querySelector('#no_preview').classList.add('dancing');

@@ -114,7 +114,7 @@ remote.webrtc = {
                   var blank_sender = null;
                   senders.forEach(function(s) {
                     if(s.track && !s.track.muted) { types[s.track.kind] = true; }
-                    if(!s.track || (s.track.kind == track.kind && s.track.muted)) { blank_sender = s; }
+                    if(!s.track || (s.track.kind == track.kind && s.track.muted)) { blank_sender = blank_sender || s; }
                   });
                   main_room.subrooms[subroom_id][pc_ref.id].tracks = main_room.subrooms[subroom_id][pc_ref.id].tracks || {};
                   main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id] = main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id] || {};
@@ -453,7 +453,11 @@ remote.webrtc = {
     main_room.subrooms[subroom_id][pc_ref.id].data = local_data;
 
     main_room.subrooms[subroom_id].renegotiate = function() {
-      if(main_room.subrooms[subroom_id].negotiating) { return; }
+      if(main_room.subrooms[subroom_id].negotiating) { 
+        console.log("already negotiating");
+        return; 
+      }
+      console.log("negotiating...")
       main_room.subrooms[subroom_id].negotiating = true;
       setTimeout(function() {
         main_room.subrooms[subroom_id].negotiating = false;
@@ -612,6 +616,7 @@ remote.webrtc = {
       }
     });
     pc.addEventListener('negotiationneeded', function(e) {
+      console.log("NEEDS NEGOTIATION");
       main_room.subrooms[subroom_id].renegotiate();
     });
     connected = function(pc) {
