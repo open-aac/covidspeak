@@ -90,7 +90,9 @@ var input = {
               if(elem) {
                 elem.srcObject = null;
               }
-              context.close();
+              if(context.state != 'closed') {
+                context.close();
+              }
             },
             analyser: analyser, 
             audio_track: track,

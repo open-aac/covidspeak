@@ -102,6 +102,10 @@ remote.addEventListener('user_added', function(data) {
         });
       }  
     }
+    if(document.querySelector('.modal #invite_modal')) {
+      // close invite modal when partner enters
+      modal.close();
+    }
     room.active_users[data.user.id] = (new Date()).getTime();
   }
   setTimeout(function() {
@@ -261,14 +265,18 @@ var room = {
     if(mute === false || mute === true) {
       room.mute_audio = mute;
     }
-    var audio_track = room.local_tracks.find(function(t) { return t.type == 'audio'; });
-    if(previous_mute != room.mute_audio && audio_track) {
+    var audio_tracks = room.local_tracks.filter(function(t) { return t.type == 'audio'; });
+    if(previous_mute != room.mute_audio && audio_tracks.length > 0) {
       if(room.mute_audio) {
-        remote.remove_local_track(room.current_room.id, audio_track, true);
+        audio_tracks.forEach(function(t) { t.mediaStreamTrack.enabled = false; });
+        // remote.remove_local_track(room.current_room.id, audio_track, true);
         document.querySelector('#nav').classList.add('muted');
         document.querySelector('#communicator').classList.add('muted');
       } else {
-        remote.add_local_tracks(room.current_room.id, audio_track);
+        audio_tracks.forEach(function(t) { 
+          t.mediaStreamTrack.enabled = true; 
+          remote.add_local_tracks(room.current_room.id, t);
+        });
         document.querySelector('#nav').classList.remove('muted');
         document.querySelector('#communicator').classList.remove('muted');
       }
@@ -427,7 +435,7 @@ var room = {
       communicator.classList.remove('preview');
       communicator.classList.remove('playable');
       communicator.classList.remove('paused');
-      var vid = room.local_tracks.find(function(t) { return t.type == 'video'; });
+      var vid = room.local_tracks.find(function(t) { return t.type == 'video' && t.mediaStreamTrack.enabled; });
       if(vid && vid.generate_dom) {
         communicator.appendChild(vid.generate_dom());
       } else {
@@ -916,6 +924,8 @@ var room = {
     } else if(elem.tagName == 'AUDIO') {
       room.last_preview_audio_track = track;
       if(room.modal_analyser) { room.modal_analyser.release(); }
+      elem.preview = true;
+      elem.muted = true;
       room.modal_analyser = input.track_audio(elem, {mediaStreamTrack: track}, {});
       if(room.modal_analyser) {
         var level = document.querySelector('.modal .content #settings_audio_level');
@@ -925,8 +935,6 @@ var room = {
           }    
         }
       }
-      elem.preview = true;
-      elem.muted = true;
     }
     var stream = new MediaStream();
     stream.addTrack(track);
@@ -954,7 +962,7 @@ var room = {
       callback(null);
     } else {
       var opts = {video: {deviceId: value}};
-      if(elem.tagName == 'audio') {
+      if(elem.tagName == 'AUDIO') {
         opts = {audio: {deviceId: value}};
       }
       navigator.mediaDevices.getUserMedia(opts).then(function(stream) {
@@ -978,14 +986,18 @@ var room = {
     ['audio', 'video'].forEach(function(type) {
       var type_device_id = room['temp_' + type + '_device_id'] || room.settings[type + '_device_id']
       var last_preview_track = room['last_preview_' + type + '_track'];
-      if(type_device_id != current_ids[type]) {
+      if(type_device_id != current_ids[type] || !current_tracks[type].enabled) {
         if(type_device_id == 'none') {
-          if(current_tracks[type]) {
-            remote.remove_local_track(room.current_room.id, current_tracks[type]);
-            room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != current_tracks[type].id; });
+          if(current_tracks[type] && current_tracks[type].mediaStreamTrack) {
+            current_tracks[type].mediaStreamTrack.enabled = false;
+            // remote.remove_local_track(room.current_room.id, current_tracks[type]);
+            // room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.id != current_tracks[type].id; });
             room.update_preview();
           }
         } else if(last_preview_track && last_preview_track.getSettings().deviceId == type_device_id) {
+          if(current_tracks[type] && current_tracks[type].mediaStreamTrack) {
+            current_tracks[type].mediaStreamTrack.enabled = true;
+          }
           remote.replace_local_track(room.current_room.id, last_preview_track).then(function(data) {
             var track = data.added;
             var old = data.removed;
@@ -1055,8 +1067,8 @@ var room = {
       room.handle_input_switch(room.temp_video_device_id || room.settings.video_device_id, video, function(track) {
         room.update_from_settings();
       });
-    }, 500);
-s  },
+    }, 100);
+  },
   filled_grid: function(lookups, transpose) {
     if(lookups.length == 6) {
       lookups = [
@@ -1409,6 +1421,7 @@ s  },
     if(window.QRCode) {
       var qr = new window.QRCode(document.querySelector('.modal #invite_modal .qr_code'), url);
       document.querySelector('.modal #invite_modal .qr_code').setAttribute('title', '');
+      document.querySelector('.modal #invite_modal .shown_link').innerText = url;
     }
   },
   toggle_controls: function(force) {
@@ -2072,7 +2085,13 @@ if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 }
 var canvas_elem = document.createElement('canvas');
 if(canvas_elem.captureStream) {
-  room.image_sharing = true;  
+  var userAgent = window.navigator.userAgent.toLowerCase();
+  var ios = /iphone|ipod|ipad/.test( userAgent );
+  if(ios) {
+    // https://bugs.webkit.org/show_bug.cgi?id=181663
+  } else {
+    room.image_sharing = true;  
+  }
 }
 var video_elem = document.createElement('video');
 if(video_elem.captureStream || video_elem.mozCaptureStream) {
