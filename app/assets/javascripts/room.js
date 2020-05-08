@@ -1067,7 +1067,7 @@ var room = {
       room.handle_input_switch(room.temp_video_device_id || room.settings.video_device_id, video, function(track) {
         room.update_from_settings();
       });
-    }, 100);
+    }, 500);
   },
   filled_grid: function(lookups, transpose) {
     if(lookups.length == 6) {
