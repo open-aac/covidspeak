@@ -978,13 +978,13 @@ var room = {
               room.wire_track(elem, track);
               setTimeout(function() {
                 callback(track);
-              }, input.compat.mobile ? 1000 : 100);
-            }, input.compat.mobile ? 1000 : 100);
+              }, input.compat.mobile ? 200 : 50);
+            }, input.compat.mobile ? 200 : 50);
           }
         }, function(err) {
           // TODO: err...
         });  
-      }, input.compat.mobile ? 1000 : 100);
+      }, input.compat.mobile ? 200 : 50);
     }
   },
   update_from_settings: function() {
@@ -1086,7 +1086,7 @@ var room = {
           room.update_from_settings();
         }, 500);
       });
-    }, input.compat.mobile ? 1000 : 100);
+    }, input.compat.mobile ? 200 : 50);
     document.querySelector('#communicator').classList.add('pending');
     setTimeout(function() {
       document.querySelector('#communicator').classList.remove('pending');
