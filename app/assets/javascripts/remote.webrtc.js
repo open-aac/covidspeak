@@ -824,9 +824,23 @@ remote.webrtc = {
                 });
               }
             });
+            (main_room.pending_messages || []).forEach(function(msg) {
+              main_room.onmessage(msg);
+            });
+            main_room.pending_messages = [];
           }
         } else if(msg.author_id != main_room.user_id && msg.target_id == main_room.user_id) {
-          var subroom_id = main_room.subroom_id(msg.author_id);
+          // If you get a message (such as an offer) before
+          // receiving the user list, it won't be actionable,
+          // so stash it and make an additional request for the
+          // user list.
+          if(!main_room.raw_users) {
+            main_room.send({type: 'users'});
+            main_room.pending_messages = main_room.pending_messages || [];
+            main_room.pending_messages.push(msg);
+            return;
+          }
+          var subroom_id = main_room.subroom_id(msg.author_id, true);
           var pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
           var pc = pc_ref && pc_ref.pc
           if(msg.type == 'ping') {

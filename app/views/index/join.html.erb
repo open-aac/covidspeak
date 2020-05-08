@@ -56,13 +56,16 @@ if(!navigator.share) {
 document.addEventListener('click', function(event) {
   var url = (document.querySelector('.join_link') || {}).innerText;
   if(event.target.classList.contains('join')) {
+    event.preventDefault();
     if(!document.querySelector('#accept').checked) {
       document.querySelector('#accept_reminder').style.visibility = 'visible';
-      event.preventDefault();
       return;
     }
     localStorage.terms_accepted = 'true';    
+    room.cleanup();
+    location.href = event.target.href;
   } else if(event.target.id == 'popout_browser') {
+    room.cleanup();
     window.open(location.href, '_system');
   }
   if(event.target.id ==  'copy') {
@@ -106,6 +109,10 @@ function getMedia() {
     room.load_settings();
     input.request_media(room.input_settings).then(function(stream) {
       handled = true;
+      room.other_tracks = room.other_tracks || [];
+      stream.getTracks().forEach(function(track) {
+        room.other_tracks.push(track);
+      });
       var vid_track = stream.getVideoTracks()[0];
       if(vid_track) {
         var video = document.createElement('video');
