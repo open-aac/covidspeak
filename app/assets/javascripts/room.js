@@ -274,8 +274,8 @@ var room = {
         document.querySelector('#communicator').classList.add('muted');
       } else {
         audio_tracks.forEach(function(t) { 
-          t.mediaStreamTrack.enabled = true; 
           remote.add_local_tracks(room.current_room.id, t);
+          t.mediaStreamTrack.enabled = true; 
         });
         document.querySelector('#nav').classList.remove('muted');
         document.querySelector('#communicator').classList.remove('muted');
@@ -962,10 +962,10 @@ var room = {
       var type = elem.tagName.toLowerCase();
       opts[type] = {deviceId: value};
       var local = remote.local_track(type);
-      if(input.compat.mobile && local && local.mediaStreamTrack && local.mediaStreamTrack.getSettings().deviceId != value) {
-        local.mediaStreamTrack.enabled = false;
-        local.mediaStreamTrack.stop();
-      }
+      // if(input.compat.mobile && local && local.mediaStreamTrack && local.mediaStreamTrack.getSettings().deviceId != value) {
+      //   local.mediaStreamTrack.enabled = false;
+      //   local.mediaStreamTrack.stop();
+      // }
       setTimeout(function() {
         navigator.mediaDevices.getUserMedia(opts).then(function(stream) {
           stream.getTracks().forEach(function(track) {
