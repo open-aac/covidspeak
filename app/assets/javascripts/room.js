@@ -421,6 +421,7 @@ var room = {
   update_preview: function(elem, playable) {
     var communicator = document.querySelector('#communicator');
     communicator.innerHTML = '';
+    document.querySelector('#communicator').classList.remove('pending');
     if(elem) {
       communicator.appendChild(elem);
       var end_share = document.createElement('div');
@@ -973,6 +974,8 @@ var room = {
     }
   },
   update_from_settings: function() {
+    // These are the user-streamed tracks, not any photos
+    // or videos that are currently being streamed
     var video_track = remote.local_track('video'); 
     var audio_track = remote.local_track('audio');
     var current_video_id = video_track && video_track.device_id || 'none';
@@ -1067,7 +1070,11 @@ var room = {
       room.handle_input_switch(room.temp_video_device_id || room.settings.video_device_id, video, function(track) {
         room.update_from_settings();
       });
-    }, input.compat.mobile ? 500 : 100);
+    }, input.compat.mobile ? 1000 : 100);
+    document.querySelector('#communicator').classList.add('pending');
+    setTimeout(function() {
+      document.querySelector('#communicator').classList.remove('pending');
+    }, 2000);
   },
   filled_grid: function(lookups, transpose) {
     if(lookups.length == 6) {

@@ -595,6 +595,12 @@ strong {
           width: 100%;
           display: block;
         }
+        &.pending {
+          * {
+            opacity: 0.8;
+          }
+          filter: grayscale(0.4);
+        }
         .nobody {
           background: #67b0c7;
           width: min(10vw, 20vh);
