@@ -1034,63 +1034,64 @@ var room = {
   swap_video: function() {
     var video_track = remote.local_track('video');
     var current_video_id = room.temp_video_device_id || (video_track && video_track.device_id);
-
-    var list = (room.video_inputs || []);
-    var ids = [];
-    var group_ids = {};
-    var facing_modes = {};
-    if(current_video_id && current_video_id != 'none') { 
-      var track = list.find(function(t) { return t.deviceId == current_video_id});
-      if(track && !room.first_video) {
-        room.first_video = {device_id: track.deviceId, group_id: track.groupId || track.deviceId, facing_mode: track.facingMode};
+    room.check_inputs().then(function() {
+      var list = (room.video_inputs || []);
+      var ids = [];
+      var group_ids = {};
+      var facing_modes = {};
+      if(current_video_id && current_video_id != 'none') { 
+        var track = list.find(function(t) { return t.deviceId == current_video_id});
+        if(track && !room.first_video) {
+          room.first_video = {device_id: track.deviceId, group_id: track.groupId || track.deviceId, facing_mode: track.facingMode};
+        }
       }
-    }
-    // Limiting to one per groupId/facingMode for video swap
-    // (you can still go to settings for the full list)
-    if(room.first_video) {
-      ids.push(room.first_video.device_id);
-      group_ids[room.first_video.group_id] = true;
-      if(room.first_video.facing_mode) {
-        facing_modes[room.first_video.facing_mode] = true;
+      // Limiting to one per groupId/facingMode for video swap
+      // (you can still go to settings for the full list)
+      if(room.first_video) {
+        ids.push(room.first_video.device_id);
+        group_ids[room.first_video.group_id] = true;
+        if(room.first_video.facing_mode) {
+          facing_modes[room.first_video.facing_mode] = true;
+        }
       }
-    }
-    list.forEach(function(d) {
-      var facing = d.facingMode;
-      var group_id = d.groupId || d.deviceId;
-      if(!group_ids[group_id] && (!facing || !facing_modes[facing])) {
-        ids.push(d.deviceId);
-        group_ids[group_id] = true;
-        facing_modes[facing] = true;
-      }
-    });
-    room.video_device_ids = ids;
-    var idx = room.video_device_ids.indexOf(current_video_id);
-    var new_idx = idx + 1;
-    room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';
-    // room.temp_video_device_id = null;
-    // room.settings.video_device_id = room.video_device_ids[new_idx] || 'none';
-    // localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
-
-    var video = document.querySelector('#swap_video') || document.createElement('video');
-    video.id = 'swap_video';
-    video.style.position = 'absolute';
-    video.style.left = '-1000px';
-    document.body.appendChild(video);
-    // For some reason I haven't tracked down yet, if the
-    // input switch happens to soon, then it messed up
-    // the next MediaStreamTrack in a way that breaks it
-    // from ever streaing again unless you reload the page
-    setTimeout(function() {
-      room.handle_input_switch(room.temp_video_device_id || room.settings.video_device_id, video, function(track) {
-        setTimeout(function() {
-          room.update_from_settings();
-        }, 500);
+      list.forEach(function(d) {
+        var facing = d.facingMode;
+        var group_id = d.groupId || d.deviceId;
+        if(!group_ids[group_id] && (!facing || !facing_modes[facing])) {
+          ids.push(d.deviceId);
+          group_ids[group_id] = true;
+          facing_modes[facing] = true;
+        }
       });
-    }, input.compat.mobile ? 200 : 50);
+      room.video_device_ids = ids;
+      var idx = room.video_device_ids.indexOf(current_video_id);
+      var new_idx = idx + 1;
+      room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';
+      // room.temp_video_device_id = null;
+      // room.settings.video_device_id = room.video_device_ids[new_idx] || 'none';
+      // localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
+  
+      var video = document.querySelector('#swap_video') || document.createElement('video');
+      video.id = 'swap_video';
+      video.style.position = 'absolute';
+      video.style.left = '-1000px';
+      document.body.appendChild(video);
+      // For some reason I haven't tracked down yet, if the
+      // input switch happens to soon, then it messed up
+      // the next MediaStreamTrack in a way that breaks it
+      // from ever streaing again unless you reload the page
+      setTimeout(function() {
+        room.handle_input_switch(room.temp_video_device_id || room.settings.video_device_id, video, function(track) {
+          setTimeout(function() {
+            room.update_from_settings();
+          }, 500);
+        });
+      }, input.compat.mobile ? 200 : 50);
+    });
     document.querySelector('#communicator').classList.add('pending');
     setTimeout(function() {
       document.querySelector('#communicator').classList.remove('pending');
-    }, 2000);
+    }, 2000);  
   },
   filled_grid: function(lookups, transpose) {
     if(lookups.length == 6) {
@@ -2137,5 +2138,8 @@ if(video_elem.captureStream || video_elem.mozCaptureStream) {
 if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
   room.screen_sharing = true;
 }
+document.addEventListener("turbolinks:load", function() {
+  room.cleanup();
+})
 
 room.default_buttons = default_buttons;
