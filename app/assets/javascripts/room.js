@@ -887,31 +887,27 @@ var room = {
     });
   },
   handle_camera_error: function(err, callback) {
-    var android_webview = navigator.userAgent.match(/Chrome\/.+Mobile/) && navigator.userAgent.match(/wv/);
-    var userAgent = window.navigator.userAgent.toLowerCase();
-    var ios_webview = /iphone|ipod|ipad/.test( userAgent ) && !window.navigator.standalone && !/safari/.test( userAgent );
     var status = callback || room.status;
 
     if(err && err.timeout) {
-      if(android_webview || ios_webview) {
+      if(input.compat.webview) {
         status("Please grant camera access or load in your device's browser", {popout: true, big: true});
       } else {
         status("Please grant access to the camera");
       }
     } else if(err && err.name == 'NotAllowedError') {
-      if(android_webview || ios_webview) {
+      if(input.compat.webview) {
         status("Camera permission required", {popout: true});
       } else {
         status("Camera permission not granted, you may need to enable camera access for the browser through your device's settings");
       }
     } else if(err && err.name == 'NotFoundError') {
-      if(android_webview || ios_webview) {
+      if(input.compat.webview) {
         status("Camera access not available", {popout: true});
       } else {
         status("Can't accesss the camera, your device may not support video calling, or you have it disabled.", {big: true});
       }
-    } else if(android_webview || ios_webview) {
-      // in an Android webview, not native browser
+    } else if(input.compat.webview) {
       status("Camera access doesn't work inside non-browser apps.", {popout: true, big: true});
     } else {
       status("Can't accesss the camera, your device may not support video calling, or you have it disabled.", {big: true});
@@ -1063,11 +1059,15 @@ var room = {
     video.style.position = 'absolute';
     video.style.left = '-1000px';
     document.body.appendChild(video);
+    // For some reason I haven't tracked down yet, if the
+    // input switch happens to soon, then it messed up
+    // the next MediaStreamTrack in a way that breaks it
+    // from ever streaing again unless you reload the page
     setTimeout(function() {
       room.handle_input_switch(room.temp_video_device_id || room.settings.video_device_id, video, function(track) {
         room.update_from_settings();
       });
-    }, 500);
+    }, input.compat.mobile ? 500 : 100);
   },
   filled_grid: function(lookups, transpose) {
     if(lookups.length == 6) {
@@ -2086,8 +2086,7 @@ if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 var canvas_elem = document.createElement('canvas');
 if(canvas_elem.captureStream) {
   var userAgent = window.navigator.userAgent.toLowerCase();
-  var ios = /iphone|ipod|ipad/.test( userAgent );
-  if(ios) {
+  if(input.compat.system == 'iOS') {
     // https://bugs.webkit.org/show_bug.cgi?id=181663
   } else {
     room.image_sharing = true;  

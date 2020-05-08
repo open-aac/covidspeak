@@ -194,3 +194,70 @@ var audio_loop = function() {
   }
   window.requestAnimationFrame(audio_loop);
 };
+
+input.compat = {};
+input.compat.system = "Desktop";
+input.compat.browser = "Web browser";
+input.compat.mobile = false;
+
+if(navigator.userAgent.match(/ipod|ipad|iphone/i)) {
+  input.compat.mobile = true;
+  input.compat.system = "iOS";
+  var userAgent = window.navigator.userAgent.toLowerCase();
+  input.compat.webview = /iphone|ipod|ipad/.test( userAgent ) && !window.navigator.standalone && !/safari/.test( userAgent );
+
+  var match = (navigator.appVersion || '').match(/OS (\d+)_(\d+)_?(\d+)?/), version, primary_version;
+  if (match !== undefined && match !== null) {
+      version = [
+          parseInt(match[1], 10),
+          parseInt(match[2], 10),
+          parseInt(match[3] || 0, 10)
+      ];
+      input.compat.ios_version = version[0];
+  }
+
+  if(input.compat.installed_app) {
+    input.compat.browser = "App";
+  } else if(navigator.userAgent.match(/crios/i)) {
+    input.compat.browser = "Chrome";
+  } else if(navigator.userAgent.match(/safari/i)) {
+    input.compat.browser = "Safari";
+  }
+  var version = navigator.userAgent.match(/OS\s+([\d_]+)\s+like/)[1];
+  version = parseInt(version && version.split(/_/)[0], 10);
+  if(version && isFinite(version)) {
+    input.compat.system_version = version;
+  }
+} else if(navigator.userAgent.match(/android/i)) {
+  input.compat.mobile = true;
+  input.compat.system = "Android";
+  input.compat.webview = navigator.userAgent.match(/Chrome\/.+Mobile/) && navigator.userAgent.match(/wv/);
+  if(input.compat.installed_app) {
+    input.compat.browser = "App";
+    if(window.device && window.device.platform && window.device.platform.match(/fireos/i)) {
+      input.compat.subsystem = "Kindle";
+    }
+  } else if(navigator.userAgent.match(/chrome/i)) {
+    input.compat.browser = "Chrome";
+  }
+} else if(navigator.userAgent.match(/windows phone/i)) {
+  input.compat.mobile = true;
+  input.compat.system = "Windows Phone";
+} else {
+  if(navigator.userAgent.match(/macintosh/i)) {
+    input.compat.system = "Mac";
+  } else if(navigator.userAgent.match(/windows\snt/i)) {
+    input.compat.system = "Windows";
+  }
+  if(navigator.userAgent.match(/chrome/i)) {
+    input.compat.browser = "Chrome";
+  } else if(navigator.userAgent.match(/firefox/i)) {
+    input.compat.browser = "Firefox";
+  } else if(navigator.userAgent.match(/msie/i)) {
+    input.compat.browser = "IE";
+  } else if(navigator.userAgent.match(/edge/i)) {
+    input.compat.browser = "Edge";
+  } else if(navigator.userAgent.match(/safari/i)) {
+    input.compat.browser = "Safari";
+  }
+}
