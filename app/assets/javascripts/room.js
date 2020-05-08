@@ -537,7 +537,7 @@ var room = {
     }
     room.size_video();
   },
-  assert_grid: function(buttons, id, root) {
+  assert_grid: function(buttons, id, root, skip_send) {
     var now = (new Date()).getTime();
     room.buttons = buttons.map(function(b) {
       return room.simple_button(b);
@@ -554,7 +554,9 @@ var room = {
       symbol_library: room.settings.symbol_library,
       buttons: room.buttons
     };
-    room.send_update();
+    if(!skip_send) {
+      room.send_update();
+    }
     room.show_grid();
   },
   send_image: function(image_url, alt) {
@@ -826,7 +828,7 @@ var room = {
                 room.status("Finding a Streaming Server...")  
               } else if(status.server_found) {
                 room.status("Finalizing Connection..")                  
-              }  
+              }
             }
           }).then(function(room_session) {
             room_session.room_initiator = (room.room_id == localStorage.room_id);
@@ -837,6 +839,7 @@ var room = {
             room_session.as_communicator = true;
             if(room_session.room_initiator && !mirror_type) {
               room_session.as_communicator = (localStorage.self_as_communicator == 'true');
+              room.assert_grid(room.buttons, 'quick', true);
             }
             $(".grid").toggleClass('initiator', room_session.room_initiator)
             room.local_tracks = tracks;

@@ -311,7 +311,7 @@ remote.webrtc = {
           pc_ref.pc.getReceivers().forEach(function(rec) {
             if(rec.track && rec.track.readyState != 'ended' && rec.track.enabled) {
               // Track is active, now check that it's not already been added
-              main_room.subrooms[subroom_id][pc_ref.id].remote_tracks = main_room.subrooms[subroom_id][pc_ref.id].remote_tracks || {};
+              main_room.subrooms[subroom_id][pc_ref.id].remote_tracks = (main_room.subrooms[subroom_id][pc_ref.id] || {}).remote_tracks || {};
               if(!main_room.subrooms[subroom_id][pc_ref.id].remote_tracks[rec.track.id]) {
                 var track = rec.track;
                 var stream = new MediaStream();
