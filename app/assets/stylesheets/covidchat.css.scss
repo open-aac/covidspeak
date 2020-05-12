@@ -364,6 +364,14 @@ strong {
           background: #bbb;
         }
       }
+      &.image_only {
+        .text {
+          display: none;
+        }
+        img {
+          height: calc(100% - 10px);
+        }
+      }
       &.text_only {
         display: flex;
         flex-direction: row;

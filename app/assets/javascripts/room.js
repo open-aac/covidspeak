@@ -1147,7 +1147,13 @@ var room = {
       }
       var text = cell.getElementsByClassName('text')[0];
       var button_text = button.text;
-      if(button.text.match(/^\+/)) {
+      if(button.text == '+space') {
+        button_text = '⎵';
+        cell.classList.add('big_text');
+      } else if(button.text == '+backspace') {
+        button_text = '⌫';
+        cell.classList.add('big_text');
+      } else if(button.text.match(/^\+/)) {
         button_text = button.text.replace(/^\+/, '');
         cell.classList.add('big_text');
       } else {
@@ -1174,6 +1180,7 @@ var room = {
       }
       cell.classList.remove('my_highlight');
       cell.classList.remove('highlight');
+      cell.classList.remove('image_only');
       cell.parentNode.style.height = window_height + "px";
       // cell.parentNode.style.display = 'block';
       var img = cell.getElementsByTagName('img')[0];
@@ -1190,6 +1197,9 @@ var room = {
             img.src = image_url;
           }, 10);
           cell.classList.remove('text_only');
+          if(button.image_only) {
+            cell.classList.add('image_only');
+          }
         } else {
           img.style.visibility = 'hidden';
           cell.classList.add('text_only');
@@ -1671,7 +1681,8 @@ var room = {
       id: btn.id,
       text: btn.text,
       load_id: btn.load_id,
-      image_url: btn.image_url
+      image_url: btn.image_url,
+      image_only: btn.image_only
     };
     if(symbols['en'] && symbols['en'][btn.text.toLowerCase()] && symbols['en'][btn.text.toLowerCase()][room.settings.symbol_library]) {
       res.image_url = symbols['en'][btn.text.toLowerCase()][room.settings.symbol_library];
@@ -1834,7 +1845,11 @@ document.addEventListener('click', function(event) {
     $cell.addClass('my_highlight');
     $cell.blur();
     var btn = $cell[0].button;
-    if(btn.text.match(/^\+/)) {
+    if(btn.text == '+space') {
+      room.add_key(' ');
+    } else if(btn.text == '+backspace') {
+      room.add_key({backspace: true});
+    } else if(btn.text.match(/^\+/)) {
       room.add_key(btn.text.replace(/^\+/, ''));
     }
     setTimeout(function() {
