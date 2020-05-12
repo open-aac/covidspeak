@@ -31,6 +31,15 @@ var input = {
       });
     })
   },
+  play_sound: function(url) {
+    var sound = new Audio();
+    sound.src = url;
+    sound.oncanplay = function() {
+      sound.play().then(null, function(e) {
+        // NotAllowedError possibly
+      });
+    }  
+  },
   track_audio: function(elem, track, user) {
     var res = null;
     if(!volume) {

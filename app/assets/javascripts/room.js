@@ -94,13 +94,7 @@ remote.addEventListener('user_added', function(data) {
     room.set_active();
     room.status('ready');
     if(!room.active_users[data.user.id]) {
-      var sound = new Audio();
-      sound.src = "/sounds/enter.mp3";
-      sound.oncanplay = function() {
-        sound.play().then(null, function(e) {
-          // NotAllowedError possibly
-        });
-      }  
+      input.play_sound('/sounds/enter.mp3');
     }
     if(document.querySelector('.modal #invite_modal')) {
       // close invite modal when partner enters
@@ -583,14 +577,14 @@ var room = {
       action: 'update',
       user_id: room.current_room.user_id
     }
-    var audio = room.local_tracks.find(function(t) { return t.type == 'audio'; });
+    var audio = (room.local_tracks || []).find(function(t) { return t.type == 'audio'; });
     if(audio && !audio.enabled) {
       message.audio_muted = true;
     }
-    if(room.local_tracks.find(function(t) { return t.type == 'audio' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted; })) {
+    if((room.local_tracks || []).find(function(t) { return t.type == 'audio' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted; })) {
       message.audio = true;
     }
-    if(room.local_tracks.find(function(t) { return t.type == 'video' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted; })) {
+    if((room.local_tracks || []).find(function(t) { return t.type == 'video' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted; })) {
       message.video = true;
     }
     if(room.asserted_buttons) {
@@ -834,12 +828,17 @@ var room = {
             room_session.room_initiator = (room.room_id == localStorage.room_id);
             room.current_room = room_session;
             room.status('Waiting for Partner...', {invite: true});
+            // TODO: if nothing happens for a while, try auto-reloading the page or something
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
             room_session.user_id = res.user_id;
             room_session.as_communicator = true;
             if(room_session.room_initiator && !mirror_type) {
               room_session.as_communicator = (localStorage.self_as_communicator == 'true');
-              room.assert_grid(room.buttons, 'quick', true);
+              setTimeout(function() {
+                if(!room.asserted_buttons) {
+                  room.assert_grid(room.buttons, 'quick', true);
+                }
+              }, 3000);
             }
             $(".grid").toggleClass('initiator', room_session.room_initiator)
             room.local_tracks = tracks;
@@ -1497,6 +1496,12 @@ var room = {
     if(json && json.action == 'click') {
       var button = (room.buttons || []).find(function(b) { return b.id == json.button.id; });
       if(button && button.cell) {
+        if(!room.current_room.as_communicator) {
+          setTimeout(function() {
+            input.play_sound('/sounds/ding.mp3');
+          }, 500);
+        }
+
         button.cell.classList.add('highlight');
         setTimeout(function() {
           button.cell.classList.remove('highlight');
@@ -1635,13 +1640,7 @@ var room = {
   user_left: function(user) {
     if(user && (room.active_users || {})[user.id]) {
       delete room.active_users[user.id];
-      var sound = new Audio();
-      sound.src = "/sounds/exit.mp3";
-      sound.oncanplay = function() {
-        sound.play().then(null, function(e) {
-          // NotAllowedError possible
-        });
-      };
+      input.play_sound('/sounds/exit.mp3');
       var elems = document.getElementById('partner').querySelectorAll('audio,video');
       var to_remove = [];
       for(var idx = 0; idx < elems.length; idx++) {
