@@ -606,8 +606,10 @@ strong {
         &.pending {
           * {
             opacity: 0.8;
+            transition: opacity 1s ease-in;
           }
-          filter: grayscale(0.4);
+          filter: grayscale(0.8);
+          transition: filter 1s ease-in;
         }
         .nobody {
           background: #67b0c7;
