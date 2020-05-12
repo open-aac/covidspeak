@@ -101,8 +101,8 @@ document.querySelector('#join').addEventListener('submit', function(event) {
       }
     } else {
       error.innerText = "Please re-check your join code";
+      console.error("User confirmation error: ", err);
     }
-    console.error("User confirmation error: ", err);
   });
 });
 </script>

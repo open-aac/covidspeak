@@ -91,7 +91,7 @@ remote.addEventListener('user_added', function(data) {
     if(!room.active) {
     }
     room.active_users = room.active_users || {};
-    room.set_active();
+    room.set_active(true);
     room.status('ready');
     if(!room.active_users[data.user.id]) {
       input.play_sound('/sounds/enter.mp3');
@@ -229,7 +229,7 @@ var room = {
   flip_video: function() {
     // TODO: transform: scaleX(-1);
   },
-  set_active: function() {
+  set_active: function(set) {
     if(room.active_timeout || mirror_type) { return; }
     var resume = function() {
       room.active_timeout = setTimeout(function() {
@@ -237,13 +237,17 @@ var room = {
         room.set_active();
       }, 40000 + Math.round(Math.random() * 40000)); // add jitter
     };
-    // TODO: check if the room has any active streams,
-    // and don't ping if so
-    room.active = true;
+    if(set) {
+      room.active = true;
+    }
     if(room.active) {
+      var data = {user_id: room.current_user_id};
+      if(!room.active && room.current_room.room_initiator) {
+        data.empty = true;
+      }
       session.ajax('/api/v1/rooms/' + room.room_id + '/keepalive', {
         method: 'POST',
-        data: {user_id: room.current_user_id} 
+        data: data
       }).then(function(res) {
         resume();
       }, function(err) {

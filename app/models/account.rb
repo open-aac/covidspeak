@@ -42,11 +42,12 @@ class Account < ApplicationRecord
       live_rooms = 0
       daily_rooms = 0
       recent_rooms = Room.where(account_id: self.id).where(['updated_at > ?', 24.hours.ago]).each do |room|
-        if room.settings['ended_at'] && room.settings['duration'] && room.settings['duration'] > 3
+        ended_at = room.settings['buffered_ended_at'] || room.settings['ended_at']
+        if ended_at && room.settings['duration'] && room.settings['duration'] > 3
           daily_rooms += 1
-          if room.settings['ended_at'] > 3.minutes.ago.to_i
-            live_rooms += 1
-          end
+        end
+        if ended_at > 1.minutes.ago.to_i
+          live_rooms += 1
         end
       end
       if max_live_rooms && live_rooms >= max_live_rooms

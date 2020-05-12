@@ -142,7 +142,11 @@ class Api::RoomsController < ApplicationController
   def keepalive
     room = Room.find_by(code: params[:room_id])
     if room && room.user_allowed?(params[:user_id])
-      room.in_use
+      if params['empty']
+        room.closed
+      else
+        room.in_use
+      end
       render json: {updated: true}
     else
       api_error(400, {error: "room or user not found"})

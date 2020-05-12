@@ -3,6 +3,15 @@ class Room < ApplicationRecord
   secure_serialize :settings
 
   belongs_to :account
+  before_save :generate_defaults
+
+  def generate_defaults
+    self.settings ||= {}
+    if self.settings['ended_at'] && self.settings['started_at']
+      self.settings['duration'] = self.settings['ended_at'] - self.settings['started_at'] - (self.settings['gaps'] || []).map{|g| g['duration'] || 0}.sum
+    end
+    true
+  end
 
   def type
     self.account.backend_type
@@ -35,6 +44,15 @@ class Room < ApplicationRecord
     ((self.settings || {})['allowed_user_ids'] || []).include?(user_id)
   end
 
+  def closed
+    self.settings ||= {}
+    now = Time.now.to_i
+    self.settings['started_at'] ||= now
+    self.settings = [self.settings['ended_at'], now].compact.min
+    self.settings.delete('buffered_ended_at')
+    self.save
+  end
+
   def in_use
     self.settings ||= {}
     now = Time.now.to_i
@@ -49,7 +67,7 @@ class Room < ApplicationRecord
     end
     self.settings['started_at'] ||= now
     self.settings['ended_at'] = now
-    self.settings['duration'] = self.settings['ended_at'] - self.settings['started_at'] - (self.settings['gaps'] || []).map{|g| g['duration'] || 0}.sum
+    self.settings['buffered_ended_at'] = now + 5.minutes.to_i
     self.save
   end
 end
