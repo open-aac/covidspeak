@@ -126,6 +126,8 @@ https://www.hipaajournal.com/hipaa-conduit-exception-rule/
 - Throttling (rack-attack?)
 - Account details page (secure link showing usage rates, etc.)
 - Turn off video rendering on page blur (saves battery?)
+- Strategy for saving custom layouts w/o cloud persistence
+- Change boards to basic obf objects instead of custom
 - Support for Multiple visitors
 
 ## License
