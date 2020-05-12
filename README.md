@@ -122,14 +122,11 @@ https://www.hipaajournal.com/hipaa-conduit-exception-rule/
 ## TODO
 (Contributions welcome!)
 - Limit concurrent rooms per account
-- Improve input-switching
 - Track down issue with Twilio TURN server sessions not loading if parter waits more than 10 minutes to join
 - Throttling (rack-attack?)
 - Account details page (secure link showing usage rates, etc.)
-- Turn off video rendering on page blur
-- Show some animated audio level when no video shown
+- Turn off video rendering on page blur (saves battery?)
 - Support for Multiple visitors
-- On mobile Android if you navigate away it keeps running...
 
 ## License
 
