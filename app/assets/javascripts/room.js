@@ -1,4 +1,5 @@
 var mirror_type = location.href.match(/mirror/);
+var teaching_type = location.href.match(/teach/);
 var add_dom = function(elem, track, user) {
   if(elem.tagName == 'AUDIO') {
     var analyser = input.track_audio(elem, track, user);
@@ -206,6 +207,8 @@ var room = {
   status: function(str, opts) {
     document.querySelector('#status_invite').style.display = 'none';
     document.querySelector('#status_popout').style.display = 'none';
+    document.querySelector('#status_continue').style.display = 'none';
+    document.querySelector('#status').style.display = 'block';
     if(opts && opts.big) {
       document.querySelector('#status').classList.add('big');
     } else {
@@ -217,8 +220,15 @@ var room = {
       document.querySelector('#status_holder').style.display = 'block';
       document.querySelector('#status').innerText = str;
       if(room.current_room && room.current_room.room_initiator) {
-        if(opts && opts.invite && !mirror_type) {
+        if(opts && opts.invite && !mirror_type && !teaching_type) {
           document.querySelector('#status_invite').style.display = 'block';
+        }
+      }
+      if(opts && opts.continue && opts.callback) {
+        document.querySelector('#status_continue').style.display = 'block';
+        room.video_continue = function() {
+          room.video_continue = null;
+          opts.callback();
         }
       }
       if(opts && opts.popout) {
@@ -230,7 +240,7 @@ var room = {
     // TODO: transform: scaleX(-1);
   },
   set_active: function(set) {
-    if(room.active_timeout || mirror_type) { return; }
+    if(room.active_timeout || mirror_type || teaching_type) { return; }
     var resume = function() {
       room.active_timeout = setTimeout(function() {
         room.active_timeout = null;
@@ -701,7 +711,7 @@ var room = {
     }
     // TODO: if the user hasn't accepted terms, pop them up
     var room_id = (location.pathname.match(/\/rooms\/([\w:]+)$/) || {})[1];
-    if(!mirror_type) {
+    if(!mirror_type && !teaching_type) {
       if(room_id && room_id.match(/^x/) && localStorage['room_id_for_' + room_id]) {
         try {
           var json = JSON.parse(localStorage['room_id_for_' + room_id]);
@@ -777,11 +787,11 @@ var room = {
           access: {},
           room: {
             key: 'mirror-room',
-            type: 'mirror'
+            type: mirror_type ? 'mirror' : 'video'
           }
         });
       });
-      if(!mirror_type) {
+      if(!mirror_type && !teaching_type) {
         room_check = session.ajax('/api/v1/rooms/' + room.room_id, {
           method: 'PUT',
           data: {user_id: user_id} 
@@ -800,6 +810,8 @@ var room = {
             }
           }
           // Custom JavaScript as an option for rooms
+          // NOTE: This is not sandboxed in any way, and
+          // should only be allowed from highly-trusted sources
           if(res.room.js_url) {
             if(window.cleanupCustomRoom) {
               window.cleanupCustomRoom();
@@ -836,6 +848,7 @@ var room = {
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
             room_session.user_id = res.user_id;
             room_session.as_communicator = true;
+            if(teaching_type) { room_session.as_communicator = false; }
             if(room_session.room_initiator && !mirror_type) {
               room_session.as_communicator = (localStorage.self_as_communicator == 'true');
               setTimeout(function() {
@@ -867,7 +880,7 @@ var room = {
         room.status("Room failed to initialize, please try again");
       });
     };
-    if(!mirror_type && localStorage.user_id && room.room_id == localStorage.room_id) {
+    if(!mirror_type && !teaching_type && localStorage.user_id && room.room_id == localStorage.room_id) {
       // We check user auth here to make sure the user/room hasn't expired
       session.ajax('/api/v1/users', {
         method: 'POST',
@@ -1295,6 +1308,7 @@ var room = {
       setTimeout(function() {
         if(edit.tmp_id == tmp_id) {
           edit.value = "";
+          show.innerText = "";
           edit.tmp_id = null;
           edit.style.display = 'none';
           show.style.display = 'none';
@@ -1322,6 +1336,11 @@ var room = {
     if(str.backspace) {
       var ref = room.keyboard_state.string || "";
       room.keyboard_state.string = ref.substring(0, ref.length - 1);
+      if(room.keyboard_state.string == '') {
+        str = {clear: true};
+      }
+    }
+    if(str.backspace) {
     } else if(str.clear) {
       room.keyboard_state.string = "";
       room.editing = false;
@@ -1572,7 +1591,7 @@ var room = {
             }
           }
           // check if you were just promoted to communicator
-          if(!mirror_type) {
+          if(!mirror_type && !teaching_type) {
             var prior = room.current_room.as_communicator;
             room.current_room.as_communicator = (data.message.communicator_id == room.current_room.user_id);
             if(prior != room.current_room.as_communicator) {
@@ -1797,13 +1816,18 @@ document.addEventListener('touchstart', function(event) {
   }
 });
 document.addEventListener('click', function(event) {
-  if($(event.target).closest('.grid').length == 0) { return; }
-  if(event.target.classList.contains('text_input')) { return; }
+  if(!event.target.closest('#video_controls')) {
+    if($(event.target).closest('.grid').length == 0) { return; }
+  }
+  if(event.target.classList.contains('text_input')) { return; }  
   var $cell = $(event.target).closest('.cell');
   var $button = $(event.target).closest('.button');
   var $partner = $(event.target).closest('#partner,#eyes,#no_preview,#status_holder');
   var $invite = $(event.target).closest('#invite_partner');
+  var $continue = $(event.target).closest('#continue_teaching');
   var $popout = $(event.target).closest('#popout_view');
+  var $popout = $(event.target).closest('#popout_view');
+  var teach_action = event.target.closest('.teach_video_action');
   var $text_prompt = $(event.target).closest('#text_prompt');
   var $text_display = $(event.target).closest('.text_display');
   var $communicator = $(event.target).closest('#communicator');
@@ -1830,6 +1854,22 @@ document.addEventListener('click', function(event) {
     room.toggle_controls();
   } else if($invite.length > 0) {
     room.invite();
+  } else if($continue.length > 0) {
+    if(room.video_continue) {
+      room.video_continue();
+    } else {
+      console.error("Expected room.video_continue, but missing");
+    }
+  } else if(teach_action && remote.video && remote.video.jump) {
+    if(teach_action.classList.contains('back')) {
+      remote.video.jump('back');
+    } else if(teach_action.classList.contains('forward')) {
+      remote.video.jump('forward');
+    } else if(teach_action.classList.contains('play')) {
+      remote.video.jump('play');
+    } else if(teach_action.classList.contains('pause')) {
+      remote.video.jump('pause');
+    }
   } else if($popout.length > 0) {
     var url = location.origin + "/rooms/" + room.room_id + "/join";
     window.open(url, '_system');

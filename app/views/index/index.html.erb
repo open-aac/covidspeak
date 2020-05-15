@@ -74,6 +74,9 @@ document.querySelector('#join').addEventListener('submit', function(event) {
   if(code == 'mirror') {
     location.href = '/rooms/mirror-' + (new Date()).getTime() + "x" + Math.round(Math.random() * 99999) + '/join';
     return;
+  } else if(code == 'teach') {
+    location.href = '/rooms/teach-me-how/join';
+    return;
   }
   document.querySelector('#join button').innerText = "Starting...";
   var error = document.querySelector('#join .error');
