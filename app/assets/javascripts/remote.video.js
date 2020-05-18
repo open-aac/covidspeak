@@ -170,6 +170,9 @@ remote.video = {
             setTimeout(function() {
               var elem = document.querySelector('#video_controls');
               elem.style.display = 'block';
+              var rect = document.querySelector('.col.right').getBoundingClientRect();
+              elem.style.right = (rect.width) + "px";
+              elem.style.left = 'unset';
               document.querySelector('#text').classList.add('slide_down');
               setTimeout(function() {
                 elem.style.opacity = 1.0;

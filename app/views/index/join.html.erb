@@ -1,7 +1,8 @@
 <div id='middle' class='join'>
   <a class="join_link" style="position: absolute; left: -2000px;"><%= request.url %></a>
   <div style='white-space: nowrap;'>
-    Ready to chat<span id='mirror_text' style='display: none;'> <b>with yourself</b></span>? 
+    <span id="ready_to_chat">Ready to chat</span><span id='mirror_text' style='display: none;'> <b>with yourself</b></span>? 
+    <span id='learn_first' style='display: none;'>Want to <a id='learn_first_link' href="#">Learn How to Use Co-VidSpeak</a> first?</span>
   </div>
   <div class='preview'>
     <div class='status'>
@@ -52,7 +53,7 @@ if(!navigator.share) {
   document.querySelector('#share').style.display = 'none';
   document.querySelector('#copy').classList.add('solo')
 }
-
+localStorage.removeItem('teach_return_url');
 document.addEventListener('click', function(event) {
   var url = (document.querySelector('.join_link') || {}).innerText;
   if(event.target.classList.contains('join')) {
@@ -67,6 +68,10 @@ document.addEventListener('click', function(event) {
   } else if(event.target.id == 'popout_browser') {
     room.cleanup();
     window.open(location.href, '_system');
+  } else if(event.target.id == 'learn_first_link') {
+    localStorage.teach_return_url = url;
+    location.href = '/rooms/teach-me-how';
+    return;
   }
   if(event.target.id ==  'copy') {
     extras.copy(url).then(function() {
@@ -81,6 +86,16 @@ document.addEventListener('click', function(event) {
 });
 if(location.href.match(/rooms\/mirror/)) {
   document.querySelector('#mirror_text').style.display = 'inline';
+}
+if(location.href.match(/rooms\/mirror/) || location.href.match(/rooms\/teach/)) {
+  document.querySelector('.buttons').style.display = 'none';
+  document.querySelector('a.join').style.width = '100%';
+}
+if(location.href.match(/rooms\/teach/)) {
+  document.querySelector('#ready_to_chat').innerText = "Ready to Learn";
+} else {
+  document.querySelector('#learn_first').style.display = 'inline';
+  document.querySelector('#ready_to_chat').innerText = "Ready to Chat";
 }
 function getMedia() {
   var status = function(message, options) {

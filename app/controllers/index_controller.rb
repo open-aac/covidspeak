@@ -1,5 +1,6 @@
 class IndexController < ApplicationController
   def index
+    @show_intro = true;
   end
 
   def room

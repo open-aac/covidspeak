@@ -3,6 +3,7 @@ Rails.application.routes.draw do
   root 'index#index' 
   get '/thanks' => 'index#thanks'
   get '/about' => 'index#about'
+  get '/intro' => 'index#intro'
   get '/terms' => 'index#terms'
   get '/privacy' => 'index#privacy'
   get '/rooms/:room_id' => 'index#room'

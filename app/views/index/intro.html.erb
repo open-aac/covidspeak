@@ -1,0 +1,33 @@
+<div id='middle' class='big'>
+  <h1>How to Use Co-VidSpeak</h1>
+  <img src="/logo.svg" style='height: 100px; float: left; margin-right: 10px;'/>
+  <p>
+    Co-VidSpeak is a video chat tool that can help 
+    people may not be able to speak, but can still benefit
+    from social interactions at a distance.
+  </p>
+  <p>
+    Rooms are started with a join code. Once the initiator
+    is in the room they can send a link to everyone else
+    that they can use to get into the room as well.
+    Join codes are 
+    usually given out to organizations, so if you don't have
+    a join code but you're supposed to join a call, you 
+    may need to ask for a link from the other person.
+  </p>
+  <p>
+    If you'd like to learn how to use the app, you can 
+    try our 7-minute interactive tutorial that will walk
+    you through all the features of Co-VidSpeak.
+  </p>
+  <div style='text-align: center; margin-top: 20px;'>
+    <button id='training' class='primary'>Take the Co-VidSpeak Training</button>
+  </div>
+</div>
+<script>
+  document.addEventListener('click', function(event) {
+    if(event.target.closest('#training')) {
+      location.href = '/rooms/teach-me-how/join';
+    }
+  });
+</script>

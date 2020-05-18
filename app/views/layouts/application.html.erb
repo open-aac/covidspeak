@@ -18,6 +18,9 @@
     <div class="container" id="simple_content">
       <header>
         <h1><a href="/"><img src="/logo.svg" /> <span style='color: #888; font-style: italic'>Co</span>-<span style='font-weight: bold;'>VidSpeak</span></a></h1>
+        <% if @show_intro %>
+          <h2 style='margin-bottom: 10px; position: absolute; top: 20px; right: 0; text-align: right; font-style: italic;'><a href="/intro" style='color: #888;'>New to Co-Vidspeak?</a></h2>
+        <% end %>
       </header>
       <div id="contents">
         <%= yield %>

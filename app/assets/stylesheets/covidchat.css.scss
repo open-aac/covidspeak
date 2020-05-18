@@ -208,6 +208,14 @@ strong {
 .grid {
   touch-action: none;
   display: flex;
+  * {
+    user-select: none;
+    touch-action: none;
+    -webkit-touch-callout: none;
+  }
+  .cell img {
+    pointer-events: none;
+  }
   .for_communicator {
     display: none;
   }

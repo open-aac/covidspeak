@@ -1924,12 +1924,18 @@ document.addEventListener('click', function(event) {
     var do_hide = true;
     var action = $button.attr('data-action');
     if(action == 'end') {
-      modal.open("Leave Room?", document.getElementById('confirm_exit'), [
-        {label: "Leave Room", action: "leave", callback: function() {
+      var leave_label = "Leave Room";
+      var header_label = "Return to the Video Call?";
+      if(localStorage.teach_return_url && teaching_type) {
+        leave_label = "Back to the Room";
+        header_label = "Return to the Video Call?";
+      }
+      modal.open(header_label, document.getElementById('confirm_exit'), [
+        {label: leave_label, action: "leave", callback: function() {
           modal.close();
           remote.send_message(room.current_room.id, {action: 'goodbye'}).then(null, function() { });
           setTimeout(function() {
-            location.href = "/thanks";
+            location.href = localStorage.teach_return_url || "/thanks";
           }, 300);
         }},
         {label: "Cancel", action: "close"}

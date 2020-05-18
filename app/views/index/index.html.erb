@@ -78,6 +78,7 @@ document.querySelector('#join').addEventListener('submit', function(event) {
     location.href = '/rooms/teach-me-how/join';
     return;
   }
+  localStorage.removeItem('teach_return_url');
   document.querySelector('#join button').innerText = "Starting...";
   var error = document.querySelector('#join .error');
   error.innerText = '';
