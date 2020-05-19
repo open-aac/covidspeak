@@ -4,6 +4,61 @@ class Account < ApplicationRecord
   include SecureSerialize
   secure_serialize :settings
 
+
+  def self.find_by_code(code)
+    code, tmp_verifier = code.split(/\./, 2)
+    account = Account.find_by(code: code)
+    if account && tmp_verifier
+      account.clean_old_codes
+      if account.settings['codes'][tmp_verifier]
+        account.instance_variable_set('@sub_id', tmp_verifier)
+        return account
+      else
+        return nil
+      end
+    else
+      account
+    end
+  end
+
+  def clean_old_codes
+    self.settings ||= {}
+    self.settings['codes'] ||= {}
+    changed = false
+    self.settings['codes'].each do |code, ts|
+      if ts < 2.weeks.ago.to_i
+        changed = true
+        self.settings['codes'].delete(code)
+      end
+    end
+    self.save if changed
+  end
+
+  def generate_temporary_code!
+    self.clean_old_codes
+    code = nil
+    attempts = 0
+    self.settings['codes'].each do |code, ts|
+      if ts < 2.weeks.ago.to_i
+        self.settings['codes'].delete(code)
+      end
+    end
+    while attempts < 10 && (!code || self.settings['codes'][code])
+      code = GoSecure.nonce('temporary_account_code')[0, 6].gsub(/0/, 'g').gsub(/1/, 'h')
+    end
+    self.settings['codes'][code] = Time.now.to_i
+    self.save!
+
+    "#{self.code}.#{code}"
+  end
+
+  def copy_server_to(account)
+    ['type', 'source', 'address', 'verifier', 'salt', 'shared_secret', 'port', 'udp', 'tcp'].each do |key|
+      account.settings[key] = self.settings[key] if self.settings[key] != nil
+    end
+    account.save
+  end
+
   def backend_type
     self.settings ||= {}
     if self.settings['type'] == 'twilio'
@@ -36,12 +91,16 @@ class Account < ApplicationRecord
     end
     str = str + ":" + GoSecure.sha512(str, 'room_id confirmation')[0, 40]
     room = Room.find_or_initialize_by(code: str, account_id: self.id)
+    room.settings ||= {}
+    room.settings['account_sub_id'] = @sub_id if @sub_id
     max_live_rooms = self.settings['max_concurrent_rooms']
     max_daily_rooms = self.settings['max_daily_rooms']
     if !room.id && (max_live_rooms || max_daily_rooms)
       live_rooms = 0
       daily_rooms = 0
       recent_rooms = Room.where(account_id: self.id).where(['updated_at > ?', 24.hours.ago]).each do |room|
+        next if @sub_id && room.settings['account_sub_id'] != @sub_id
+        
         ended_at = room.settings['buffered_ended_at'] || room.settings['ended_at']
         if ended_at && room.settings['duration'] && room.settings['duration'] > 3
           daily_rooms += 1

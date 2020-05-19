@@ -6,7 +6,7 @@ class Api::UsersController < ApplicationController
     if params['user_id'] && params['room_id']
       identity = params['user_id']
     elsif params['join_code']
-      account = Account.find_by(code: params['join_code'])
+      account = Account.find_by_code(params['join_code'])
       if account
         identity = Account.generate_user
       end

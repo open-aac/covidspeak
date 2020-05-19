@@ -12,6 +12,14 @@ class Room < ApplicationRecord
     end
     true
   end
+  
+  def account
+    res = Account.find_by(id: self.account_id)
+    if self.settings['account_sub_id']
+      res.instance_variable_set('@sub_id', self.settings['account_sub_id'])
+    end
+    res
+  end
 
   def type
     self.account.backend_type
