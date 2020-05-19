@@ -244,7 +244,7 @@ remote.video = {
           var msg = JSON.stringify(timing.message);
           remote.message_received(main_room.ref, main_room.remote_user_ref, {id: 'remote-data'}, msg);
         } else if(timing.action == 'load') {
-          var grid = grids.find(function(g) { return g.id == timing.id; });
+          var grid = boards.grids.find(function(g) { return g.id == timing.id; });
           if(grid) {
             room.assert_grid(grid.buttons, grid.id, false);
           }

@@ -213,7 +213,7 @@ strong {
     touch-action: none;
     -webkit-touch-callout: none;
   }
-  .cell img {
+  .cell img, .menu .icon {
     pointer-events: none;
   }
   .for_communicator {
@@ -815,6 +815,14 @@ strong {
     }
   }
 }
+.configure_grids {
+  text-align: left;
+  a {
+    color: #fff;
+    margin: 10px;
+    display: inline-block;
+  }
+}
 .grids {
   width: 450px;
   max-width: calc(100vw - 150px);
@@ -1192,6 +1200,78 @@ strong {
   }
   .pause {
     display: none;
+  }
+}
+.big_alert {
+  position: fixed;
+  top: 12vh;
+  width: 400px;
+  left: calc(50vw - 200px);
+  margin: auto;
+  background: #eee;
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  padding: 15px 10px;
+  text-align: center;
+  font-weight: bold;
+  opacity: 0.0;
+  transition: opacity 0.5s ease-in-out;
+  box-shadow: 5px 5px 10px #000;
+  &.error {
+    border-color: #eaa;
+    background: #fcc;
+  }
+  &.ready {
+    opacity: 1.0;
+  }
+}
+#grids_modal {
+  .add_status {
+    text-align: center;
+    margin-bottom: 10px;
+    &:empty {
+      display: none;
+    }
+  }
+  .grid_options {
+    .marker {
+      color: #888;
+      text-align: center;
+    }
+    .grid {
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 5px;
+      margin-bottom: 5px;
+      font-size: 20px;
+      cursor: pointer;
+      &:hover {
+        background: #eee;
+      }
+      &.extra {
+        background: #eee;
+      }
+      button {
+        margin-right: 0;
+        height: 40px;
+        padding-top: 5px;
+        img {
+          width: 30px;
+          height: 30px;
+          margin: -10px;
+        }
+      }
+      img.image {
+        vertical-align: middle;
+        height: 40px;
+        width: 40px;
+        object-fit: contain;
+        object-position: center;
+      }
+      .links {
+        float: right;
+      }
+    }
   }
 }
 @media (max-width: 1000px) {

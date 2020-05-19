@@ -15,6 +15,9 @@
         <div class='popover_carat'></div>
         <div class='grids'>
         </div>
+        <div class='configure_grids'>
+          <a href="#" class='personalize'>More...</a>
+        </div>
       </div>
     </div>
     <div class='button' data-action='customize'>
@@ -169,6 +172,45 @@
     types, so if you don't see any sharing options, try
     accessing from a different device.
   </p>
+</div>
+<div id="grids_modal" class="content">
+  <p>
+    You can re-arrange the default layouts, or paste a
+    link to a layout defined somewhere else (for example,
+    a <em>public</em> CoughDrop board)
+  </p>
+  <div style='margin: 10px 0;'>
+    <input id='layout_url' type='text' placeholder="paste grid URL/code here to add" style='width: calc(100% - 190px); height: 35px; vertical-align: middle; font-sizee: 16px; color: #444;'/>
+    <button class='add_layout' style='width: 170px; height: 35px; vertical-align: middle; padding-top: 5px;'>Add Layout(s)</button>
+  </div>
+  <div class='add_status'></div>
+  <div class='grid_options'>
+    <div class='template grid' style='display: none;'>
+      <img class='image'/>
+      <span class='name'></span>
+      <div class='links'>
+        <button class='up'><img src='/icons/arrow-up.svg' alt='move up' /></button>
+        <button class='down'><img src='/icons/arrow-down.svg' alt='move down' /></button>
+        <button class='delete'><img src='/icons/trash.svg' alt='remove' /></button>
+      </div>
+    </div>
+  </div>
+  <div style='margin-top: 30px;'>
+    <p>
+      You can also export your layout list so you can
+      share it with others or load it onto a different device.
+      Hit the button to copy a code you can send to someone
+      else, they can paste it into the "Add Layout" field
+      to use the same layouts as you.
+    </p>
+    <div style='text-align: center;'>
+      <button class='copy'>Copy Layout Order</button>
+      <button class='reset'>
+        Reset Layouts
+        <div class='confirm' style='font-size: 14px; color: #800; display: none;'>hit again to confirm</div>
+      </button>
+    </div>
+  </div>
 </div>
 <div id="info_modal" class="content">
   <p>

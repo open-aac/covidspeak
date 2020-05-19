@@ -71,6 +71,26 @@ var modal = {
     if(modal.defer) {
       modal.defer.reject({closed: true, forced: force});
     }
+  },
+  note: function(str, opts) {
+    var alert = document.createElement('div');
+    alert.classList.add('big_alert');
+    alert.innerText = str;
+    if(opts && opts.error) {
+      alert.classList.add('error');
+    }
+    document.body.appendChild(alert);
+    setTimeout(function() {
+      alert.classList.add('ready');
+    }, 100);
+    setTimeout(function() {
+      alert.classList.remove('ready');
+    }, 6000);
+    setTimeout(function() {
+      if(alert.parentNode) {
+       alert.parentNode.removeChild(alert);;
+      }
+    }, 7000);
   }
 };
 document.addEventListener('click', function(event) {

@@ -646,11 +646,14 @@ var room = {
     }  
   },
   populate_grids: function() {
-    var container = document.getElementsByClassName('grids')[0];
+    var container = document.querySelector('.grids');
     if(container) {
       container.innerHTML = "";
-      grids.forEach(function(grid) {
-        if(grid.skip) { return; }
+      var tally = 0;
+      boards.grids.forEach(function(grid) {
+        if(grid.skip || grid.disabled) { return; }
+        tally++;
+        if(tally > 8) { return; }
         var div = document.createElement('div');
         div.classList.add('grid_option');
         var name = document.createElement('span');
@@ -664,6 +667,59 @@ var room = {
         container.appendChild(div);
       });  
     }  
+    var modal_list = document.querySelector('.modal_content #grids_modal .grid_options');
+    if(modal_list) {
+      var template = null;
+      modal_list.querySelectorAll('.grid,.marker').forEach(function(grid) {
+        if(!grid.classList.contains('template')) {
+          grid.parentNode.removeChild(grid);
+        } else {
+          template = grid;
+        }
+      });
+      var shown_count = 0;
+      boards.grids.forEach(function(grid) {
+        if(grid.skip) { return; }
+        shown_count++;
+        var elem = template.cloneNode(true);
+        elem.style.display = 'block';
+        elem.classList.remove('template');
+        if(shown_count == 9) {
+          var marker = document.createElement('div');
+          marker.classList.add('marker');
+          marker.innerText = "not shown in the main list";
+          modal_list.appendChild(marker);
+        }
+        if(shown_count > 8) {
+          elem.classList.add('extra');
+        }
+        elem.querySelector('.name').innerText = grid.name;
+        elem.querySelector('img.image').src = grid.image_url;
+        if(!grid.data_url) {
+          elem.querySelector('button.delete').style.visibility = 'hidden';
+        }
+        elem.addEventListener('click', function(event) {
+          event.preventDefault();
+          event.stopPropagation();
+          var content = document.querySelector('.modal .content') 
+          var scroll = content.scrollTop;
+          if(event.target.closest('.up')) {
+            boards.shift(grid.data_url || grid.id, 'up');
+          } else if(event.target.closest('.down')) {
+            boards.shift(grid.data_url || grid.id, 'down');
+          } else if(event.target.closest('.delete')) {
+            boards.remove_url(grid.data_url);
+          } else if(!event.target.closest('.links')) {
+            room.assert_grid(grid.buttons, grid.data_url || grid.id);
+            modal.close();
+          }
+          if(content && content.parentNode) {
+            content.scrollTop = scroll;
+          }
+        });
+        modal_list.appendChild(elem);
+      });
+    }
   },
   flush: function() {
     var now = (new Date()).getTime();
@@ -774,6 +830,7 @@ var room = {
     // TODO: if not over https and not on localhost, pre-empt error
     // TODO: show loading message
     room.populate_grids();
+    boards.refresh();
     room.populate_reactions();
     room.size_video();
     var user_id = localStorage.user_id;
@@ -1827,6 +1884,7 @@ document.addEventListener('click', function(event) {
   var $continue = $(event.target).closest('#continue_teaching');
   var $popout = $(event.target).closest('#popout_view');
   var $popout = $(event.target).closest('#popout_view');
+  var personalize = event.target.closest('.personalize');
   var teach_action = event.target.closest('.teach_video_action');
   var $text_prompt = $(event.target).closest('#text_prompt');
   var $text_display = $(event.target).closest('.text_display');
@@ -1854,6 +1912,45 @@ document.addEventListener('click', function(event) {
     room.toggle_controls();
   } else if($invite.length > 0) {
     room.invite();
+  } else if(personalize) {
+    event.preventDefault();
+    event.target.closest('.popover').style.display = 'none';
+    modal.open('All Layouts', document.getElementById('grids_modal'));
+    content = document.querySelector('.modal .content');
+    content.querySelector('.add_layout').addEventListener('click', function(event) {
+      var id = content.querySelector('#layout_url').value;
+      var status = content.querySelector('.add_status');
+      status.innerText = "Adding layout(s)...";
+      boards.add_url(id, true).then(function() {
+        content.querySelector('#layout_url').value = '';
+        status.innerText = "";
+      }, function(err) {
+        if(err && err.responseJSON && err.responseJSON.unauthorized) {
+          status.innerText = "Error adding layout, make sure linked board is public";
+        } else {
+          status.innerText = "Error adding layout";
+        }
+      });
+    });
+    content.querySelector('.reset').addEventListener('click', function(event) {
+      if(content.querySelector('.reset .confirm').style.display == 'block') {
+        boards.grids = (boards.original_grids || boards.grids);
+        boards.persist();
+        room.populate_grids();
+        content.querySelector('.reset .confirm').style.display = 'none';
+      } else {
+        content.querySelector('.reset .confirm').style.display = 'block';
+      }
+    });
+    content.querySelector('.copy').addEventListener('click', function(event) {
+      var uri = boards.export_grids();
+      extras.copy(uri).then(function() {
+        content.querySelector('.copy').innerText = "Layout Order Copied!";
+      }, function() {
+        content.querySelector('.copy').innerText = "Layout Order Copy Failed";
+      });
+    }); 
+    room.populate_grids();
   } else if($continue.length > 0) {
     if(room.video_continue) {
       room.video_continue();
@@ -1900,12 +1997,21 @@ document.addEventListener('click', function(event) {
       if(btn.load_id) {
         var load_id = btn.load_id;
         if(load_id == 'root') { load_id = room.root_id; }
-        var grid = grids.find(function(g) { return g.id == load_id; });
-        if(grid) {
-          if(room.grid_id == load_id && room.grid_id == 'keyboard') {
-            room.add_key({confirm: true});
-          } 
-          room.assert_grid(grid.buttons, grid.id, false);
+        if(load_id.toString().match(/^http/)) {
+          boards.find_url(load_id).then(function(grid) {
+            room.assert_grid(grid.buttons, grid.id, false);
+          }, function(err) {
+            modal.note("Couldn't load linked layout", {error: true});
+          })
+        } else {
+          var grid = boards.grids.find(function(g) { return g.id == load_id; });
+          if(grid) {
+            if(room.grid_id == load_id && room.grid_id == 'keyboard') {
+              // 'clear' confirms the message before clearing
+              room.add_key({confirm: true});
+            } 
+            room.assert_grid(grid.buttons, grid.id, false);
+          }  
         }
       }
       $cell.removeClass('my_highlight');
@@ -2134,7 +2240,7 @@ document.addEventListener('click', function(event) {
     } else if(action == 'load') {
       var id = $(event.target).closest('.grid_option').attr('data-id');
       if(id) {
-        var grid = grids.find(function(g) { return g.id == id; });
+        var grid = boards.grids.find(function(g) { return g.id == id; });
         if(grid) {
           room.assert_grid(grid.buttons, grid.id, true);
         }
