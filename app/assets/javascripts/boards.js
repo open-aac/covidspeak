@@ -204,21 +204,35 @@ var parse_obf = function(obf) {
     }
     buttons[button.id] = button;
   });
-  if(obf.grid && obf.grid.rows >= 3 && obf.grid.columns >= 3) {
-    res.buttons[0] = buttons[obf.grid.order[0][0]] || {id: 1000, text: ""};
-    res.buttons[1] = buttons[obf.grid.order[0][1]];
-    res.buttons[2] = buttons[obf.grid.order[0][2]] || {id: 1222, text: ""};
-    res.buttons[3] = buttons[obf.grid.order[1][0]] || {id: 1333, text: ""};
+  if(obf.grid && obf.grid.rows >= 2 && obf.grid.columns >= 2) {
+    if(obf.grid.columns == 2) {
+      res.buttons[0] = buttons[obf.grid.order[0][0]] || {id: 1000, text: ""};
+      res.buttons[1] = buttons[obf.grid.order[1][0]];
+      res.buttons[2] = buttons[obf.grid.order[1][1]] || {id: 1222, text: ""};
+      res.buttons[3] = buttons[obf.grid.order[0][1]] || {id: 1333, text: ""};
+    } else if(obf.grid.rows == 2) {
+      res.buttons[0] = buttons[obf.grid.order[0][0]] || {id: 1000, text: ""};
+      res.buttons[1] = buttons[obf.grid.order[0][1]];
+      res.buttons[2] = buttons[obf.grid.order[0][2]] || {id: 1222, text: ""};
+      res.buttons[3] = buttons[obf.grid.order[1][0]] || {id: 1333, text: ""};
+      res.buttons[4] = buttons[obf.grid.order[1][1]] || {id: 1444, text: ""};
+      res.buttons[5] = buttons[obf.grid.order[1][2]] || {id: 1555, text: ""};
+    } else {
+      res.buttons[0] = buttons[obf.grid.order[0][0]] || {id: 1000, text: ""};
+      res.buttons[1] = buttons[obf.grid.order[0][1]];
+      res.buttons[2] = buttons[obf.grid.order[0][2]] || {id: 1222, text: ""};
+      res.buttons[3] = buttons[obf.grid.order[1][0]] || {id: 1333, text: ""};
+      res.buttons[4] = buttons[obf.grid.order[1][2]] || {id: 1444, text: ""};
+      res.buttons[5] = buttons[obf.grid.order[2][0]] || {id: 1555, text: ""};
+      res.buttons[6] = buttons[obf.grid.order[2][1]] || {id: 1666, text: ""};
+      res.buttons[7] = buttons[obf.grid.order[2][2]] || {id: 1777, text: ""};  
+    }
     // no image on top middle
     if(res.buttons[1]) {
       res.buttons[1].image_url = "";
     } else {
       res.buttons[1] = {id: 1111, text: "Start Over", load_id: 'root'};
     }
-    res.buttons[4] = buttons[obf.grid.order[1][2]] || {id: 1444, text: ""};
-    res.buttons[5] = buttons[obf.grid.order[2][0]] || {id: 1555, text: ""};
-    res.buttons[6] = buttons[obf.grid.order[2][1]] || {id: 1666, text: ""};
-    res.buttons[7] = buttons[obf.grid.order[2][2]] || {id: 1777, text: ""};
     return res;
   } else {
     return null;
