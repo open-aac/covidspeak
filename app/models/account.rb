@@ -3,7 +3,11 @@ require 'go_secure'
 class Account < ApplicationRecord
   include SecureSerialize
   secure_serialize :settings
+  before_save :generate_defaults
 
+  def generate_defaults
+    self.settings ||= {}
+  end
 
   def self.find_by_code(code)
     code, tmp_verifier = code.split(/\./, 2)
@@ -26,6 +30,7 @@ class Account < ApplicationRecord
     self.settings['codes'] ||= {}
     changed = false
     self.settings['codes'].each do |code, ts|
+      next if ts == 'permanent'
       if ts < 2.weeks.ago.to_i
         changed = true
         self.settings['codes'].delete(code)
@@ -35,6 +40,7 @@ class Account < ApplicationRecord
   end
 
   def generate_temporary_code!
+    raise "account not configured for sub-codes" unless self.settings && self.settings['sub_codes']
     self.clean_old_codes
     code = nil
     attempts = 0
@@ -50,6 +56,11 @@ class Account < ApplicationRecord
     self.save!
 
     "#{self.code}.#{code}"
+  end
+
+  def copy_server_from(code)
+    account = Account.find_by_code(code)
+    account.copy_server_to(self)
   end
 
   def copy_server_to(account)
@@ -92,31 +103,73 @@ class Account < ApplicationRecord
     str = str + ":" + GoSecure.sha512(str, 'room_id confirmation')[0, 40]
     room = Room.find_or_initialize_by(code: str, account_id: self.id)
     room.settings ||= {}
-    room.settings['account_sub_id'] = @sub_id if @sub_id
     max_live_rooms = self.settings['max_concurrent_rooms']
     max_daily_rooms = self.settings['max_daily_rooms']
+    max_monthly_rooms = self.settings['max_monthly_rooms']
+    max_live_subrooms = nil
+    max_daily_subrooms = nil
+    max_monthly_subrooms = nil
+    if @sub_id
+      max_live_subrooms = self.settings['max_concurrent_rooms_per_user'] || 1
+      max_daily_subrooms = self.settings['max_daily_rooms_per_user']
+      max_monthly_subrooms = self.settings['max_monthly_rooms_per_user']
+      room.settings['account_sub_id'] = @sub_id 
+    end
+    if self.settings['ignore_limits_until'] && self.settings['ignore_limits_until'] > Time.now.to_i
+      max_daily_rooms = nil
+      max_monthly_rooms = nil
+      max_daily_subrooms = nil
+      max_monthly_subrooms = nil
+    end
+    # TODO: Right now if you start a bunch of rooms without
+    # the partner joining then it won't throttle based on
+    # live rooms. Maybe this is ok.
     if !room.id && (max_live_rooms || max_daily_rooms)
+      # Only run these checks when creating the room,
+      # not when validating room code
       live_rooms = 0
+      live_subrooms = 0
       daily_rooms = 0
+      daily_subrooms = 0
+      monthly_rooms = 0
+      monthly_subrooms = 0
+      cutoff = (max_monthly_rooms != nil) ? Time.now.beginning_of_month : 24.hours.ago
       recent_rooms = Room.where(account_id: self.id).where(['updated_at > ?', 24.hours.ago]).each do |room|
-        next if @sub_id && room.settings['account_sub_id'] != @sub_id
+        # next if @sub_id && room.settings['account_sub_id'] != @sub_id
         
         ended_at = room.settings['buffered_ended_at'] || room.settings['ended_at']
-        if ended_at && room.settings['duration'] && room.settings['duration'] > 3
+        monthly_rooms += 1
+        monthly_subrooms +=1 if @sub_id && room.settings['account_sub_id'] == @sub_id
+        if ended_at && ended_at > 12.hours.ago.to_i && room.settings['duration'] && room.settings['duration'] > 3
           daily_rooms += 1
+          daily_subrooms +=1 if @sub_id && room.settings['account_sub_id'] == @sub_id
         end
         if ended_at > 1.minutes.ago.to_i
           live_rooms += 1
+          live_subrooms +=1 if @sub_id && room.settings['account_sub_id'] == @sub_id
         end
       end
       if max_live_rooms && live_rooms >= max_live_rooms
         return Room.throttle_response('too_many_live')
+      elsif max_live_subrooms && live_subrooms >= max_live_subrooms
+        return Room.throttle_response('too_many_live')
       elsif max_daily_rooms && daily_rooms >= max_daily_rooms
         return Room.throttle_response('too_many_daily')
+      elsif max_daily_subrooms && daily_subrooms >= max_daily_subrooms
+        return Room.throttle_response('too_many_daily')
+      elsif max_monthly_rooms && monthly_rooms >= max_monthly_rooms
+        return Room.throttle_response('too_many_monthly')
+      elsif max_monthly_subrooms && monthly_subrooms >= max_monthly_subrooms
+        return Room.throttle_response('too_many_monthly')
       end
     end
     room
   end
+  # for 1Mbps = .45 GB per hour one-way
+  # Twilio TURN == $0.40/GB ~= $0.36/hr
+  # Twilio Video == $.0015/user/min ~= $0.18/hr
+  # Purchase N concurrent rooms at $X/concurrent/month
+  # ??Free tier w/ no room limit for Y days, then Z rooms/month
 
   def self.valid_room_id?(room_id)
     hash, verifier = room_id.split(/:/)
@@ -137,5 +190,29 @@ class Account < ApplicationRecord
     secret, salt = GoSecure.encrypt(str, 'account_hmac_sha1_verifier')
     self.settings['salt'] = salt
     self.settings['shared_secret'] = secret
+  end
+
+  def self.access_code(id)
+    "#{id}::#{GoSecure.sha512(id.to_s, 'admin_access_code')[0, 20]}"
+  end
+
+  def self.access_token(code)
+    id, ver = code.split(/::/, 2)
+    if code == access_code(id)
+      nonce = GoSecure.nonce('expiring_access_code')[0, 20]
+      exp = 72.hours.from_now.to_i.to_s
+      verifier = GoSecure.sha512("#{nonce}::#{exp}", 'admin_access_token')
+      "#{id}::#{nonce}::#{exp}::#{verifier}"
+    else
+      nil
+    end
+  end
+
+  def self.valid_access_token?(token)
+    return false unless token
+    id, nonce, exp, verifier = token.split(/::/, 4)
+    ts = exp.to_i
+    check = GoSecure.sha512("#{nonce}::#{exp}", 'admin_access_token')
+    ts > Time.now.to_i && verifier == check
   end
 end

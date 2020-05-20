@@ -568,6 +568,9 @@ remote.webrtc = {
       pc_ref.already_connected = false;
       main_room.already = false;
       remote.user_removed(main_room.ref, main_room.users[pc_ref.user_id]);
+      // TODO: if the connection never established, or only
+      // established for less than 5 seconds, consider
+      // that an error and call candidate_error
       var check_for_reconnect = function() {
         var latest_pc_ref = remote.webrtc.pc_ref((main_room.subrooms[pc_ref.subroom_id] || {}).pc_id || pc.id || pc_id);
         // If we still haven't managed a healthy connection, try again

@@ -130,6 +130,8 @@ class Api::RoomsController < ApplicationController
     else
       return api_error(400, {error: "unrecognized room type, #{room.type}"})
     end
+    # TODO: send video quality setting, so we can request
+    # lower-res video for the visitor vs. the communicator
     room.allow_user(trimmed_identity)
 
     # Optional JavaScript URL to embed on room load

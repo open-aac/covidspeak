@@ -8,6 +8,7 @@ Rails.application.routes.draw do
   get '/privacy' => 'index#privacy'
   get '/rooms/:room_id' => 'index#room'
   get '/rooms/:room_id/join' => 'index#join'
+  get '/admin' => 'index#admin'
   
   mount ActionCable.server => '/cable'
 
@@ -16,5 +17,10 @@ Rails.application.routes.draw do
       post 'keepalive' => 'rooms#keepalive'
     end
     resources :users
+    post 'tokens' => 'tokens#token'
+    get 'tokens/check' => 'tokens#check_token'
+    resources :accounts do
+      post 'temporary_code' => 'accounts#temporary_code'
+    end
   end
 end

@@ -67,6 +67,17 @@ header {
       margin: -5px 0 -5px 5px;
     }
   }
+  h2.header_link {
+    margin-bottom: 10px; 
+    position: absolute; 
+    top: 20px; 
+    right: 0; 
+    text-align: right; 
+    font-style: italic;
+    a {
+      color: #888;
+    }
+  }
 }
 #simple_content #contents {
   height: 100vh;
@@ -1223,6 +1234,75 @@ strong {
   }
   &.ready {
     opacity: 1.0;
+  }
+}
+.admin_view {
+  height: 100%;
+}
+#account {
+  dl {
+    margin-top: 20px;
+    margin-bottom: 30px;
+    dt {
+      display: inline-block;
+      width: 150px;
+      margin-left: 10px;
+      color: #888;
+      margin-bottom: 5px;
+    }
+    dd {
+      display: inline-block;
+      width: calc(100% - 170px);
+      margin-bottom: 5px;
+    }
+  }
+  .rooms {
+    .room {
+      &.template { display: none; }
+      padding: 10px;
+      margin-bottom: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      .pre {
+        display: inline-block;
+        width: 200px;
+      }
+      .duration {
+        color: #888;
+      }
+    }
+  }
+}
+#accounts {
+  .account {
+    &.template { display: none; }
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px 20px;
+    margin-bottom: 5px;
+    display: flex;
+    color: #888;
+    cursor: pointer;
+    > span {
+      flex: 1;
+    }
+    &:hover {
+      background: #eee;
+    }
+    .name {
+      display: block;
+      color: #000;
+      font-size: 25px;
+      margin-top: -5px;
+    }
+    .target {
+      display: block;
+    }
+    .code {
+      display: inline-block;
+      margin-left: 30px;
+      cursor: text;
+    }
   }
 }
 #grids_modal {

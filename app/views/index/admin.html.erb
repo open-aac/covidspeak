@@ -1,0 +1,148 @@
+<div class='admin_view' id="login" style='display: none;'>
+  <div id="middle">
+    <div style='width: 400px; text-align: left; margin: 0 auto;'>
+      <span class='prompt'>Checking Access...</span>
+      <form id='admin_login'>
+        <input type='text' style='width: calc(100% - 185px);' placeholder='Login Code' id='login_code' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='off'/>
+        <button type='submit' class='primary' style='width: 180px; margin-right: 0;'>
+          Log In
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+<div class='admin_view' id="accounts" style='display: none;'>
+  <div id="middle" class='big'>
+    <h2>Accounts</h2>
+    <div class='list'>
+      <div class="status"></div>
+      <div class='account template'>
+        <span>
+          <span class="name"></span>
+          <span class="code"></span>
+        </span>
+        <span>
+          <span class="target"></span>
+          <span class="last_room"></span>
+          <span class="recent_rooms"></span>
+        </span>
+      </div>
+    </div>
+
+    <h2 style='margin-top: 50px;'>Add Account</h2>
+    <form id='add_account'>
+      <div style='margin-bottom: 5px;'>
+        <input type='text' placeholder='Account Name' id='name' style='width: calc(50% - 10px);' />
+        <input type='text' placeholder='Join Code' id='code' style='width: calc(50% - 10px);' />
+      </div>
+      <div style='margin-bottom: 5px;'>
+        <input type='text' placeholder='Server Code' id='server_code' style='width: calc(50% - 10px);' />
+        <input type='text' placeholder='Max Concurrent Rooms' id='max_concurrent_rooms' style='width: calc(50% - 10px);' />
+      </div>
+      <div style='margin-bottom: 5px;'>
+        <input type='text' placeholder='Contact Name' id='contact_name' style='width: calc(50% - 10px);' />
+        <input type='text' placeholder='Contact Email' id='contact_email' style='width: calc(50% - 10px);' />
+      </div>
+      <button type='submit' class='primary'>Add Account</button>
+    </form>
+
+  </div>
+</div>
+<div class='admin_view' id="account" style='display: none;'>
+  <div id="middle" class='big'>
+    <a href="#" class='back' style='display: inline-block; margin-bottom: 20px;'>&lt; Back to Accounts</a>
+    <h2>Account Details: <strong><span class='name'></span></strong></h2>
+    <dl>
+      <dt>Join Code:</dt>
+        <dd class='code'></dd>
+      <dt>Target:</dt>
+        <dd class='target'></dd>
+      <dt class='max_concurrent_rooms_dt'>Max Concurrent Rooms:</dt>
+        <dd class='max_concurrent_rooms'></dd>
+      <dt class='max_daily_rooms_dt'>Max Daily Rooms:</dt>
+        <dd class='max_daily_rooms'></dd>
+      <dt class='max_monthly_rooms_dt'>Max Monthly Rooms:</dt>
+        <dd class='max_monthly_rooms'></dd>
+      <dt>Contact Name:</dt>
+        <dd class='contact_name'></dd>
+      <dt>Contact Email:</dt>
+        <dd class='contact_email'></dd>
+    </dl>
+    <h2>Recent Rooms</h2>
+    <div class='rooms'>
+      <div class='room template'>
+        <span class='pre'><span class='sub_id'></span><span class='started'></span></span> 
+        - 
+        <span class='duration'></span>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+if(!session.token_validated) {
+  admin.show_view('login');
+  admin.check_token().then(function(token) {
+    handle_hash();
+  }, function(err) {
+    admin.login_prompt('Please Log In');
+  });  
+} else {
+  admin.show_logout();
+  handle_hash();
+}
+document.querySelector('#account').addEventListener('click', function(e) {
+  if(e.target.closest('.back')) {
+    e.preventDefault();
+    if(location.hash != '' && location.hash != '#') {
+      window.location = '#';
+    }
+    admin.show_view('accounts');
+  }
+});
+document.querySelector('#admin_login').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var code = document.querySelector('#login_code').value;
+  admin.login_prompt('Logging In...');
+  admin.login(code).then(function() {
+    handle_hash();
+  }, function(err) {
+    admin.login_prompt('Log In Failed');
+  })
+});
+document.querySelector('#add_account').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var data = {};
+  var list = e.target.elements;
+  var empty = false;
+  for(var idx = 0; idx < list.length; idx++) {
+    var key = list[idx].name || list[idx].id;
+    data[key] = list[idx].value;
+    if(!list[idx].value && ['name', 'code', 'server_code', 'contact_name', 'contact_email'].indexOf(key) != -1) {
+      empty = true;
+    }
+  }
+  if(!empty) {
+    document.querySelector('#add_account button').innerText = "Adding Account...";
+    admin.create_account(data).then(function(account) {
+      document.querySelector('#add_account button').innerText = "Add Account";
+      for(var idx = 0; idx < list.length; idx++) {
+        if(list[idx].tagName == 'INPUT') {
+          list[idx].value = '';
+        }
+      }
+      admin.show_view('accounts');
+    }, function(err) {
+      document.querySelector('#add_account button').innerText = "Error Adding Account";
+    });
+  }
+})
+var handle_hash = function() {
+  if(location.pathname != '/admin') { return; }
+  if(location.hash && location.hash.match(/#account:\d+/)) {
+    var id = location.hash.match(/#account:(\d+)/)[1];
+    admin.load_account(id);
+  } else {
+    admin.show_view('accounts');
+  }
+};
+</script>

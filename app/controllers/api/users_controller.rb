@@ -18,6 +18,9 @@ class Api::UsersController < ApplicationController
     return api_error(400, {error: "no room generated"}) unless room
     return api_error(400, {error: "no room slots available", throttled: room.throttled?}) if room.throttled?
     room.save!
+    account.settings['last_room_at'] = Time.now.to_i
+    account.settings['recent_rooms'] = Room.where(account_id: account.id).where(['created_at > ?', 2.weeks.ago]).count
+    account.save
     
     # Generate the token
     render :json => {:user => {id: identity, room_id: room.code}}

@@ -16,4 +16,15 @@ class ApplicationController < ActionController::Base
       render text: res, status: code
     end
   end
+
+  def require_token
+    token = params['access_token']
+    if request.headers['Authorization']
+      token ||= request.headers['Authorization'].sub(/^Bearer\s+/, '')
+    end
+    if !Account.valid_access_token?(token)
+      api_error(404, {error: 'no valid token'})
+      return false
+    end
+  end
 end

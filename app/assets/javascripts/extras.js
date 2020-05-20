@@ -1,4 +1,21 @@
 var extras = {
+  populate: function(dom, lookups) {
+    for(var key in lookups) {
+      var query = key;
+      var hide_if_blank = false;
+      if(key.match(/^-/)) {
+        query = key.substring(1);
+        hide_if_blank = true;
+      }
+      var sub = dom.querySelector('.' + query);
+      if(sub && lookups[key] != null) {
+        sub.innerText = lookups[key];
+        sub.style.display = '';
+      } else if(sub && hide_if_blank) {
+        sub.style.display = 'none';
+      }
+    }
+  },
   copy: function(url) {
     return new Promise(function(res, rej) {
       var link = document.querySelector('#copy_link');  

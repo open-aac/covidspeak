@@ -9,4 +9,7 @@ class IndexController < ApplicationController
 
   def join
   end
+
+  def admin
+  end
 end

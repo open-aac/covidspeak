@@ -27,8 +27,7 @@
     <div style='margin-top: 20px; text-align: right;'>
       <a href="#" id='join_code_help'><img class='icon' src='/icons/question-circle.svg' alt='' style='opacity: 0.7;' />        What's a Join Code?</a>
     </div>
-</div>
-  <ul>
+  </div>
 </div>
 <!-- TODO: https://api.adorable.io/avatars/face/eyes9/nose9/mouth9/ffff00 -->
 <!-- TODO: do this ^ through a CDN proxy -->
@@ -100,7 +99,9 @@ document.querySelector('#join').addEventListener('submit', function(event) {
         error.innerText = "All rooms are in use for this join code";
       } else if(err.responseJSON.throttled == 'too_many_daily') {
         error.innerText = "Daily room limit has been reached for this join code";
-      } else {
+        } else if(err.responseJSON.throttled == 'too_many_monthly') {
+          error.innerText = "Monthly room limit has been reached for this join code";
+        } else {
         error.innerText = "No rooms are available for this join code";
       }
     } else {
