@@ -57,6 +57,12 @@ var ts = parseInt(localStorage.room_set_at || "0", 10);
 if(ts > ((new Date()).getTime() - (30 * 60 * 1000)) && localStorage.room_id && localStorage.user_id) {
   document.querySelector('#existing_room').style.display = 'block';
 }
+if(location.search) {
+  var join = (new URL(location)).searchParams.get('join');
+  if(join) {
+    document.querySelector('#join_code').value = join;
+  }
+}
 document.querySelector('#join_code_help').addEventListener('click', function(event) {
   event.preventDefault();
   modal.open("What is a Join Code?", document.querySelector('#join_code_modal'));
