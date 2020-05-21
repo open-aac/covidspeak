@@ -3,7 +3,7 @@
     <div style='width: 400px; text-align: left; margin: 0 auto;'>
       <span class='prompt'>Checking Access...</span>
       <form id='admin_login'>
-        <input type='text' style='width: calc(100% - 185px);' placeholder='Login Code' id='login_code' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='off'/>
+        <input type='password' style='width: calc(100% - 185px);' placeholder='Login Code' id='login_code' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='off'/>
         <button type='submit' class='primary' style='width: 180px; margin-right: 0;'>
           Log In
         </button>
@@ -67,6 +67,17 @@
         <dd class='contact_name'></dd>
       <dt>Contact Email:</dt>
         <dd class='contact_email'></dd>
+      <dt style='vertical-align: top;'>Sub-Codes</dt>
+        <dd>
+          <div class='sub_codes'>
+          </div>
+          <form id='generate_sub_code' style='width: 400px;'  >
+            <input type='text' style='width: calc(100% - 175px); font-size: 14px;' placeholder='sub-code (blank for temporary)' id='sub_code'/>
+            <button type='submit' class='' style='width: 170px; margin-right: 0;'>
+              Generate
+            </button>
+          </form>
+        </dd>
     </dl>
     <h2>Recent Rooms</h2>
     <div class='rooms'>
@@ -108,6 +119,21 @@ document.querySelector('#admin_login').addEventListener('submit', function(e) {
   }, function(err) {
     admin.login_prompt('Log In Failed');
   })
+});
+document.querySelector('#generate_sub_code').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var code = document.querySelector('#generate_sub_code #sub_code').value;
+  document.querySelector('#generate_sub_code button').innerText = 'Generating...';
+  admin.generate_sub_id(code).then(function(res) {
+    document.querySelector('#generate_sub_code #sub_code').value = '';
+    document.querySelector('#generate_sub_code button').innerText = 'Generate';
+    extras.copy(location.origin + "/?join=" + res.full_code).then(function() {
+      modal.note("Sub-code URL copied to clipboard!");
+    }, function(err) { });
+  }, function(err) {
+    document.querySelector('#generate_sub_code button').innerText = 'Error Generating';
+
+  });
 });
 document.querySelector('#add_account').addEventListener('submit', function(e) {
   e.preventDefault();

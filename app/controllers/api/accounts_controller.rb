@@ -25,11 +25,13 @@ class Api::AccountsController < ApplicationController
     render json: {account: account_json(account)}
   end
 
-  def temporary_code
+  def sub_id
     account = Account.find_by(id: params['account_id'])
     begin
-      code = account.generate_temporary_code!
-      render json: {account_id: params['account_id'], code: code}
+      sub_id = params['sub_id']
+      sub_id = nil if sub_id.blank?
+      code = account.generate_sub_id!(sub_id)
+      render json: {account_id: params['account_id'], sub_id: code.split(/\./)[1]}
     rescue => e
       api_error(400, {error: 'code generation failed'})
     end

@@ -20,7 +20,7 @@ Rails.application.routes.draw do
     post 'tokens' => 'tokens#token'
     get 'tokens/check' => 'tokens#check_token'
     resources :accounts do
-      post 'temporary_code' => 'accounts#temporary_code'
+      post 'sub_ids' => 'accounts#sub_id'
     end
   end
 end

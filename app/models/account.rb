@@ -31,7 +31,7 @@ class Account < ApplicationRecord
     changed = false
     self.settings['codes'].each do |code, ts|
       next if ts == 'permanent'
-      if ts < 2.weeks.ago.to_i
+      if ts < Time.now.to_i
         changed = true
         self.settings['codes'].delete(code)
       end
@@ -39,20 +39,16 @@ class Account < ApplicationRecord
     self.save if changed
   end
 
-  def generate_temporary_code!
+  def generate_sub_id!(code=nil)
     raise "account not configured for sub-codes" unless self.settings && self.settings['sub_codes']
     self.clean_old_codes
-    code = nil
     attempts = 0
-    self.settings['codes'].each do |code, ts|
-      if ts < 2.weeks.ago.to_i
-        self.settings['codes'].delete(code)
-      end
-    end
+    setting = 'permanent'
     while attempts < 10 && (!code || self.settings['codes'][code])
-      code = GoSecure.nonce('temporary_account_code')[0, 6].gsub(/0/, 'g').gsub(/1/, 'h')
+      code = GoSecure.nonce('temporary_account_code')[0, 6].gsub(/0/, 'j').gsub(/1/, 'h')
+      setting = 2.weeks.from_now.to_i
     end
-    self.settings['codes'][code] = Time.now.to_i
+    self.settings['codes'][code] = setting
     self.save!
 
     "#{self.code}.#{code}"
@@ -193,7 +189,7 @@ class Account < ApplicationRecord
   end
 
   def self.access_code(id)
-    "#{id}::#{GoSecure.sha512(id.to_s, 'admin_access_code')[0, 20]}"
+    "#{id}::#{GoSecure.sha512(id.to_s, "admin_access_code_#{ENV['ADMIN_KEY'] || 'admin_nonce'}")[0, 30]}"
   end
 
   def self.access_token(code)
@@ -201,7 +197,7 @@ class Account < ApplicationRecord
     if code == access_code(id)
       nonce = GoSecure.nonce('expiring_access_code')[0, 20]
       exp = 72.hours.from_now.to_i.to_s
-      verifier = GoSecure.sha512("#{nonce}::#{exp}", 'admin_access_token')
+      verifier = GoSecure.sha512("#{nonce}::#{exp}", "admin_access_token_#{ENV['ADMIN_KEY'] || 'admin_key'}")
       "#{id}::#{nonce}::#{exp}::#{verifier}"
     else
       nil
@@ -212,7 +208,7 @@ class Account < ApplicationRecord
     return false unless token
     id, nonce, exp, verifier = token.split(/::/, 4)
     ts = exp.to_i
-    check = GoSecure.sha512("#{nonce}::#{exp}", 'admin_access_token')
+    check = GoSecure.sha512("#{nonce}::#{exp}", "admin_access_token_#{ENV['ADMIN_KEY'] || 'admin_key'}")
     ts > Time.now.to_i && verifier == check
   end
 end

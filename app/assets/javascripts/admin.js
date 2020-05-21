@@ -21,6 +21,19 @@ var admin = {
       })
     });
   },
+  generate_sub_id: function(id) {
+    return new Promise(function(resolve, reject) {
+      if(!admin.current_account) {
+        return reject({error: 'account not loaded'});
+      }
+      session.ajax("/api/v1/accounts/" + admin.current_account.id + "/sub_ids", {type: 'POST', data: {sub_id: id || ''}}).then(function(data) {
+        admin.load_account(admin.current_account.id);
+        resolve({sub_id: data.sub_id, full_code: admin.current_account.code + "." + data.sub_id});
+      }, function(err) {
+        reject(err);
+      });
+    });
+  },
   load_account: function(account_id) {
     session.ajax("/api/v1/accounts/" + account_id, {type: 'GET'}).then(function(data) {
       var account = data.account;
@@ -47,7 +60,25 @@ var admin = {
       if(account.recent_rooms_approx) {
         account.recent_rooms = "~" + account.recent_rooms_approx;
       }
+      if(account.sub_codes) {
+        document.querySelector('.sub_codes').innerText = "";
+        for(var key in (account.sub_ids || {})) {
+          var link = document.createElement('a');
+          link.style.display = 'block';
+          link.href = "/?join=" + account.code + "." + key;
+          var exp = 'permanent';
+          if(account.sub_ids[key] != 'permanent') {
+            var date = new Date(account.sub_ids[key] * 1000);
+            exp = date.toISOString().substring(0, 10);
+          }
+          link.innerText = key + " (" + exp + ")";
+          document.querySelector('.sub_codes').appendChild(link);
+        }
+      } else {
+        document.querySelector('.sub_codes').innerText = "Not Available";
+      }
 
+      admin.current_account = account;
       admin.show_view('account');
       var content = document.querySelector('#account');
       extras.populate(content, {
