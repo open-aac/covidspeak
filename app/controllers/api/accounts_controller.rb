@@ -65,6 +65,7 @@ class Api::AccountsController < ApplicationController
       type: account.backend_type,
       contact_name: account.settings['contact_name'],
       contact_email: account.settings['contact_email'],
+      archived: account.archived,
       source: account.settings['source'],
       address: account.settings['address'],
       last_room_at: account.settings['last_room_at'],
