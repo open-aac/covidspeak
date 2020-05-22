@@ -1,8 +1,10 @@
 <div id='middle' class='join'>
   <a class="join_link" style="position: absolute; left: -2000px;"><%= request.url %></a>
   <div style='white-space: nowrap;'>
+  <span id='learn_first' style='display: none; float: right; margin-bottom: 5px;'><button id='learn_first_link' href="#">Learn How to Use Co-VidSpeak</button></span>
+  <span style='margin-top: 20px; display: inline-block;'>
     <span id="ready_to_chat">Ready to chat</span><span id='mirror_text' style='display: none;'> <b>with yourself</b></span>? 
-    <span id='learn_first' style='display: none;'>Want to <a id='learn_first_link' href="#">Learn How to Use Co-VidSpeak</a> first?</span>
+  </span>
   </div>
   <div class='preview'>
     <div class='status'>
@@ -56,7 +58,7 @@ if(!navigator.share) {
 localStorage.removeItem('teach_return_url');
 document.addEventListener('click', function(event) {
   var url = (document.querySelector('.join_link') || {}).innerText;
-  if(event.target.classList.contains('join')) {
+  if(event.target.closest('a.join')) {
     event.preventDefault();
     if(!document.querySelector('#accept').checked) {
       document.querySelector('#accept_reminder').style.visibility = 'visible';
