@@ -58,6 +58,7 @@ class Api::AccountsController < ApplicationController
   end
 
   def account_json(account)
+    account.generate_defaults
     {
       id: account.id,
       code: account.code,
