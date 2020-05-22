@@ -9,6 +9,11 @@ class Account < ApplicationRecord
     self.settings ||= {}
   end
 
+  def update_stats
+    self.settings['last_room_at'] = Time.now.to_i
+    self.settings['recent_rooms'] = Room.where(account_id: self.id).where(['created_at > ?', 2.weeks.ago]).map{|r| (r.duration || 0) > 3 }.length
+  end
+
   def self.find_by_code(code)
     code, tmp_verifier = code.split(/\./, 2)
     account = Account.find_by(code: code)
@@ -136,7 +141,7 @@ class Account < ApplicationRecord
         ended_at = room.settings['buffered_ended_at'] || room.settings['ended_at']
         monthly_rooms += 1
         monthly_subrooms +=1 if @sub_id && room.settings['account_sub_id'] == @sub_id
-        if ended_at && ended_at > 12.hours.ago.to_i && room.settings['duration'] && room.settings['duration'] > 3
+        if ended_at && ended_at > 12.hours.ago.to_i && room.duration && room.duration > 3
           daily_rooms += 1
           daily_subrooms +=1 if @sub_id && room.settings['account_sub_id'] == @sub_id
         end
