@@ -49,7 +49,7 @@ class Api::AccountsController < ApplicationController
       res[:rooms] << {
         :sub_id => room.settings['account_sub_id'],
         :duration => room.duration || 0,
-        :started => room.settings['started_at'] || room.created_at,
+        :started => room.settings['started_at'] || room.created_at.to_i,
         :ended => room.settings['ended_at']
       }
     end
