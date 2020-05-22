@@ -2033,7 +2033,7 @@ document.addEventListener('click', function(event) {
       var leave_label = "Leave Room";
       var header_label = "Return to the Video Call?";
       if(localStorage.teach_return_url && teaching_type) {
-        leave_label = "Back to the Room";
+        leave_label = "Back to the Previous Room";
         header_label = "Return to the Video Call?";
       }
       modal.open(header_label, document.getElementById('confirm_exit'), [
