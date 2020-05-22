@@ -10,8 +10,10 @@ class Account < ApplicationRecord
   end
 
   def update_stats
-    self.settings['last_room_at'] = Time.now.to_i
+    self.generate_defaults
+    self.settings['last_room_at'] = Room.where(account_id: self.id).order('created_at').last.created_at.to_i
     self.settings['recent_rooms'] = Room.where(account_id: self.id).where(['created_at > ?', 2.weeks.ago]).map{|r| (r.duration || 0) > 3 }.length
+    self.save
   end
 
   def self.find_by_code(code)
