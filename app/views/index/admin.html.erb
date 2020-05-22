@@ -104,9 +104,7 @@ if(!session.token_validated) {
 document.querySelector('#account').addEventListener('click', function(e) {
   if(e.target.closest('.back')) {
     e.preventDefault();
-    if(location.hash != '' && location.hash != '#') {
-      window.location = '#';
-    }
+    admin.set_state('#');
     admin.show_view('accounts');
   }
 });
@@ -170,5 +168,12 @@ var handle_hash = function() {
   } else {
     admin.show_view('accounts');
   }
+};
+window.onpopstate = function() {
+  if(admin.hashstate == location.hash) {
+    return;
+  }
+  admin.hashstate = location.hash || '#';
+  handle_hash();
 };
 </script>

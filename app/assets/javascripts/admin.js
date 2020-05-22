@@ -34,12 +34,20 @@ var admin = {
       });
     });
   },
+  set_state: function(hash) {
+    if(hash == '#' && location.hash == '') { 
+      hash = ''; 
+      admin.hashstate = '#';
+    }
+    if(location.hash != hash) {
+      admin.hashstate = hash;
+      window.location = admin.hashstate;
+    }
+  },
   load_account: function(account_id) {
     session.ajax("/api/v1/accounts/" + account_id, {type: 'GET'}).then(function(data) {
       var account = data.account;
-      if(location.hash != "#account:" + account.id) {
-        window.location = "#account:" + account.id;
-      }
+      admin.set_state("#account:" + account.id);
 
       var code = account.code;
       if(account.sub_codes) {
