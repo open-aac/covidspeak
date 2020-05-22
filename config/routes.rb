@@ -15,6 +15,7 @@ Rails.application.routes.draw do
   scope 'api/v1', module: 'api' do
     resources :rooms do
       post 'keepalive' => 'rooms#keepalive'
+      get 'coming' => 'rooms#user_coming'
     end
     resources :users
     post 'tokens' => 'tokens#token'

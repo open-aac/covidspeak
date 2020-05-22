@@ -21,6 +21,10 @@ class Room < ApplicationRecord
     res
   end
 
+  def room_key
+    "VidChatFor-#{self.code}"
+  end
+
   def type
     self.account.backend_type
   end

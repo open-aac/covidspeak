@@ -24,8 +24,7 @@ class Api::RoomsController < ApplicationController
       return api_error(400, {error: "invalid room id, #{params['room_id']}"})
     end
     room_id = room.code
-    # TODO: ensure user matches room id
-    room_key = "VidChatFor-#{room_id}"
+    room_key = room.room_key
     access = nil
 
     if room.type == 'twilio'
@@ -153,5 +152,15 @@ class Api::RoomsController < ApplicationController
     else
       api_error(400, {error: "room or user not found"})
     end
+  end
+
+  def user_coming
+    room = Room.find_by(code: params['room_id'])
+    if room && room.room_key
+      RoomChannel.broadcast(room.room_key, {
+        type: 'user_coming'
+      })
+    end
+    render json: {ok: true}
   end
 end

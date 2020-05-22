@@ -888,13 +888,20 @@ var room = {
               if(status.potential_partner_found) {
                 room.status("Searching for Partner...", {invite: true});
               } else if(status.partner_negotiating) {
-                room.status("Partner Connecting...")
+                room.status("Partner Connecting...");
               } else if(status.connection_failed) {
-                room.status("Partner Failed to Connect")  
+                room.status("Partner Failed to Connect");
               } else if(status.server_checking) {
-                room.status("Finding a Streaming Server...")  
+                room.status("Finding a Streaming Server...");
               } else if(status.server_found) {
-                room.status("Finalizing Connection..")                  
+                room.status("Finalizing Connection..");
+              } else if(status.waiting_room) {
+                room.status("Partner in Waiting Room...", {invite: true});
+                setTimeout(function() {
+                  if(!room.active) {
+                    room.status("Waiting for Partner...", {invite: true});
+                  }
+                }, 30000);
               }
             }
           }).then(function(room_session) {

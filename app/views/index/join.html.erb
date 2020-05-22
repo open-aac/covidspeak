@@ -99,6 +99,12 @@ if(location.href.match(/rooms\/teach/)) {
   document.querySelector('#learn_first').style.display = 'inline';
   document.querySelector('#ready_to_chat').innerText = "Ready to Chat";
 }
+var match = location.href.match(/rooms\/(.+)+\/join/);
+if(match && match[1] && !match[1].match(/^(mirror|teach)/)) {
+  session.ajax("/api/v1/rooms/" + match[1] + "/coming", {type: 'GET'}).then(function(res) {
+
+  }, function(err) { });
+}
 function getMedia() {
   var status = function(message, options) {
     if(document.querySelector('#middle .preview .status #message')) {
