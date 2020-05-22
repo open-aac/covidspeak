@@ -74,8 +74,10 @@ var admin = {
           link.innerText = key + " (" + exp + ")";
           document.querySelector('.sub_codes').appendChild(link);
         }
+        document.querySelector('#generate_sub_code').style.display = 'block';
       } else {
         document.querySelector('.sub_codes').innerText = "Not Available";
+        document.querySelector('#generate_sub_code').style.display = 'none';
       }
 
       admin.current_account = account;
@@ -110,7 +112,9 @@ var admin = {
           elem.classList.remove('template');
           var started = (new Date(room.started * 1000)).toISOString().substring(5, 16).replace(/T/, ' ');
           var duration = room.duration + "s";
-          if(room.duration > 3600) {
+          if(room.duration == 0) {
+            duration = "never connected";
+          } else if(room.duration > 3600) {
             duration = (Math.round(room.duration * 10 / 60 / 60) / 10) + "h";
           } else if(room.duration > 60) {
             duration = (Math.round(room.duration * 10 / 60) / 10) + "m";

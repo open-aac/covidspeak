@@ -46,10 +46,10 @@ class Api::AccountsController < ApplicationController
     rooms = Room.where(account_id: account.id).where(['created_at > ?', 4.weeks.ago])
     rooms.each do |room|
       room.settings ||= {}
-      next unless room.settings['duration'] && room.settings['duration'] > 0
+      # next unless room.settings['duration'] && room.settings['duration'] > 0
       res[:rooms] << {
         :sub_id => room.settings['account_sub_id'],
-        :duration => room.settings['duration'],
+        :duration => room.settings['duration'] || 0,
         :started => room.settings['started_at'],
         :ended => room.settings['ended_at']
       }
