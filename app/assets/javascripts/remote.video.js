@@ -146,7 +146,14 @@ remote.video = {
         id: room_key
       }
       main_room.ref = room_ref;
-      res(room_ref);
+      var video = document.createElement('video');
+      video.src = "https://d18vdu4p71yql0.cloudfront.net/covidspeak.mp4";
+      video.addEventListener('canplay', function(e) {
+        res(room_ref);
+      });
+      video.addEventListener('error', function(e) {
+        rej(e);
+      });
       setTimeout(function() {
         main_room.remote_user_ref = {
           id: 'teach-video'
