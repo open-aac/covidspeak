@@ -112,6 +112,11 @@ var admin = {
         "-max_monthly_rooms_dt": account.max_monthly_rooms,
         "-max_monthly_rooms_per_user_dt": account.max_monthly_rooms_per_user,
       });
+      content.querySelectorAll('.rooms .room').forEach(function(room) {
+        if(!room.classList.contains('template')) {
+          room.parentNode.removeChild(room);
+        }
+      });
       if(account.rooms) {
         var template = content.querySelector('.rooms .room.template');
         account.rooms = account.rooms.sort(function(a, b) { return b.started - a.started; })
