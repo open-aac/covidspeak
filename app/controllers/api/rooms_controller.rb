@@ -158,7 +158,8 @@ class Api::RoomsController < ApplicationController
     room = Room.find_by(code: params['room_id'])
     if room && room.room_key
       RoomChannel.broadcast(room.room_key, {
-        type: 'user_coming'
+        type: 'user_coming',
+        status: params['status'].to_s
       })
     end
     render json: {ok: true}

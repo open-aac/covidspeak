@@ -25,10 +25,16 @@ remote.video = {
       // TODO: repeatedly draw "no video" icon until the element is replaced;
       var stream = canvas_elem.captureStream();
       remote.video.canvas_stream = stream;
-      var audio = stream.getAudioTracks()[0];
-      var ac = new AudioContext();
-      var dest = ac.createMediaStreamDestination();
-      var video = dest.stream.getVideoTracks()[0];
+      var video = stream.getVideoTracks()[0];
+      var audio = null;
+      if(window.AudioContext || window.webkitAudioContext) { // if I'm the communicator, analyze, otherwise it should only add for communicator
+        var AudioContext = window.AudioContext || window.webkitAudioContext;
+        var ac = new AudioContext();
+        if(ac.createMediaStreamDestination) {
+          var dest = ac.createMediaStreamDestination();
+          audio = dest.stream.getAudioTracks()[0];  
+        }
+      }
       var starting_stream = new MediaStream();
       if(audio) { starting_stream.addTrack(audio); }
       if(video) { starting_stream.addTrack(video); }
@@ -158,7 +164,6 @@ remote.video = {
         main_room.remote_user_ref = {
           id: 'teach-video'
         };
-        remote.user_added(main_room.ref, main_room.remote_user_ref);
         var track_ref = {
           id: 'video-feed',
           mediaStreamTrack: remote.video.canvas_stream.getVideoTracks()[0],
@@ -167,14 +172,17 @@ remote.video = {
           added: (new Date()).getTime()
         };
         track_ref.generate_dom = function() {
+          if(!room.active) {
+            room.status("Loading Video...");
+          }
           var video = document.createElement('video');
           video.src = "https://d18vdu4p71yql0.cloudfront.net/covidspeak.mp4";
           video.controls = false;
-          video.onloadedmetadata = function(e) {
+          video.addEventListener('canplay', function(e) {
+            room.status("ready");
             remote.video.video_room_id = main_room.ref.id;
             remote.video.track_video(video);
-            video.play();
-            setTimeout(function() {
+            var show_controls = function() {
               var elem = document.querySelector('#video_controls');
               elem.style.display = 'block';
               var rect = document.querySelector('.col.right').getBoundingClientRect();
@@ -184,11 +192,21 @@ remote.video = {
               setTimeout(function() {
                 elem.style.opacity = 1.0;
               }, 500);
-            }, 5000);
-          };  
+            };
+            video.play().then(function() {
+              setTimeout(show_controls, 5000);
+            }, function(err) {
+              show_controls();
+            });
+          });
           return video;
         };
-        remote.track_added(main_room.ref, main_room.remote_user_ref, track_ref);
+        video.addEventListener('canplay', function(e) {
+          setTimeout(function() {
+            remote.user_added(main_room.ref, main_room.remote_user_ref);
+            remote.track_added(main_room.ref, main_room.remote_user_ref, track_ref);
+          }, 100);
+        });
       }, 200);
       
     });

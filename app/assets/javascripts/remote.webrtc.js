@@ -833,7 +833,11 @@ remote.webrtc = {
             main_room.pending_messages = [];
           }
         } else if(msg.type == 'user_coming') {
-          main_room.status({waiting_room: true});
+          if(msg.status == 'training') {
+            main_room.status({training_first: true});
+          } else {
+            main_room.status({waiting_room: true});
+          }
         } else if(msg.author_id != main_room.user_id && msg.target_id == main_room.user_id) {
           // If you get a message (such as an offer) before
           // receiving the user list, it won't be actionable,

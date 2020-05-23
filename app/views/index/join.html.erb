@@ -71,6 +71,18 @@ document.addEventListener('click', function(event) {
     room.cleanup();
     window.open(location.href, '_system');
   } else if(event.target.id == 'learn_first_link') {
+    var go = function() {
+      if(go.going) { return; }
+      go.going = true;
+      localStorage.teach_return_url = url;
+      location.href = '/rooms/teach-me-how';
+    };
+    session.ajax("/api/v1/rooms/" + match[1] + "/coming", {type: 'GET', data: {status: 'training'}}).then(function(res) {
+      go();
+    }, function(err) { go(); });
+    setTimeout(function() {
+      go();
+    }, 1000);
     localStorage.teach_return_url = url;
     location.href = '/rooms/teach-me-how';
     return;
@@ -101,8 +113,7 @@ if(location.href.match(/rooms\/teach/)) {
 }
 var match = location.href.match(/rooms\/(.+)+\/join/);
 if(match && match[1] && !match[1].match(/^(mirror|teach)/)) {
-  session.ajax("/api/v1/rooms/" + match[1] + "/coming", {type: 'GET'}).then(function(res) {
-
+  session.ajax("/api/v1/rooms/" + match[1] + "/coming", {type: 'GET', data: {status: 'entered'}}).then(function(res) {
   }, function(err) { });
 }
 function getMedia() {

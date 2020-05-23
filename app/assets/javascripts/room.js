@@ -895,6 +895,8 @@ var room = {
                 room.status("Finding a Streaming Server...");
               } else if(status.server_found) {
                 room.status("Finalizing Connection..");
+              } else if(status.training_first) {
+                room.status("Partner Taking 10-minute Training...", {invite: true});
               } else if(status.waiting_room) {
                 room.status("Partner in Waiting Room...", {invite: true});
                 setTimeout(function() {
