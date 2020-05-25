@@ -8,6 +8,7 @@ class Account < ApplicationRecord
   def generate_defaults
     self.settings ||= {}
     self.archived = !!(self.settings['last_room_at'] && self.settings['last_room_at'] < 6.months.ago.to_i)
+    true
   end
 
   def update_stats
