@@ -152,12 +152,17 @@ remote.video = {
         id: room_key
       }
       main_room.ref = room_ref;
-      var video = document.createElement('video');
-      video.src = "https://d18vdu4p71yql0.cloudfront.net/covidspeak.mp4";
-      video.addEventListener('canplay', function(e) {
+      var pre_video = document.createElement('video');
+      pre_video.src = "https://d18vdu4p71yql0.cloudfront.net/covidspeak.mp4";
+      pre_video.addEventListener('canplay', function(e) {
+        console.log("VIDEO READY");
         res(room_ref);
+        pre_video.begin = function(track_ref) {
+          remote.user_added(main_room.ref, main_room.remote_user_ref);
+          remote.track_added(main_room.ref, main_room.remote_user_ref, track_ref);
+        };
       });
-      video.addEventListener('error', function(e) {
+      pre_video.addEventListener('error', function(e) {
         rej(e);
       });
       setTimeout(function() {
@@ -171,6 +176,15 @@ remote.video = {
           type: 'video',
           added: (new Date()).getTime()
         };
+        var starting = function(track_ref) {
+          if(pre_video.begin) {
+            pre_video.begin(track_ref);
+          } else {
+            setTimeout(function() {
+              starting(track_ref);
+            }, 100);
+          }
+        };
         track_ref.generate_dom = function() {
           if(!room.active) {
             room.status("Loading Video...");
@@ -179,6 +193,7 @@ remote.video = {
           video.src = "https://d18vdu4p71yql0.cloudfront.net/covidspeak.mp4";
           video.controls = false;
           video.addEventListener('canplay', function(e) {
+            console.log("DOM VIDEO READY");
             room.status("ready");
             remote.video.video_room_id = main_room.ref.id;
             remote.video.track_video(video);
@@ -201,12 +216,7 @@ remote.video = {
           });
           return video;
         };
-        video.addEventListener('canplay', function(e) {
-          setTimeout(function() {
-            remote.user_added(main_room.ref, main_room.remote_user_ref);
-            remote.track_added(main_room.ref, main_room.remote_user_ref, track_ref);
-          }, 100);
-        });
+        starting(track_ref);
       }, 200);
       
     });
