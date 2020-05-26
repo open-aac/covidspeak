@@ -146,7 +146,7 @@ class Api::RoomsController < ApplicationController
       if params['empty']
         room.closed
       else
-        room.in_use
+        room.in_use(params[:user_id])
       end
       render json: {updated: true}
     else
@@ -157,6 +157,7 @@ class Api::RoomsController < ApplicationController
   def user_coming
     room = Room.find_by(code: params['room_id'])
     if room && room.room_key
+      room.partner_joined(params['status'] != 'connecting')
       RoomChannel.broadcast(room.room_key, {
         type: 'user_coming',
         status: params['status'].to_s

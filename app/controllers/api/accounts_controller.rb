@@ -64,6 +64,8 @@ class Api::AccountsController < ApplicationController
     {
       :account_code => code,
       :account_name => name,
+      :partner_status => room.settings['partner_status'],
+      :total_users => (room.settings['active_user_ids'] || []).uniq.length,
       :sub_id => room.settings['account_sub_id'],
       :duration => room.duration || 0,
       :started => room.settings['started_at'] || room.created_at.to_i,

@@ -883,6 +883,14 @@ var room = {
             document.body.appendChild(script);
           }
           room.status("Connecting...");
+          if(res.room.id != localStorage.room_id) {
+            // Let the backend know we tried to negotiate a connection,
+            // in case it fails
+            session.ajax('/api/v1/rooms/' + res.room.id + '/coming', {
+              method: 'GET',
+              data: {status: 'connecting'}
+            }).then(function(res) { }, function(err) { });
+          }
           remote.connect_to_remote(res.access, res.room.key, function(status) {
             if(!room.active) {
               if(status.potential_partner_found) {
@@ -922,7 +930,7 @@ var room = {
                   room.assert_grid(room.buttons, 'quick', true);
                 }
               }, 3000);
-            }
+            } 
             $(".grid").toggleClass('initiator', room_session.room_initiator)
             room.local_tracks = tracks;
             room.send_update();

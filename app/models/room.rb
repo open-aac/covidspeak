@@ -65,7 +65,15 @@ class Room < ApplicationRecord
     self.save
   end
 
-  def in_use
+  def partner_joined(waiting_room=true)
+    self.settings ||= {}
+    if self.settings['partner_status'] != 'connected'
+      self.settings['partner_status'] = (waiting_room ? 'waiting_room' : 'attempted')
+    end
+    self.save
+  end
+
+  def in_use(user_id)
     self.settings ||= {}
     now = Time.now.to_i
     if self.settings['ended_at'] && self.settings['ended_at'] < now - (5 * 60)
@@ -77,6 +85,12 @@ class Room < ApplicationRecord
         'duration' => (now - self.settings['ended_at'])
       }
     end
+    self.settings['room_nonce'] ||= GoSecure.nonce('user_id_hash_nonce')
+    user_id_hash = GoSecure.sha512(user_id.to_s, "user_id_hash_#{self.settings['room_nonce']}")[0, 5]
+    self.settings['active_user_ids'] ||= []
+    self.settings['active_user_ids'] << user_id_hash
+    self.settings['active_user_ids'].uniq!
+    self.settings['partner_status'] = 'connected'
     self.settings['started_at'] ||= now
     self.settings['ended_at'] = now
     self.settings['buffered_ended_at'] = now + 5.minutes.to_i

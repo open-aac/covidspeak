@@ -126,11 +126,20 @@ var admin = {
           var started = (new Date(room.started * 1000)).toISOString().substring(5, 16).replace(/T/, ' ');
           var duration = room.duration + "s";
           if(room.duration == 0) {
-            duration = "never connected";
+            if(room.partner_status == 'attempted') {
+              duration = "attempted";
+            } else if(room.partner_status == 'waiting_room') {
+              duration = "never left waiting room";
+            } else {
+              duration = "never connected";
+            }
           } else if(room.duration > 3600) {
             duration = (Math.round(room.duration * 10 / 60 / 60) / 10) + "h";
           } else if(room.duration > 60) {
             duration = (Math.round(room.duration * 10 / 60) / 10) + "m";
+          }
+          if(room.total_users > 0) {
+            duration = duration + " (" + room.total_users + " users)";
           }
           extras.populate(elem, {
             started: started,
@@ -210,11 +219,20 @@ var admin = {
           var started = (new Date(room.started * 1000)).toISOString().substring(5, 16).replace(/T/, ' ');
           var duration = room.duration + "s";
           if(room.duration == 0) {
-            duration = "never connected";
+            if(room.partner_status == 'attempted') {
+              duration = "attempted";
+            } else if(room.partner_status == 'waiting_room') {
+              duration = "never left waiting room";
+            } else {
+              duration = "never connected";
+            }
           } else if(room.duration > 3600) {
             duration = (Math.round(room.duration * 10 / 60 / 60) / 10) + "h";
           } else if(room.duration > 60) {
             duration = (Math.round(room.duration * 10 / 60) / 10) + "m";
+          }
+          if(room.total_users > 0) {
+            duration = duration + " (" + room.total_users + " users)";
           }
           extras.populate(elem, {
             code: room.account_code,
