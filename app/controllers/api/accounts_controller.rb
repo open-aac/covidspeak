@@ -3,10 +3,19 @@ class Api::AccountsController < ApplicationController
   
   def index
     list = []
+    accounts = {}
     Account.all.each do |account|
+      accounts[account.id] = [account.code, account.settings['name']]
       list << account_json(account)
     end
-    render json: {accounts: list}
+    rooms_list = []
+    rooms = Room.where(['created_at > ?', 4.weeks.ago]).order('created_at DESC').limit(20)
+    rooms.each do |room|
+      code, name = accounts[room.account_id] || []
+      rooms_list << room_json(room, code, name)
+    end
+
+    render json: {accounts: list, recent_rooms: rooms_list}
   end
 
   def create
@@ -45,17 +54,22 @@ class Api::AccountsController < ApplicationController
     res[:rooms] = []
     rooms = Room.where(account_id: account.id).where(['created_at > ?', 4.weeks.ago])
     rooms.each do |room|
-      room.settings ||= {}
-      res[:rooms] << {
-        :sub_id => room.settings['account_sub_id'],
-        :duration => room.duration || 0,
-        :started => room.settings['started_at'] || room.created_at.to_i,
-        :ended => room.settings['ended_at']
-      }
+      res[:rooms] << room_json(room)
     end
     render json: {account: res}
   end
 
+  def room_json(room, code=nil, name=nil)
+    room.generate_defaults
+    {
+      :account_code => code,
+      :account_name => name,
+      :sub_id => room.settings['account_sub_id'],
+      :duration => room.duration || 0,
+      :started => room.settings['started_at'] || room.created_at.to_i,
+      :ended => room.settings['ended_at']
+    }
+  end
   def account_json(account)
     account.generate_defaults
     {

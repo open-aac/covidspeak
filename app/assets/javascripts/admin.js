@@ -196,6 +196,31 @@ var admin = {
         elem.classList.remove('template');
         document.querySelector("#accounts .list").appendChild(elem);
       });
+      if(data.recent_rooms) {
+        var template = document.querySelector('#accounts .rooms .room.template');
+        data.recent_rooms.forEach(function(room) {
+          var elem = template.cloneNode(true);
+          elem.classList.remove('template');
+          elem.style.display = 'block';
+          var started = (new Date(room.started * 1000)).toISOString().substring(5, 16).replace(/T/, ' ');
+          var duration = room.duration + "s";
+          if(room.duration == 0) {
+            duration = "never connected";
+          } else if(room.duration > 3600) {
+            duration = (Math.round(room.duration * 10 / 60 / 60) / 10) + "h";
+          } else if(room.duration > 60) {
+            duration = (Math.round(room.duration * 10 / 60) / 10) + "m";
+          }
+          extras.populate(elem, {
+            code: room.account_code,
+            name: room.account_name,
+            started: started,
+            duration: duration,
+            "-sub_id": room.sub_id ? ("(" + room.sub_id + ")") : ""
+          });
+          document.querySelector('#accounts .rooms').appendChild(elem);
+        });
+      }
     }, function(err) {
       document.querySelector("#accounts .status").innerText = "Error Loading Accounts";
 

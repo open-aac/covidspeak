@@ -1261,6 +1261,8 @@ strong {
       margin-bottom: 5px;
     }
   }
+}
+#account,#accounts {
   .rooms {
     .room {
       &.template { display: none; }
@@ -1271,6 +1273,8 @@ strong {
       .pre {
         display: inline-block;
         width: 200px;
+        overflow: hidden;
+        padding-right: 5px;
       }
       .duration {
         color: #888;
@@ -1279,6 +1283,9 @@ strong {
   }
 }
 #accounts {
+  .rooms .room .pre {
+    width: 150px;
+  }
   .account {
     &.template { display: none; }
     border: 1px solid #ccc;
