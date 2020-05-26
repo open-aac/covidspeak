@@ -1185,6 +1185,11 @@ strong {
     }
   }
 }
+#info_modal {
+  p {
+    margin-bottom: 20px;
+  }
+}
 #video_controls {
   position: absolute;
   top: calc(12vh - 10px);

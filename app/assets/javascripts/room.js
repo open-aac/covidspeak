@@ -2155,6 +2155,14 @@ document.addEventListener('click', function(event) {
       });
     } else if(action == 'info') {
       modal.open("About Co-VidSpeak", document.getElementById('info_modal'), []);
+      var content = document.querySelector(".modal #info_modal");
+      if(mirror_type) {
+        content.querySelectorAll('.section').forEach(function(s) { s.style.display = 'none'; });
+        content.querySelector('.section.mirror').style.display = 'block';
+      } else if(teaching_type) {
+        content.querySelectorAll('.section').forEach(function(s) { s.style.display = 'none'; });
+        content.querySelector('.section.teaching').style.display = 'block';
+      }
     } else if(action == 'reconnect') {
       remote.reconnect();
     } else if(action == 'invite') {
