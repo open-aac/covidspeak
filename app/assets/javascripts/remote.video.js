@@ -62,7 +62,20 @@ remote.video = {
         if(!starting_stream.returned) {
           starting_stream = stream;
         } else {
-          remote.video.replace_local_tracks = stream.getTracks();
+          var tracks = stream.getTracks().map(function(track) {
+            return {
+              type: track.kind,
+              mediaStreamTrack: track,
+              id: "0-" + track.id,
+              device_id: track.getSettings().deviceId,
+              added: (new Date()).getTime(),
+              generate_dom: remote.mirror.dom_generator(track, stream)
+            }
+          });
+          room.local_tracks = tracks;
+          remote.local_tracks = tracks;
+          remote.video.local_tracks = tracks;
+          room.update_preview();
         }
       }, function(err) {
       })
@@ -165,6 +178,10 @@ remote.video = {
       pre_video.addEventListener('error', function(e) {
         rej(e);
       });
+      pre_video.addEventListener('abort', function(e) {
+        rej(e);
+      });
+      pre_video.load();
       setTimeout(function() {
         main_room.remote_user_ref = {
           id: 'teach-video'
@@ -214,6 +231,7 @@ remote.video = {
               show_controls();
             });
           });
+          video.load();
           return video;
         };
         starting(track_ref);
