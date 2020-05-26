@@ -68,8 +68,9 @@ var admin = {
       if(account.recent_rooms_approx) {
         account.recent_rooms = "~" + account.recent_rooms_approx;
       }
+      var content = document.querySelector('#account');
       if(account.sub_codes) {
-        document.querySelector('.sub_codes').innerText = "";
+        content.querySelector('.sub_codes').innerText = "";
         for(var key in (account.sub_ids || {})) {
           var link = document.createElement('a');
           link.style.display = 'block';
@@ -80,17 +81,16 @@ var admin = {
             exp = date.toISOString().substring(0, 10);
           }
           link.innerText = key + " (" + exp + ")";
-          document.querySelector('.sub_codes').appendChild(link);
+          content.querySelector('.sub_codes').appendChild(link);
         }
-        document.querySelector('#generate_sub_code').style.display = 'block';
+        content.querySelector('#generate_sub_code').style.display = 'block';
       } else {
-        document.querySelector('.sub_codes').innerText = "Not Available";
-        document.querySelector('#generate_sub_code').style.display = 'none';
+        content.querySelector('.sub_codes').innerText = "Not Available";
+        content.querySelector('#generate_sub_code').style.display = 'none';
       }
 
       admin.current_account = account;
       admin.show_view('account');
-      var content = document.querySelector('#account');
       extras.populate(content, {
         name: account.name,
         code: code,
@@ -197,6 +197,11 @@ var admin = {
         document.querySelector("#accounts .list").appendChild(elem);
       });
       if(data.recent_rooms) {
+        document.querySelectorAll('#accounts .rooms .room').forEach(function(room) {
+          if(!room.classList.contains('template')) {
+            room.parentNode.removeChild(room);
+          }
+        });
         var template = document.querySelector('#accounts .rooms .room.template');
         data.recent_rooms.forEach(function(room) {
           var elem = template.cloneNode(true);
