@@ -1,3 +1,53 @@
+var process_room = function(room) {
+  var started = (new Date(room.started * 1000)).toISOString().substring(5, 16).replace(/T/, ' ');
+
+  var duration = room.duration + "s";
+  if(room.duration == 0) {
+    if(room.partner_status == 'attempted') {
+      duration = "attempted";
+    } else if(room.partner_status == 'waiting_room') {
+      duration = "never left waiting room";
+    } else if(room.partner_status == 'connected') {
+      duration = "temporarily connected";
+    } else {
+      duration = "never connected";
+    }
+  } else if(room.duration > 3600) {
+    duration = (Math.round(room.duration * 10 / 60 / 60) / 10) + "h";
+  } else if(room.duration > 60) {
+    duration = (Math.round(room.duration * 10 / 60) / 10) + "m";
+  }
+  if(room.total_users > 0) {
+    duration = duration + " (" + room.total_users + " users)";
+  }
+  room.started_string = started;
+  room.duration_string = duration;
+  return room;
+}
+var process_account = function(account) {
+  var code = account.code;
+  if(account.sub_codes) {
+    code = code + " (allows sub-codes)";
+  }
+  var target = account.type;
+  if(target == 'webrtc') {
+    if(account.source == 'twilio') {
+      target = 'webrtc (' + account.source + ')';
+    } else {
+      target = 'webrtc (' + account.address + ')';
+    }
+  }
+  account.code_string = code;
+  account.target = target;
+  if(account.last_room_at) {
+    var date = new Date(account.last_room_at * 1000);
+    account.last_room_string = date.toDateString();
+  }
+  if(account.recent_rooms_approx) {
+    account.recent_rooms = "~" + account.recent_rooms_approx;
+  }
+  return account;
+}
 var admin = {
   login_prompt: function(str) {
     admin.show_view('login');
@@ -48,26 +98,8 @@ var admin = {
     session.ajax("/api/v1/accounts/" + account_id, {type: 'GET'}).then(function(data) {
       var account = data.account;
       admin.set_state("#account:" + account.id);
+      process_account(account);
 
-      var code = account.code;
-      if(account.sub_codes) {
-        code = code + " (allows sub-codes)";
-      }
-      var target = account.type;
-      if(target == 'webrtc') {
-        if(account.source == 'twilio') {
-          target = 'webrtc (' + account.source + ')';
-        } else {
-          target = 'webrtc (' + account.address + ')';
-        }
-      }
-      if(account.last_room_at) {
-        var date = new Date(account.last_room_at * 1000);
-        account.last_room_string = date.toDateString();
-      }
-      if(account.recent_rooms_approx) {
-        account.recent_rooms = "~" + account.recent_rooms_approx;
-      }
       var content = document.querySelector('#account');
       if(account.sub_codes) {
         content.querySelector('.sub_codes').innerText = "";
@@ -93,8 +125,8 @@ var admin = {
       admin.show_view('account');
       extras.populate(content, {
         name: account.name,
-        code: code,
-        target: target,
+        code: account.code_string,
+        target: account.target,
         last_room: account.last_room_string,
         recent_rooms: account.recent_rooms,
         contact_name: account.contact_name,
@@ -123,27 +155,10 @@ var admin = {
         account.rooms.forEach(function(room) {
           var elem = template.cloneNode(true);
           elem.classList.remove('template');
-          var started = (new Date(room.started * 1000)).toISOString().substring(5, 16).replace(/T/, ' ');
-          var duration = room.duration + "s";
-          if(room.duration == 0) {
-            if(room.partner_status == 'attempted') {
-              duration = "attempted";
-            } else if(room.partner_status == 'waiting_room') {
-              duration = "never left waiting room";
-            } else {
-              duration = "never connected";
-            }
-          } else if(room.duration > 3600) {
-            duration = (Math.round(room.duration * 10 / 60 / 60) / 10) + "h";
-          } else if(room.duration > 60) {
-            duration = (Math.round(room.duration * 10 / 60) / 10) + "m";
-          }
-          if(room.total_users > 0) {
-            duration = duration + " (" + room.total_users + " users)";
-          }
+          process_room(room);
           extras.populate(elem, {
-            started: started,
-            duration: duration,
+            started: room.started_string,
+            duration: room.duration_string,
             "-sub_id": room.sub_id ? ("(" + room.sub_id + ")") : ""
           });
           content.querySelector('.rooms').appendChild(elem);
@@ -166,34 +181,13 @@ var admin = {
       data.accounts = data.accounts.sort(function(a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
       data.accounts.forEach(function(account) {
         var elem = template.cloneNode(true);
-        var code = account.code;
-        if(account.sub_codes) {
-          code = code + " (sub-codes)";
-        }
-        var target = account.type;
-        if(target == 'webrtc') {
-          if(account.source == 'twilio') {
-            target = 'webrtc (' + account.source + ')';
-          } else {
-            target = 'webrtc (' + account.address + ')';
-          }
-        }
-        if(account.recent_rooms_approx) {
-          account.recent_rooms = "~" + account.recent_rooms_approx;
-        }
-        account.target = target;
-        var last_room = null;
-        if(account.last_room_at) {
-          var date = new Date(account.last_room_at * 1000);
-          last_room = date.toDateString();
-          account.last_room_string = last_room;
-        }
+        process_account(account);
         extras.populate(elem, {
           name: account.name,
-          code: code,
-          last_room: last_room,
+          code: account.code_string,
+          last_room: account.last_room_string,
           "-recent_rooms": account.recent_rooms,
-          target: target
+          target: account.target
         })
         elem.addEventListener('click', function(event) {
           if(event.target.closest('.code')) {
@@ -216,29 +210,12 @@ var admin = {
           var elem = template.cloneNode(true);
           elem.classList.remove('template');
           elem.style.display = 'block';
-          var started = (new Date(room.started * 1000)).toISOString().substring(5, 16).replace(/T/, ' ');
-          var duration = room.duration + "s";
-          if(room.duration == 0) {
-            if(room.partner_status == 'attempted') {
-              duration = "attempted";
-            } else if(room.partner_status == 'waiting_room') {
-              duration = "never left waiting room";
-            } else {
-              duration = "never connected";
-            }
-          } else if(room.duration > 3600) {
-            duration = (Math.round(room.duration * 10 / 60 / 60) / 10) + "h";
-          } else if(room.duration > 60) {
-            duration = (Math.round(room.duration * 10 / 60) / 10) + "m";
-          }
-          if(room.total_users > 0) {
-            duration = duration + " (" + room.total_users + " users)";
-          }
+          process_room(room);
           extras.populate(elem, {
             code: room.account_code,
             name: room.account_name,
-            started: started,
-            duration: duration,
+            started: room.started_string,
+            duration: room.duration_string,
             "-sub_id": room.sub_id ? ("(" + room.sub_id + ")") : ""
           });
           document.querySelector('#accounts .rooms').appendChild(elem);
