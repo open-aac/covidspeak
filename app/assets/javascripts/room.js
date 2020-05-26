@@ -2048,7 +2048,9 @@ document.addEventListener('click', function(event) {
       modal.open(header_label, document.getElementById('confirm_exit'), [
         {label: leave_label, action: "leave", callback: function() {
           modal.close();
-          remote.send_message(room.current_room.id, {action: 'goodbye'}).then(null, function() { });
+          if(room.current_room) {
+            remote.send_message(room.current_room.id, {action: 'goodbye'}).then(null, function() { });
+          }
           setTimeout(function() {
             location.href = localStorage.teach_return_url || "/thanks";
           }, 300);
