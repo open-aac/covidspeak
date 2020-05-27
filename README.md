@@ -121,14 +121,16 @@ https://www.hipaajournal.com/hipaa-conduit-exception-rule/
 
 ## TODO
 (Contributions welcome!)
-- Limit concurrent rooms per account
 - Track down issue with Twilio TURN server sessions not loading if parter waits more than 10 minutes to join
 - Throttling (rack-attack?)
-- Account details page (secure link showing usage rates, etc.)
-- Turn off video rendering on page blur (saves battery?)
-- Strategy for saving custom layouts w/o cloud persistence
-- Change boards to basic obf objects instead of custom
+- Optional speech output (maybe just from the communicator?)
+- Turn off video rendering on page blur (Google Meet des this, saves battery?)
+- Way to send invite links before starting a room (while still enforcing usage limits)
+- Page to list suggested alternative layout sets
 - Support for Multiple visitors
+- Options for longer highlight, auditory cues, etc.
+- Support cursor hover for eye-gaze-enabled computers
+- Consider https://webgazer.cs.brown.edu/
 
 ## License
 
