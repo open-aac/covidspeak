@@ -255,6 +255,11 @@ var room = {
       if(!room.active && room.current_room.room_initiator) {
         data.empty = true;
       }
+      if(input.compat) {
+        data.system = input.compat.system;
+        data.browser = input.compat.browser;
+        data.mobile = !!input.compat.mobile;
+      }
       session.ajax('/api/v1/rooms/' + room.room_id + '/keepalive', {
         method: 'POST',
         data: data
@@ -958,7 +963,14 @@ var room = {
       // We check user auth here to make sure the user/room hasn't expired
       session.ajax('/api/v1/users', {
         method: 'POST',
-        data: {user_id: localStorage.user_id, room_id: room.room_id}
+        data: {
+          user_id: localStorage.user_id,
+          room_id: room.room_id,
+          system: input.compat.system,
+          browser: input.compat.browser,
+          mobile: input.compat.mobile,
+          pending_id: localStorage.pending_id
+        }
       }).then(function(res) {
         enter_room();
       }, function(err) {

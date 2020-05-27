@@ -21,6 +21,10 @@ class Room < ApplicationRecord
     res
   end
 
+  def concluded?
+    ((self.settings || {})['ended_at'] || Time.now.to_i) < 24.hours.ago.to_i
+  end
+
   def room_key
     "VidChatFor-#{self.code}"
   end
@@ -73,7 +77,28 @@ class Room < ApplicationRecord
     self.save
   end
 
-  def in_use(user_id)
+  def user_accessed(user_id, opts)
+    self.settings ||= {}
+    self.settings['room_nonce'] ||= GoSecure.nonce('user_id_hash_nonce')
+    user_id_hash = GoSecure.sha512(user_id.to_s, "user_id_hash_#{self.settings['room_nonce']}")[0, 5]
+    self.settings['active_user_ids'] ||= []
+    self.settings['active_user_ids'] << user_id_hash
+    self.settings['active_user_ids'].uniq!
+    self.settings['user_configs'] ||= {}
+    if opts['pending_id'] && user_id
+      pending_id_hash = GoSecure.sha512(user_id.to_s, "user_id_hash_#{self.settings['room_nonce']}")[0, 5]
+      self.settings['user_configs'].delete(pending_id_hash)
+    end
+    if opts && opts['system'] && opts['browser']
+      self.settings['user_configs'][user_id_hash] ||= {}
+      self.settings['user_configs'][user_id_hash]['system'] ||= opts['system']
+      self.settings['user_configs'][user_id_hash]['browser'] ||= opts['browser']
+      self.settings['user_configs'][user_id_hash]['mobile'] ||= (opts['mobile'] && opts['mobile'] != 'false' && opts['mobile'] != '')
+      self.settings['user_configs'][user_id_hash]['timestamp'] ||= Time.now.to_i
+    end
+  end
+
+  def in_use(user_id, opts={})
     self.settings ||= {}
     now = Time.now.to_i
     if self.settings['ended_at'] && self.settings['ended_at'] < now - (5 * 60)
@@ -85,11 +110,7 @@ class Room < ApplicationRecord
         'duration' => (now - self.settings['ended_at'])
       }
     end
-    self.settings['room_nonce'] ||= GoSecure.nonce('user_id_hash_nonce')
-    user_id_hash = GoSecure.sha512(user_id.to_s, "user_id_hash_#{self.settings['room_nonce']}")[0, 5]
-    self.settings['active_user_ids'] ||= []
-    self.settings['active_user_ids'] << user_id_hash
-    self.settings['active_user_ids'].uniq!
+    self.user_accessed(user_id, opts)
     self.settings['partner_status'] = 'connected'
     self.settings['started_at'] ||= now
     self.settings['ended_at'] = now

@@ -156,6 +156,11 @@ var admin = {
           var elem = template.cloneNode(true);
           elem.classList.remove('template');
           process_room(room);
+          (room.configs || []).forEach(function(config) {
+            var div = document.createElement('div');
+            div.innerText = config;
+            elem.querySelector('.devices').appendChild(div);
+          });
           extras.populate(elem, {
             started: room.started_string,
             duration: room.duration_string,
@@ -193,6 +198,7 @@ var admin = {
           if(event.target.closest('.code')) {
             // let people copy and paste the code
           } else {
+            event.preventDefault();
             admin.load_account(account.id);
           }
         });
@@ -210,6 +216,11 @@ var admin = {
           var elem = template.cloneNode(true);
           elem.classList.remove('template');
           elem.style.display = 'block';
+          elem.querySelector('a.code').href = '#account:' + room.account_id;
+          elem.querySelector('a.code').addEventListener('click', function(event) {
+            event.preventDefault();
+            admin.load_account(room.account_id);
+          });
           process_room(room);
           extras.populate(elem, {
             code: room.account_code,

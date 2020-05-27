@@ -142,11 +142,11 @@ class Api::RoomsController < ApplicationController
 
   def keepalive
     room = Room.find_by(code: params[:room_id])
-    if room && room.user_allowed?(params[:user_id])
+    if room && room.user_allowed?(params[:user_id]) && !room.concluded?
       if params['empty']
         room.closed
       else
-        room.in_use(params[:user_id])
+        room.in_use(params[:user_id], params)
       end
       render json: {updated: true}
     else
@@ -156,8 +156,9 @@ class Api::RoomsController < ApplicationController
 
   def user_coming
     room = Room.find_by(code: params['room_id'])
-    if room && room.room_key
+    if room && room.room_key && !room.concluded?
       room.partner_joined(params['status'] != 'connecting')
+      room.user_accessed(params['pending_id'], params) if params['pending_id']
       RoomChannel.broadcast(room.room_key, {
         type: 'user_coming',
         status: params['status'].to_s

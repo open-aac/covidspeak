@@ -120,7 +120,15 @@ if(location.href.match(/rooms\/teach/)) {
 }
 var match = location.href.match(/rooms\/(.+)+\/join/);
 if(match && match[1] && !match[1].match(/^(mirror|teach)/)) {
-  session.ajax("/api/v1/rooms/" + match[1] + "/coming", {type: 'GET', data: {status: 'entered'}}).then(function(res) {
+  var data = {
+    status: 'entered',
+    system: input.compat.system,
+    browser: input.compat.browser,
+    mobile: !!input.compat.mobile
+  };
+  localStorage.pending_id = Math.round(Math.random() * 999999) + "." + (new Date()).getTime();
+  data.pending_id = localStorage.pending_id;
+  session.ajax("/api/v1/rooms/" + match[1] + "/coming", {type: 'GET', data: data}).then(function(res) {
   }, function(err) { });
 }
 function getMedia() {

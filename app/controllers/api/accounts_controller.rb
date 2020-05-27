@@ -61,9 +61,10 @@ class Api::AccountsController < ApplicationController
 
   def room_json(room, code=nil, name=nil)
     room.generate_defaults
-    {
+    res = {
       :account_code => code,
       :account_name => name,
+      :account_id => room.account_id,
       :partner_status => room.settings['partner_status'],
       :total_users => (room.settings['active_user_ids'] || []).uniq.length,
       :sub_id => room.settings['account_sub_id'],
@@ -71,6 +72,14 @@ class Api::AccountsController < ApplicationController
       :started => room.settings['started_at'] || room.created_at.to_i,
       :ended => room.settings['ended_at']
     }
+    if room.settings['user_configs']
+      res[:configs] = []
+      list = room.settings['user_configs'].to_a.sort_by{|k, c| c['timestamp']}
+      list.each do |id, opts|
+        res[:configs] << "#{opts['system']}.#{opts['browser']}#{opts['mobile'] ? '.mobile' : ''}"
+      end
+    end
+    res
   end
   def account_json(account)
     account.generate_defaults

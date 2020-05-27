@@ -3,9 +3,11 @@ require 'twilio-ruby'
 class Api::UsersController < ApplicationController
   def create
     identity = nil
+    root_user = false
     if params['user_id'] && params['room_id']
       identity = params['user_id']
     elsif params['join_code']
+      root_user = true
       account = Account.find_by_code(params['join_code'])
       if account
         identity = Account.generate_user
@@ -17,6 +19,7 @@ class Api::UsersController < ApplicationController
     room ||= account.generate_room(identity) if params['join_code']
     return api_error(400, {error: "no room generated"}) unless room
     return api_error(400, {error: "no room slots available", throttled: room.throttled?}) if room.throttled?
+    room.user_accessed(identity, params)
     room.save!
     if account
       account.settings['last_room_at'] = Time.now.to_i
