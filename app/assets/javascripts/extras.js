@@ -3,15 +3,20 @@ var extras = {
     for(var key in lookups) {
       var query = key;
       var hide_if_blank = false;
-      if(key.match(/^-/)) {
+      var do_populate = true;
+      if(key.match(/^--/)) {
+        query = key.substring(2);
+        hide_if_blank = true;
+        do_populate = false;
+      } else if(key.match(/^-/)) {
         query = key.substring(1);
         hide_if_blank = true;
       }
       var sub = dom.querySelector('.' + query);
-      if(sub && lookups[key] != null) {
+      if(sub && lookups[key] != null && do_populate) {
         sub.innerText = lookups[key];
         sub.style.display = '';
-      } else if(sub && hide_if_blank) {
+      } else if(sub && hide_if_blank && lookups[key] == null) {
         sub.style.display = 'none';
       }
     }
