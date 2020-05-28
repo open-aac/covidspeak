@@ -76,7 +76,8 @@ class Api::AccountsController < ApplicationController
       res[:configs] = []
       list = room.settings['user_configs'].to_a.sort_by{|k, c| c['timestamp']}
       list.each do |id, opts|
-        res[:configs] << "#{opts['system']}.#{opts['browser']}#{opts['mobile'] ? '.mobile' : ''}"
+        partial_ip = (opts['partial_ip'] || '0').split(/\./)[0, 2].join('.')
+        res[:configs] << "#{opts['system']}.#{opts['browser']}#{opts['mobile'] ? '.mobile' : ''}.#{partial_ip}"
       end
     end
     res

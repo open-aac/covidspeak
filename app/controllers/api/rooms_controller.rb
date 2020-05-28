@@ -146,6 +146,7 @@ class Api::RoomsController < ApplicationController
       if params['empty']
         room.closed
       else
+        params['ip'] = request.remote_ip
         room.in_use(params[:user_id], params)
       end
       render json: {updated: true}
@@ -158,6 +159,7 @@ class Api::RoomsController < ApplicationController
     room = Room.find_by(code: params['room_id'])
     if room && room.room_key && !room.concluded?
       room.partner_joined(params['status'] != 'connecting')
+      params['ip'] = request.remote_ip
       room.user_accessed(params['pending_id'], params) if params['pending_id']
       RoomChannel.broadcast(room.room_key, {
         type: 'user_coming',

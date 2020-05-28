@@ -95,6 +95,13 @@ class Room < ApplicationRecord
       self.settings['user_configs'][user_id_hash]['browser'] ||= opts['browser']
       self.settings['user_configs'][user_id_hash]['mobile'] ||= (opts['mobile'] && opts['mobile'] != 'false' && opts['mobile'] != '')
       self.settings['user_configs'][user_id_hash]['timestamp'] ||= Time.now.to_i
+      if opts['ip']
+        begin
+          addr = IPAddr.new(opts['ip'])
+          self.settings['user_configs'][user_id_hash]['partial_ip'] ||= addr.mask(16).to_s
+        rescue => e
+        end
+      end
     end
   end
 

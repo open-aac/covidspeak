@@ -19,7 +19,9 @@ class Api::UsersController < ApplicationController
     room ||= account.generate_room(identity) if params['join_code']
     return api_error(400, {error: "no room generated"}) unless room
     return api_error(400, {error: "no room slots available", throttled: room.throttled?}) if room.throttled?
-    room.user_accessed(identity, params)
+    trimmed_identity = identity.split(/:/)[0, 2].join(':')
+    params['ip'] = request.remote_ip
+    room.user_accessed(trimmed_identity, params)
     room.save!
     if account
       account.settings['last_room_at'] = Time.now.to_i
