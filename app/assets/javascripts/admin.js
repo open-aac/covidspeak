@@ -1,5 +1,6 @@
+var tz_offset = (new Date()).getTimezoneOffset() * 60 * 1000
 var process_room = function(room) {
-  var started = (new Date(room.started * 1000)).toISOString().substring(5, 16).replace(/T/, ' ');
+  var started = (new Date(room.started * 1000 - tz_offset)).toISOString().substring(5, 16).replace(/T/, ' ');
 
   var duration = room.duration + "s";
   if(room.duration == 0) {
@@ -109,7 +110,7 @@ var admin = {
           link.href = "/?join=" + account.code + "." + key;
           var exp = 'permanent';
           if(account.sub_ids[key] != 'permanent') {
-            var date = new Date(account.sub_ids[key] * 1000);
+            var date = new Date(account.sub_ids[key] * 1000 - tz_offset);
             exp = date.toISOString().substring(0, 10);
           }
           link.innerText = key + " (" + exp + ")";
