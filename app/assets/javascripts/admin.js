@@ -175,6 +175,8 @@ var admin = {
     });
   },
   reload_accounts: function() {
+    if(admin.reloading_accounts) { return; }
+    admin.reloading_accounts = true;
     document.querySelectorAll("#accounts .list .account").forEach(function(account) {
       if(!account.classList.contains('template')) {
         account.parentNode.removeChild(account);
@@ -182,6 +184,12 @@ var admin = {
     });
     document.querySelector("#accounts .list .status").innerText = "Loading Accounts...";
     session.ajax("/api/v1/accounts", {type: 'GET'}).then(function(data) {
+      admin.reloading_accounts = false;
+      document.querySelectorAll("#accounts .list .account").forEach(function(account) {
+        if(!account.classList.contains('template')) {
+          account.parentNode.removeChild(account);
+        }
+      });
       document.querySelector("#accounts .status").innerText = "";
       var template = document.querySelector("#accounts .list .account.template");
       data.accounts = data.accounts.sort(function(a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
@@ -235,7 +243,7 @@ var admin = {
       }
     }, function(err) {
       document.querySelector("#accounts .status").innerText = "Error Loading Accounts";
-
+      admin.reloading_accounts = false;
     });
   },
   show_logout: function() {
