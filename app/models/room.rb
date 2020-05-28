@@ -98,7 +98,8 @@ class Room < ApplicationRecord
       if opts['ip']
         begin
           addr = IPAddr.new(opts['ip'])
-          self.settings['user_configs'][user_id_hash]['partial_ip'] ||= addr.mask(16).to_s
+          hashed_addr = GoSecure.sha512(addr.mask(16).to_s, "partial_ip_#{self.settings['room_nonce']}")[0, 5]
+          self.settings['user_configs'][user_id_hash]['ip_hash'] ||= hashed_addr
         rescue => e
         end
       end
