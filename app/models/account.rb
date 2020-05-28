@@ -152,7 +152,7 @@ class Account < ApplicationRecord
           daily_rooms += 1
           daily_subrooms +=1 if @sub_id && room.settings['account_sub_id'] == @sub_id
         end
-        if ended_at > 1.minutes.ago.to_i
+        if ended_at && ended_at > 1.minutes.ago.to_i
           live_rooms += 1
           live_subrooms +=1 if @sub_id && room.settings['account_sub_id'] == @sub_id
         end

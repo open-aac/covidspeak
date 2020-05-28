@@ -110,6 +110,9 @@ document.querySelector('#join').addEventListener('submit', function(event) {
         } else {
         error.innerText = "No rooms are available for this join code";
       }
+    } else if(err && err.status == 500) {
+      error.innerText = "Unexpected error starting room";
+      console.error("User confirmation error: ", err);
     } else {
       error.innerText = "Please re-check your join code";
       console.error("User confirmation error: ", err);
