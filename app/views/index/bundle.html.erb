@@ -1,0 +1,223 @@
+<div id='middle' class='big'>
+  <h1>Layout Bundle: <%= @bundle.settings['name'] %></h1>
+  Created: <%= @bundle.created_at.strftime("%e %b, %Y") %><br/>
+  <% if !@bundle.settings['author'].blank? %>
+    Author: <%= @bundle.settings['author'] %><br/>
+  <% end %>
+  <% if !@bundle.settings['description'].blank? %>
+    <p style='margin-bottom: 20px;'><%= @bundle.settings['description'] %></p>
+  <% end %>
+  <button id='set_bundle'>Set as my Layout Bundle</button>
+  <div id="bundle_grids">
+    <div class='bundle_grid template'>
+      <div class='topper' tabindex='0'>
+        <img class='image'/>
+        <span class='name'></span>
+      </div>
+    </div>
+  </div>
+  <div id='preview_grid' class='preview'>
+    <div class='grid'>
+      <div class='col left'>
+        <div class='cell' tabindex='0'>
+          <div class='label'></div>
+          <img src=''/>
+        </div>
+        <div class='cell' tabindex='0'>
+          <div class='label'></div>
+          <img src=''/>
+        </div>
+        <div class='cell' tabindex='0'>
+          <div class='label'></div>
+          <img src=''/>
+        </div>
+      </div>
+      <div class='mid'>
+        <div class='cell skinny text_only' tabindex='0'>
+          <div class='label'></div>
+        </div>
+        <div class='preview' tabindex='-1' style='flex: 3;'>
+          <img src='/icons/person.svg'/>
+        </div>
+        <div class='cell' tabindex='0' style='flex: 2;'>
+          <div class='label'></div>
+          <img src=''/>
+        </div>
+      </div>
+      <div class='col right'>
+        <div class='cell' tabindex='0'>
+          <div class='label'></div>
+          <img src=''/>
+        </div>
+        <div class='cell' tabindex='0'>
+          <div class='label'></div>
+          <img src=''/>
+        </div>
+        <div class='cell' tabindex='0'>
+          <div class='label'></div>
+          <img src=''/>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  (function() {
+    if(!room.settings) {
+      room.load_settings();
+    }
+    var str = "<%= @bundle.settings['content'] %>";
+    var template = document.querySelector('.bundle_grid.template');
+    var load_grid = function(dom, grid) {
+      var existing = dom.querySelector('.preview');
+      dom.root_grid = dom.root_grid || grid;
+      if(existing) {
+        existing.parentNode.removeChild(existing);
+      }
+      var preview = document.querySelector('#preview_grid').cloneNode(true);
+      preview.id = '';
+      var list = [];
+      if(grid.buttons.length == 4) {
+        list = [grid.buttons[0], grid.buttons[1], grid.buttons[2], null, null, null, grid.buttons[3], null];
+      } else if(grid.buttons.length == 6) {
+        list = [grid.buttons[0], grid.buttons[1], grid.buttons[2], grid.buttons[3], grid.buttons[5], null, grid.buttons[4], null];
+      } else {
+        list = grid.buttons;
+      }
+      var cols = preview.querySelectorAll('.col,.mid');
+      var cells = [];
+      var tmp = cols[0].querySelectorAll('.cell');
+      cells[0] = tmp[0];
+      cells[3] = tmp[1];
+      cells[5] = tmp[2];
+      tmp = cols[1].querySelectorAll('.cell');
+      cells[1] = tmp[0];
+      cells[6] = tmp[1];
+      tmp = cols[2].querySelectorAll('.cell');
+      cells[2] = tmp[0];
+      cells[4] = tmp[1];
+      cells[7] = tmp[2];
+      cells.forEach(function(cell, idx) {
+        if(list[idx]) {
+          var button = Object.assign({}, list[idx]);
+          cell.addEventListener('click', function(event) {
+            event.preventDefault();
+            if(button.load_id == 'root') {
+              load_grid(dom, dom.root_grid);
+            } else if(button.load_id) {
+              if(button.load_id.match(/^http/)) {
+                boards.find_url(button.load_id).then(function(board) {
+                  var grid = {};
+                  Object.assign(grid, board);
+                  load_grid(dom, grid);
+                }, function(err) {
+                  modal.note("Linked board failed to load");
+                });
+              } else {
+                var grid = boards.grids.find(function(g) { return g.id == button.load_id; });
+                if(grid) {
+                  load_grid(dom, grid);
+                }
+              }
+            } else if(idx == 1 && button.text == "Start Over") {
+              load_grid(dom, dom.root_grid);
+            }
+          });
+          if(cell.querySelector('.label')) {
+            cell.querySelector('.label').innerText = button.text;
+          }
+          if(cell.querySelector('img')) {
+            if(room.settings.show_images) {
+              button.image_url = button.image_url || (symbols['en'][button.text.toLowerCase()] || {})[room.settings.symbol_library];
+            } else {
+              button.image_url = null;
+            }
+            if(button.image_url) {
+              cell.querySelector('img').src = button.image_url;
+            } else {  
+              cell.classList.add('text_only');
+              cell.querySelector('img').style.display = 'none';
+            }
+          }
+        } else {
+          cell.style.display = 'none';
+        }
+      })
+
+      dom.appendChild(preview);
+    };
+    var list = null;
+    try {
+      list = JSON.parse(atob(str));
+    } catch(e) { }
+    if(!list) {
+      document.querySelector('#bundle_grids').innerText = "Failed to load bundle";
+    }
+    list = list.reverse();
+    var idx = 0;
+    list.forEach(function(id) {
+      var grid = boards.grids.find(function(g) { return g.id == id; });
+      var dom = template.cloneNode(true);
+      dom.classList.remove('template');
+      var ready = function(valid) {
+        if(grid.collapsed) {
+          dom.classList.add('collapsed');
+        }
+        if(valid === false) {
+          dom.querySelector('.image').style.display = 'none';
+          dom.querySelector('.name').innerText = "Error loading this grid";
+          // show error loading
+        } else {
+          // render preview
+          console.log(grid);
+          dom.querySelector('.image').src = grid.image_url;
+          dom.querySelector('.name').innerText = grid.name;
+        }
+        dom.querySelector('.topper').addEventListener('click', function(event) {
+          event.preventDefault();
+          if(dom.classList.contains('expanded')) {
+            dom.classList.remove('expanded');
+            var preview = dom.querySelector('.preview');
+            if(preview) { preview.parentNode.removeChild(preview); }
+          } else {
+            load_grid(dom, grid)
+            dom.classList.add('expanded');
+          }
+        });
+      };
+      if(id.match(/^http/)) {
+        grid = {};
+        boards.find_url(id).then(function(board) {
+          Object.assign(grid, board);
+          ready();
+        }, function(err) {
+          ready(false)
+        })
+      }
+      var visible_grids = 8;
+      if(grid) {
+        if(idx == visible_grids) {
+          var div = document.createElement('div');
+          div.classList.add('cutoff');
+          div.innerText = "Additional layouts available under \"more...\"";
+          document.querySelector('#bundle_grids').appendChild(div);
+        }
+        if(idx >= visible_grids) {
+          grid.collapsed = true;
+        }
+        idx++;
+        document.querySelector('#bundle_grids').appendChild(dom);
+        if(id.match(/^http/)) {
+          grid = {};
+        } else if(grid) {
+          ready();
+        }
+      }
+    });
+    document.querySelector('#set_bundle').addEventListener('click', function(event) {
+      event.preventDefault();
+      boards.persist(list.reverse());
+      document.querySelector('#set_bundle').innerText = "Layouts Updated for this Device!";
+    });
+  })();
+</script>

@@ -72,7 +72,7 @@ document.addEventListener('click', function(event) {
     }
     localStorage.terms_accepted = 'true';    
     room.cleanup();
-    location.href = event.target.href;
+    location.href = event.target.closest('a.join').href;
   } else if(event.target.id == 'popout_browser') {
     room.cleanup();
     window.open(location.href, '_system');

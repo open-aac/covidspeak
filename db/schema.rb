@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_05_22_225651) do
+ActiveRecord::Schema.define(version: 2020_07_02_062634) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -22,6 +22,13 @@ ActiveRecord::Schema.define(version: 2020_05_22_225651) do
     t.datetime "updated_at", null: false
     t.boolean "archived"
     t.index ["code"], name: "index_accounts_on_code", unique: true
+  end
+
+  create_table "bundles", force: :cascade do |t|
+    t.text "settings"
+    t.string "verifier"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "rooms", force: :cascade do |t|

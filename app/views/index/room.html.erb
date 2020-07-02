@@ -80,20 +80,20 @@
     </div>
   </div>
   <div class='col left'>
-    <div class='cell' data-idx='0'>
+    <a href='#' class='cell' data-idx='0'>
       <div class='text'></div><img />
-    </div>
-    <div class='cell' data-idx='3'>
+    </a>
+    <a href='#' class='cell' data-idx='3'>
       <div class='text'></div><img />
-    </div>
-    <div class='cell' data-idx='5'>
+    </a>
+    <a href='#' class='cell' data-idx='5'>
       <div class='text'></div><img />
-    </div>
+    </a>
   </div>
   <div class='mid'>
-    <div class='cell skinny' data-idx='1'>
+    <a href='#' class='cell skinny' data-idx='1'>
       <div class='text'></div><img />
-    </div>
+    </a>
     <div class='preview'>
       <div id="partner">
       </div>
@@ -123,12 +123,12 @@
       <div id="end_preview"></div>
       <div id="nav">
         <span class='pres'>
-          <button class='mute'><img src="/icons/mic-mute.svg" alt="mute"/></button>
-          <button class='unmute'><img src="/icons/mic.svg" alt="unmute"/></button>
-          <button class='toggle'><img src="/icons/camera-video.svg" alt="toggle"/></button>
+          <button class='mute' tabindex='-1'><img src="/icons/mic-mute.svg" alt="mute"/></button>
+          <button class='unmute' tabindex='-1'><img src="/icons/mic.svg" alt="unmute"/></button>
+          <button class='toggle' tabindex='-1'><img src="/icons/camera-video.svg" alt="toggle"/></button>
         </span>
-        <button class='zoom' data-direction='in'>+</button>
-        <button class='zoom' data-diration='out'>-</button><br/>
+        <button class='zoom' data-direction='in' tabindex='-1'>+</button>
+        <button class='zoom' data-diration='out' tabindex='-1'>-</button><br/>
       </div>
       <div id="volume_level">
       </div>
@@ -141,9 +141,9 @@
         </div>
       </div>
     </div>
-    <div class='cell' data-idx='6' style='flex: 3;'>
+    <a href='#' class='cell' data-idx='6' style='flex: 3;'>
       <div class='text'></div><img />
-    </div>
+    </a>
     <div id='eyes'>
       <div>
         align eyes here-ish<br/>
@@ -152,15 +152,15 @@
     </div>
   </div>
   <div class='col right'>
-    <div class='cell' data-idx='2'>
+    <a href='#' class='cell' data-idx='2'>
       <div class='text'></div><img />
-    </div>
-    <div class='cell' data-idx='4'>
+    </a>
+    <a href='#' class='cell' data-idx='4'>
       <div class='text'></div><img />
-    </div>
-    <div class='cell' data-idx='7'>
+    </a>
+    <a href='#' class='cell' data-idx='7'>
       <div class='text'></div><img />
-    </div>
+    </a>
   </div>
 </div>
 <div id="share_modal" class="content">
@@ -172,6 +172,23 @@
     types, so if you don't see any sharing options, try
     accessing from a different device.
   </p>
+</div>
+<div id="share_layouts_modal" class="content">
+  <p>
+    When you've created a particularly useful collection
+    of custom vocabularies, you can bundle them together
+    to make them public and
+    share with others!
+    <b>NOTE:</b> Bundles are publicly available and
+    re-shareable. 
+    Do NOT include any private information in any
+    shared bundles.
+  </p>
+  <div style='margin: 10px 0;'>
+    <input id='bundle_name' type='text' placeholder="Bundle Name" style='min-width: 300px; margin-bottom: 5px;'/><br/>
+    <input id='bundle_author_name' type='text' placeholder="Bundle Author" style='min-width: 300px; margin-bottom: 5px;'/>
+    <input id='bundle_description' type='text' placeholder="Bundle Description" style='width: 100%; margin-bottom: 5px;'/>
+  </div>
 </div>
 <div id="grids_modal" class="content">
   <p>
@@ -204,7 +221,8 @@
       to use the same layouts as you.
     </p>
     <div style='text-align: center;'>
-      <button class='copy'>Copy Layout Order</button>
+      <button class='copy'>Copy Order</button>
+      <button class='share'>Share Layouts</button>
       <button class='reset'>
         Reset Layouts
         <div class='confirm' style='font-size: 14px; color: #800; display: none;'>hit again to confirm</div>
@@ -264,6 +282,8 @@
 <div id="customize_modal" class="content">
   <div style='margin-bottom: 10px; text-align: center;'>
   Choose a button layout and fill it out!
+  <br/>
+  NOTE: you can also <a href="#" class='personalize'>load boards from other web sites</a>
   <span class='reverse' style='display: none;'><span style='color: #800; font-weight: bold;'>NOTE:</span> The buttons you fill out will look reversed from how you enter them, but will show up correctly for the communicator's eyes.</span>
   </div>
   <div style='display: flex; flex-direction: row;'>
@@ -308,8 +328,11 @@
 </div>
 <div id="settings_modal" class="content">
   <div class='half'>
-    <h2>Video Input</h2>
-    <select id='video_select'></select>
+    <h2>Text to Speech</h2>
+    <select id='tts_select'>
+      <option value='all'>Speak button hits for both partiees</option>
+      <option value='none'>Don't speak when buttons are hit</option>
+    </select>
   </div>
   <div class='half'>
     <h2>Pictures on Buttons</h2>
@@ -319,9 +342,9 @@
       <option value='none'>Don't Show Any Pictures</option>
     </select>
   </div>
-  <div class='half'>
-    <h2>Audio Input</h2>
-    <select id='audio_select'></select>
+  <div class='half' style='clear: left;'>
+    <h2>Video Input</h2>
+    <select id='video_select'></select>
   </div>
   <div class='half'>
     <div id='settings_symbol_preview'>
@@ -343,6 +366,10 @@
         No pictures will be shown on buttons
       </div>
     </div>
+  </div>
+  <div class='half' style='clear: left;'>
+    <h2>Audio Input</h2>
+    <select id='audio_select'></select>
   </div>
   <div style='clear: both;'></div>
   <div class='preview_container'>

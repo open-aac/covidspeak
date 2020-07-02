@@ -9,6 +9,7 @@ Rails.application.routes.draw do
   get '/rooms/:room_id' => 'index#room'
   get '/rooms/:room_id/join' => 'index#join'
   get '/admin' => 'index#admin'
+  get '/bundles/:code' => 'index#bundle'
   
   mount ActionCable.server => '/cable'
 
@@ -19,6 +20,7 @@ Rails.application.routes.draw do
     end
     resources :users
     post 'tokens' => 'tokens#token'
+    post 'bundles' => 'users#bundle'
     get 'tokens/check' => 'tokens#check_token'
     resources :accounts do
       post 'sub_ids' => 'accounts#sub_id'

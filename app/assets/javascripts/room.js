@@ -550,11 +550,12 @@ var room = {
     }
     room.size_video();
   },
-  assert_grid: function(buttons, id, root, skip_send) {
+  assert_grid: function(buttons, id, locale, root, skip_send) {
     var now = (new Date()).getTime();
     room.buttons = buttons.map(function(b) {
       return room.simple_button(b);
     });
+    room.board_locale = locale;
     room.grid_id = id;
     room.buttons.set_at = now;
     if(root) {
@@ -565,6 +566,7 @@ var room = {
       grid_id: id,
       root_id: room.root_id,
       symbol_library: room.settings.symbol_library,
+      locale: locale,
       buttons: room.buttons
     };
     if(!skip_send) {
@@ -600,6 +602,7 @@ var room = {
     if(audio && !audio.enabled) {
       message.audio_muted = true;
     }
+    message.tts = !!room.settings.tts;
     if((room.local_tracks || []).find(function(t) { return t.type == 'audio' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted; })) {
       message.audio = true;
     }
@@ -715,7 +718,7 @@ var room = {
           } else if(event.target.closest('.delete')) {
             boards.remove_url(grid.data_url);
           } else if(!event.target.closest('.links')) {
-            room.assert_grid(grid.buttons, grid.data_url || grid.id);
+            room.assert_grid(grid.buttons, grid.data_url || grid.id, grid.locale);
             modal.close();
           }
           if(content && content.parentNode) {
@@ -725,6 +728,65 @@ var room = {
         modal_list.appendChild(elem);
       });
     }
+  },
+  manage_grids: function() {
+    modal.open('All Layouts', document.getElementById('grids_modal'));
+    content = document.querySelector('.modal .content');
+    content.querySelector('.add_layout').addEventListener('click', function(event) {
+      var id = content.querySelector('#layout_url').value;
+      var status = content.querySelector('.add_status');
+      status.innerText = "Adding layout(s)...";
+      boards.add_url(id, true).then(function() {
+        content.querySelector('#layout_url').value = '';
+        status.innerText = "";
+      }, function(err) {
+        if(err && err.responseJSON && err.responseJSON.unauthorized) {
+          status.innerText = "Error adding layout, make sure linked board is public";
+        } else {
+          status.innerText = "Error adding layout";
+        }
+      });
+    });
+    content.querySelector('.reset').addEventListener('click', function(event) {
+      if(content.querySelector('.reset .confirm').style.display == 'block') {
+        boards.grids = (boards.original_grids || boards.grids);
+        boards.persist();
+        room.populate_grids();
+        content.querySelector('.reset .confirm').style.display = 'none';
+      } else {
+        content.querySelector('.reset .confirm').style.display = 'block';
+      }
+    });
+    content.querySelector('.share').addEventListener('click', function(event) {
+      modal.open("Share Layouts as a Public Bundle", document.querySelector('#share_layouts_modal'), [
+        {label: "Make This Bundle Public", action: 'share', callback: function() {
+          var code = boards.export_grids().replace(/^grids:\/\//, '');
+          session.ajax('/api/v1/bundles', {
+            method: 'POST',
+            data: {
+              name: document.querySelector('.modal_content #bundle_name').value,
+              author: document.querySelector('.modal_content #bundle_author_name').value,
+              content: code,
+              description: document.querySelector('.modal_content #bundle_description').value,
+            }
+          }).then(function(res) {
+            window.open("/bundles/" + res.bundle.id, '_system');
+            modal.close();
+          }, function(err) {
+            modal.note("Error creating bundle");
+          });
+        }}
+      ]);
+    }); 
+    content.querySelector('.copy').addEventListener('click', function(event) {
+      var uri = boards.export_grids();
+      extras.copy(uri).then(function() {
+        content.querySelector('.copy').innerText = "Layouts Copied!";
+      }, function() {
+        content.querySelector('.copy').innerText = "Layouts Copy Failed";
+      });
+    }); 
+    room.populate_grids();
   },
   flush: function() {
     var now = (new Date()).getTime();
@@ -745,6 +807,7 @@ var room = {
     } catch(e) { room.settings = {}; }
     room.settings = room.settings || {};
     room.settings.symbol_library = room.settings.symbol_library || 'lessonpix';
+    room.settings.tts = room.settings.tts || 'all';
 
     if(room.settings.audio_device_id == 'none' && room.settings.video_device_id == 'none') {
       room.settings['audio_device_id'] = 'any';
@@ -932,7 +995,7 @@ var room = {
               room_session.as_communicator = (localStorage.self_as_communicator == 'true');
               setTimeout(function() {
                 if(!room.asserted_buttons) {
-                  room.assert_grid(room.buttons, 'quick', true);
+                  room.assert_grid(room.buttons, 'quick', room.board_locale || room.default_locale, true);
                 }
               }, 3000);
             } 
@@ -978,6 +1041,76 @@ var room = {
       });
     } else {
       enter_room();
+    }
+  },
+  hit_cell: function($cell) {
+    if(room.current_room) {
+      var button_id = $cell[0].button.id;
+      var button = (room.buttons || []).find(function(b) { return b.id == button_id; });
+      if(button && button.cell) {
+        setTimeout(function() {
+          room.speak_button(button)
+        }, 50);
+      }
+      remote.send_message(room.current_room.id, {action: 'click', button: {id: $cell[0].button.id }}).then(null, function() {
+        // click failed to deliver
+      });
+    }
+    $cell.addClass('my_highlight');
+    $cell.blur();
+    var btn = $cell[0].button;
+    if(btn.text == '+space') {
+      room.add_key(' ');
+    } else if(btn.text == '+backspace') {
+      room.add_key({backspace: true});
+    } else if(btn.text.match(/^\+/)) {
+      room.add_key(btn.text.replace(/^\+/, ''));
+    }
+    setTimeout(function() {
+      var btn = $cell[0].button;
+      if(btn.load_id) {
+        var load_id = btn.load_id;
+        if(load_id == 'root') { load_id = room.root_id; }
+        if(load_id && load_id.toString().match(/^http/)) {
+          boards.find_url(load_id).then(function(grid) {
+            room.assert_grid(grid.buttons, grid.id, grid.locale, false);
+          }, function(err) {
+            modal.note("Couldn't load linked layout", {error: true});
+          })
+        } else {
+          var grid = boards.grids.find(function(g) { return g.id == load_id; });
+          if(grid) {
+            if(room.grid_id == load_id && room.grid_id == 'keyboard') {
+              // 'clear' confirms the message before clearing
+              room.add_key({confirm: true});
+            } 
+            room.assert_grid(grid.buttons, grid.id, false);
+          }  
+        }
+      }
+      $cell.removeClass('my_highlight');
+    }, 1000);
+  },
+  speak_button: function(button) {
+    var text = button.text;
+    if(button.text.match(/^\+/)) {
+      // TODO: set text to current text content
+      text = null;
+    }
+    if(text) {      
+      if(window.speechSynthesis && room.settings.tts && !button.load_id) {
+        var voices = window.speechSynthesis.getVoices().filter(function(v) { return v.lang && v.lang.split(/-|_/)[0].toLowerCase() == (room.board_locale || 'en'); });
+        var voice = voices.find(function(v) { return v.name.match(/^Google/)});
+        voice = voice || voices[0];
+        var u = new SpeechSynthesisUtterance(text);
+        window.speechSynthesis.speak(u);
+        return;
+      }
+      if(!room.current_room.as_communicator) {
+        setTimeout(function() {
+          input.play_sound('/sounds/ding.mp3');
+        }, 500);
+      }  
     }
   },
   check_inputs: function() {
@@ -1366,6 +1499,7 @@ var room = {
       if(lingering) {
         edit.classList.add('lingering');
         show.classList.add('lingering');
+        room.speak_button({text: str});
       } else {
         edit.classList.remove('lingering');
         show.classList.remove('lingering');
@@ -1436,6 +1570,7 @@ var room = {
     } else if(str.confirm) {
       if(room.keyboard_state.string) {
         room.keyboard_state.linger = {}
+        room.speak_button({text: room.keyboard_state.string});
         room.keyboard_state.linger.string = room.keyboard_state.string;
         var linger_id = Math.round(Math.random() * 99999);
         room.keyboard_state.linger.string_at = now;
@@ -1605,10 +1740,8 @@ var room = {
     if(json && json.action == 'click') {
       var button = (room.buttons || []).find(function(b) { return b.id == json.button.id; });
       if(button && button.cell) {
-        if(!room.current_room.as_communicator) {
-          setTimeout(function() {
-            input.play_sound('/sounds/ding.mp3');
-          }, 500);
+        if(!mirror_type && !teaching_type) {
+          room.speak_button(button);
         }
 
         button.cell.classList.add('highlight');
@@ -1703,6 +1836,7 @@ var room = {
             room.settings.symbol_library = json.asserted_buttons.symbol_library;
             localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
             room.buttons = json.asserted_buttons.buttons;
+            room.board_locale = json.asserted_buttons.locale || room.board_locale || room.default_locale;
             room.buttons.set_at = ts - 1000;
             room.grid_id = json.asserted_buttons.grid_id;
             room.root_id = json.asserted_buttons.root_id;
@@ -1907,6 +2041,7 @@ document.addEventListener('click', function(event) {
   }
   if(event.target.classList.contains('text_input')) { return; }  
   var $cell = $(event.target).closest('.cell');
+  if($cell.closest('.preview').length > 0) { $cell = []; }
   var $button = $(event.target).closest('.button');
   var $partner = $(event.target).closest('#partner,#eyes,#no_preview,#status_holder');
   var $invite = $(event.target).closest('#invite_partner');
@@ -1942,44 +2077,9 @@ document.addEventListener('click', function(event) {
   } else if($invite.length > 0) {
     room.invite();
   } else if(personalize) {
+    room.manage_grids();
     event.preventDefault();
     event.target.closest('.popover').style.display = 'none';
-    modal.open('All Layouts', document.getElementById('grids_modal'));
-    content = document.querySelector('.modal .content');
-    content.querySelector('.add_layout').addEventListener('click', function(event) {
-      var id = content.querySelector('#layout_url').value;
-      var status = content.querySelector('.add_status');
-      status.innerText = "Adding layout(s)...";
-      boards.add_url(id, true).then(function() {
-        content.querySelector('#layout_url').value = '';
-        status.innerText = "";
-      }, function(err) {
-        if(err && err.responseJSON && err.responseJSON.unauthorized) {
-          status.innerText = "Error adding layout, make sure linked board is public";
-        } else {
-          status.innerText = "Error adding layout";
-        }
-      });
-    });
-    content.querySelector('.reset').addEventListener('click', function(event) {
-      if(content.querySelector('.reset .confirm').style.display == 'block') {
-        boards.grids = (boards.original_grids || boards.grids);
-        boards.persist();
-        room.populate_grids();
-        content.querySelector('.reset .confirm').style.display = 'none';
-      } else {
-        content.querySelector('.reset .confirm').style.display = 'block';
-      }
-    });
-    content.querySelector('.copy').addEventListener('click', function(event) {
-      var uri = boards.export_grids();
-      extras.copy(uri).then(function() {
-        content.querySelector('.copy').innerText = "Layout Order Copied!";
-      }, function() {
-        content.querySelector('.copy').innerText = "Layout Order Copy Failed";
-      });
-    }); 
-    room.populate_grids();
   } else if($continue.length > 0) {
     if(room.video_continue) {
       room.video_continue();
@@ -2006,45 +2106,8 @@ document.addEventListener('click', function(event) {
     event.preventDefault();
     room.toggle_input(true);
   } else if($cell.length > 0) {
-    if(room.current_room) {
-      remote.send_message(room.current_room.id, {action: 'click', button: {id: $cell[0].button.id }}).then(null, function() {
-        // click failed to deliver
-      });
-    }
-    $cell.addClass('my_highlight');
-    $cell.blur();
-    var btn = $cell[0].button;
-    if(btn.text == '+space') {
-      room.add_key(' ');
-    } else if(btn.text == '+backspace') {
-      room.add_key({backspace: true});
-    } else if(btn.text.match(/^\+/)) {
-      room.add_key(btn.text.replace(/^\+/, ''));
-    }
-    setTimeout(function() {
-      var btn = $cell[0].button;
-      if(btn.load_id) {
-        var load_id = btn.load_id;
-        if(load_id == 'root') { load_id = room.root_id; }
-        if(load_id.toString().match(/^http/)) {
-          boards.find_url(load_id).then(function(grid) {
-            room.assert_grid(grid.buttons, grid.id, false);
-          }, function(err) {
-            modal.note("Couldn't load linked layout", {error: true});
-          })
-        } else {
-          var grid = boards.grids.find(function(g) { return g.id == load_id; });
-          if(grid) {
-            if(room.grid_id == load_id && room.grid_id == 'keyboard') {
-              // 'clear' confirms the message before clearing
-              room.add_key({confirm: true});
-            } 
-            room.assert_grid(grid.buttons, grid.id, false);
-          }  
-        }
-      }
-      $cell.removeClass('my_highlight');
-    }, 1000);
+    event.preventDefault();
+    room.hit_cell($cell);
   } else if($button.length > 0) {
     event.preventDefault();
     if($button.hasClass('with_popover')) {
@@ -2131,16 +2194,23 @@ document.addEventListener('click', function(event) {
               i.image_url = image_urls[i.text];
             }
           });
-          room.assert_grid(grid, 'custom_' + (new Date()).getTime + "_" + Math.random(), true);
+          var locale = navigator.language.split(/-|_/)[0].toLowerCase();
+          room.assert_grid(grid, 'custom_' + (new Date()).getTime + "_" + Math.random(), locale, true);
           modal.close();
-        }}
+        }},
+        {action: 'load', label: "Import Board", callback: function() {
+          room.manage_grids();
+        }},
       ]);
       content = document.querySelector('.modal .content');
       if(!room.current_room.as_communicator) {
         content.querySelector('.reverse').style.display = 'inline';
       }
       content.addEventListener('click', function(event) {
-        if(event.target.classList.contains('size')) {
+        if(event.target.classList.contains('personalize')) {
+          event.preventDefault();
+          room.manage_grids();
+        } else if(event.target.classList.contains('size')) {
           size = parseInt(event.target.getAttribute('data-size'), 10);
           content.querySelectorAll('button.size').forEach(function(btn) {
             if(btn == event.target) {
@@ -2239,6 +2309,7 @@ document.addEventListener('click', function(event) {
           });
         });
         content.querySelector('#symbol_select').value = room.settings.symbol_library;
+        content.querySelector('#tts_select').value = room.settings.tts;
 
         var video = content.querySelector('#settings_video_preview');
         if(video_track && video_track.mediaStreamTrack) {
@@ -2257,12 +2328,17 @@ document.addEventListener('click', function(event) {
           var value = e.target.value;
           room.handle_input_switch(value, video, update_tracks);
         });
+        content.querySelector('#tts_select').addEventListener('change', function(e) {
+          room.settings.tts = e.target.value || 'all';
+          localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
+          room.send_update();
+        });
         content.querySelector('#symbol_select').addEventListener('change', function(e) {
           content.querySelector('#settings_symbol_preview').className = e.target.value;
           if(e.target.value != room.settings.symbol_library) {
             room.settings.symbol_library = e.target.value;
             localStorage['vidspeak_settings'] = JSON.stringify(room.settings);
-            room.assert_grid(room.buttons, room.grid_id);
+            room.assert_grid(room.buttons, room.grid_id, room.board_locale);
           }
         });
         var select = content.querySelector('#symbol_select');
@@ -2275,13 +2351,13 @@ document.addEventListener('click', function(event) {
         if(room.modal_analyser) { room.modal_analyser.release(); }
       });
     } else if(action == 'quick') {
-      room.assert_grid(room.default_buttons, 'quick', true);
+      room.assert_grid(room.default_buttons, 'quick', room.default_locale, true);
     } else if(action == 'load') {
       var id = $(event.target).closest('.grid_option').attr('data-id');
       if(id) {
         var grid = boards.grids.find(function(g) { return g.id == id; });
         if(grid) {
-          room.assert_grid(grid.buttons, grid.id, true);
+          room.assert_grid(grid.buttons, grid.id, grid.locale, true);
         }
       }
       $button.find(".popover").css('display', 'none');

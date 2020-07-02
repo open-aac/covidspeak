@@ -32,4 +32,9 @@ class Api::UsersController < ApplicationController
     # Generate the token
     render :json => {:user => {id: identity, room_id: room.code}}
   end
+
+  def bundle
+    bundle = Bundle.generate(params)
+    render json: {bundle: {id: bundle.code}}
+  end
 end

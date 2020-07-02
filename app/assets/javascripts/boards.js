@@ -179,6 +179,7 @@ var parse_obf = function(obf) {
   var res = {};
   res.id = obf.id;
   res.data_url = obf.data_url;
+  res.locale = obf.locale || 'en';
   res.name = obf.name;
   res.skip = !!obf.ext_covidspeak_skip;
   res.buttons = [];
@@ -206,11 +207,14 @@ var parse_obf = function(obf) {
   });
   if(obf.grid && obf.grid.rows >= 2 && obf.grid.columns >= 2) {
     if(obf.grid.columns == 2) {
+      // topleft -> left, topright -> bottom, bottomleft -> left, bottomright -> right
       res.buttons[0] = buttons[obf.grid.order[0][0]] || {id: 1000, text: ""};
       res.buttons[1] = buttons[obf.grid.order[1][0]];
       res.buttons[2] = buttons[obf.grid.order[1][1]] || {id: 1222, text: ""};
       res.buttons[3] = buttons[obf.grid.order[0][1]] || {id: 1333, text: ""};
     } else if(obf.grid.rows == 2) {
+      // topleft -> topleft, topmid -> top, topright -> topright,
+      // bottomleft -> bottomleft, bottommid -> bottom, bottomright -> bottomright
       res.buttons[0] = buttons[obf.grid.order[0][0]] || {id: 1000, text: ""};
       res.buttons[1] = buttons[obf.grid.order[0][1]];
       res.buttons[2] = buttons[obf.grid.order[0][2]] || {id: 1222, text: ""};
@@ -245,6 +249,7 @@ obfs.forEach(function(obf) {
 var default_grid = parse_obf(default_obf);
 boards.grids.push(default_grid);
 var default_buttons = default_grid.buttons;
+var default_locale = default_grid.locale || 'en';
 
 boards.refresh = function() {
   boards.original_grids = boards.original_grids || boards.grids;

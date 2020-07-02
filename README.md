@@ -121,6 +121,8 @@ https://www.hipaajournal.com/hipaa-conduit-exception-rule/
 
 ## TODO
 (Contributions welcome!)
+- Backend specs
+- Frontend specs
 - Track down issue with Twilio TURN server sessions not loading if parter waits more than 10 minutes to join
 - Throttling (rack-attack?)
 - Optional speech output (maybe just from the communicator?)

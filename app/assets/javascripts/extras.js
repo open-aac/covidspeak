@@ -39,7 +39,7 @@ var extras = {
         // Now that we've selected the anchor text, execute the copy command  
         var successful = document.execCommand('copy');  
         var msg = successful ? 'successful' : 'unsuccessful';  
-        console.log('Copy email command was ' + msg);  
+        console.log('Copy command was ' + msg);  
         if(successful) {
           res({copied: true});
         } else {

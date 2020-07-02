@@ -299,7 +299,7 @@ remote.video = {
         } else if(timing.action == 'load') {
           var grid = boards.grids.find(function(g) { return g.id == timing.id; });
           if(grid) {
-            room.assert_grid(grid.buttons, grid.id, false);
+            room.assert_grid(grid.buttons, grid.id, grid.locale, false);
           }
         }
       }
