@@ -1,11 +1,12 @@
 require 'go_secure'
 
 class Account < ApplicationRecord
+  has_many :rooms
+  has_many :pending_rooms
+  
   include SecureSerialize
   secure_serialize :settings
   before_save :generate_defaults
-  has_many :rooms
-  has_many :pending_rooms
 
   def generate_defaults
     self.settings ||= {}
@@ -209,7 +210,7 @@ class Account < ApplicationRecord
     return room_id == generate_room(hash)
   end
 
-  def verifier(identity)
+  def id_verifier(identity)
     self.settings ||= {}
     salt = self.settings['salt']
     secret = self.settings['shared_secret']
@@ -219,7 +220,7 @@ class Account < ApplicationRecord
     Base64.encode64(hmac).strip
   end
 
-  def verifier=(str)
+  def id_verifier=(str)
     secret, salt = GoSecure.encrypt(str, 'account_hmac_sha1_verifier')
     self.settings['salt'] = salt
     self.settings['shared_secret'] = secret
