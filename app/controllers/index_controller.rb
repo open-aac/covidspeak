@@ -11,8 +11,15 @@ class IndexController < ApplicationController
   end
 
   def bundle
-    @bundle_code = params['code']
     @bundle = Bundle.find_by_code(params['code'])
+  end
+
+  def pending_room
+    @room = PendingRoom.find_by_code(params['room_id'])
+  end
+
+  def schedule
+    @account = Account.find_by_schedule_id(params['schedule_id'])
   end
 
   def admin

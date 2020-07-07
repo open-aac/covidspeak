@@ -4,9 +4,12 @@ class Account < ApplicationRecord
   include SecureSerialize
   secure_serialize :settings
   before_save :generate_defaults
+  has_many :rooms
+  has_many :pending_rooms
 
   def generate_defaults
     self.settings ||= {}
+    self.settings['nonce'] ||= GoSecure.nonce('account_verifier')
     self.archived = !!(self.settings['last_room_at'] && self.settings['last_room_at'] < 6.months.ago.to_i)
     true
   end
@@ -19,6 +22,25 @@ class Account < ApplicationRecord
       self.settings['recent_rooms'] = Room.where(account_id: self.id).where(['created_at > ?', 2.weeks.ago]).map{|r| (r.duration || 0) > 3 }.length
       self.save
     end
+  end
+
+  def schedule_id
+    if !self.settings['nonce']
+      self.generate_defaults
+      self.save
+    end
+    parts = [self.id.to_s, Time.now.to_i.to_s]
+    parts << GoSecure.sha512(parts.to_json, "schedule_id_#{self.settings['nonce']}")
+    parts.join('_')
+  end
+
+  def self.find_by_schedule_id(id)
+    id, ts, verifier = (id || '').split(/_/)
+    return nil unless id && ts && verifier
+    return nil if ts.to_i < 12.hours.ago.to_i
+    account = Account.find_by(id: id)
+    return nil unless account && verifier == GoSecure.sha512([id, ts].to_json, "schedule_id_#{account.settings['nonce']}")
+    return account
   end
 
   def self.find_by_code(code)
@@ -157,6 +179,9 @@ class Account < ApplicationRecord
           live_subrooms +=1 if @sub_id && room.settings['account_sub_id'] == @sub_id
         end
       end
+      # TODO: note the throttles somewhere so we can review
+      # them and make sure there aren't issues, or at least
+      # let them know they're happening (highlight in UI list)
       if max_live_rooms && live_rooms >= max_live_rooms
         return Room.throttle_response('too_many_live')
       elsif max_live_subrooms && live_subrooms >= max_live_subrooms
@@ -222,5 +247,9 @@ class Account < ApplicationRecord
     ts = exp.to_i
     check = GoSecure.sha512("#{nonce}::#{exp}", "admin_access_token_#{ENV['ADMIN_KEY'] || 'admin_key'}")
     ts > Time.now.to_i && verifier == check
+  end
+
+  def self.hex_shortened(hex)
+    Base64.urlsafe_encode64([hex].pack("H*"))
   end
 end

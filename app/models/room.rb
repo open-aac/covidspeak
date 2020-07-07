@@ -7,6 +7,7 @@ class Room < ApplicationRecord
 
   def generate_defaults
     self.settings ||= {}
+    self.settings['name'] ||= "Unscheduled Room"
     if self.settings['ended_at'] && self.settings['started_at']
       self.duration = self.settings['ended_at'] - self.settings['started_at'] - (self.settings['gaps'] || []).map{|g| g['duration'] || 0}.sum
     end
@@ -85,7 +86,7 @@ class Room < ApplicationRecord
     self.settings['active_user_ids'] << user_id_hash
     self.settings['active_user_ids'].uniq!
     self.settings['user_configs'] ||= {}
-    if opts['pending_id'] && user_id
+    if opts && opts['pending_id'] && user_id
       pending_id_hash = GoSecure.sha512(user_id.to_s, "user_id_hash_#{self.settings['room_nonce']}")[0, 5]
       self.settings['user_configs'].delete(pending_id_hash)
     end

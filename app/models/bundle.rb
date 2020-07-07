@@ -1,6 +1,7 @@
 class Bundle < ApplicationRecord
   include SecureSerialize
   secure_serialize :settings
+  belongs_to :account
 
   before_save :generate_defaults
 
@@ -8,6 +9,7 @@ class Bundle < ApplicationRecord
     self.settings ||= {}
     self.settings['name'] ||= "Unnamed Bundle"
     self.verifier ||= GoSecure.nonce('bundle_verifier')[0, 10]
+    true
   end
 
   def code

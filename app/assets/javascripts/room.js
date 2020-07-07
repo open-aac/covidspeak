@@ -1,3 +1,6 @@
+// TODO: auto-close room after 12 hours
+// TODO: If room_id starts with x and is lost, this is probably
+// not a valid room...
 var mirror_type = location.href.match(/mirror/);
 var teaching_type = location.href.match(/teach/);
 var add_dom = function(elem, track, user) {
@@ -1933,6 +1936,16 @@ var room = {
       res.same = comp.id == btn.id && comp.text == btn.text && comp.image_url == btn.image_url && comp.load_id == btn.load_id;
     }
     return res;
+  },
+  start_and_enter_room: function(res) {
+    localStorage.removeItem('teach_return_url');
+    localStorage.user_id = res.user.id;
+    localStorage.room_id = res.user.room_id;
+    localStorage.room_set_at = (new Date()).getTime();
+    localStorage.self_as_communicator = (!!res.user.as_communicator).toString();
+    localStorage.show_images = 'true';
+    localStorage.terms_accepted = 'true';
+    location.href = '/rooms/' + res.user.room_id;
   }
 };
 window.addEventListener('resize', function() {

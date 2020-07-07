@@ -12,7 +12,7 @@
       <span id="ready_to_chat">Ready to chat</span><span id='mirror_text' style='display: none;'> <b>with yourself</b></span>? 
     </span>
   </div>
-  <div class='preview'>
+  <div class='preview' id='preview_box'>
     <div class='status'>
       <div id='message'>
       </div>
@@ -23,19 +23,33 @@
   </div>
   <div class='big_checkbox' style='margin: 10px 0; padding-left: 52px; text-align: left; padding-top: 0; font-size: 14px;'>
     <label>
-      <input type='checkbox' id='accept'/>
+      <input type='checkbox' id='accept' style='margin-top: -5px;'/>
       By using the product, you are agreeing that you have read and understood the <a href="/terms">Terms of Use and License Agreement</a>, and are capable of binding to a legal contract.
     </label>
   </div>
   
-  <a class='join' href="/rooms/<%= params['room_id'] %>">
+  <div class='room_status' style='margin-top: 20px; font-size: 20px;'>
+    Initializing...
+  </div>
+  <a class='joinable join' style='display: none;' href="/rooms/<%= params['room_id'] %>">
     <img src="/logo.svg" class='img_logo' style='height: 50px; margin: -10px 0;'/>
     Join the Room
     <div id="accept_reminder" style='color: #800; font-size: 14px; visibility: hidden;'>
       You must accept the terms before entering
     </div>
   </a>
-  <div class='buttons'>
+  <div class="pending_room" style='display: none;'>
+    <img src="/logo.svg" class='img_logo' style='float: left; height: 50px; margin-right: 10px;'/>
+    <div class='title'>
+      This room hasn't been started yet, stay tuned...
+      <span class='pending_room_status'></span>
+    </div>
+    <div class='time'>
+      Scheduled For: 
+      <span class='time_string'></span>
+    </div>
+  </div>
+  <div class='joinable buttons' style='display: none;'>
     <button id='copy'>
       <img class='icon' src='/icons/clipboard.svg' alt='' style='height: 25px; vertical-align: bottom;'/>
       Copy Link to Share
@@ -50,6 +64,57 @@
   </div>
 </div>
 <script>
+var room_id = "<%= params['room_id'] %>";
+var load_room = function() {
+  document.querySelector('.room_status').innerText = "Checking Room...";
+  document.querySelector('.pending_room_status').innerText = "Checking Room...";
+  var room_ready = function() {
+    getMedia();
+    room_pending();
+    document.querySelector('.room_status').style.display = 'none';
+    document.querySelector('.pending_room').style.display = 'none';
+    document.querySelectorAll('.joinable').forEach(function(elem) {
+      elem.style.display = 'block';
+    });  
+  };
+  
+  if(location.href.match(/rooms\/mirror/) || location.href.match(/rooms\/teach/)) {
+    room_ready();
+  } else {
+    session.ajax("/api/v1/rooms/" + room_id + "/status", {type: 'GET'}).then(function(res) {
+      load_room.errors = 0;
+      document.querySelector('.pending_room_status').innerText = "";
+      if(res.pending) {
+        room_id = res.code;
+        document.querySelector('.join_link').innerText = location.origin + "/rooms/" + room_id + "/join";
+        document.querySelector('.room_status').style.display = 'none';
+        document.querySelector('.pending_room').style.display = 'block';
+        document.querySelector('.buttons').style.display = 'block';
+        var time_string = window.moment(res.start_at).format('D MMM, YYYY h:mma')
+        document.querySelector('.time_string').innerText = time_string;
+        setTimeout(load_room, 30000);
+      } else {
+        room_id = res.code;
+        document.querySelector('a.join').href = "/rooms/" + room_id;
+        room_ready();
+      }
+    }, function(err) {
+      if(err && err.responseJSON && err.responseJSON.error == "no room found") {
+        document.querySelector('.room_status').innerText = "Room Not Available";
+      } else {
+        load_room.errors = (load_room.errors || 0) + 1;
+        document.querySelector('.room_status').innerText = "Couldn't Load Room, Trying Again...";
+        document.querySelector('.pending_room_status').innerText = "Couldn't Load Room, Trying Again...";
+        if(load_room.errors > 5) {
+          setTimeout(load_room, 15000);
+        } else {
+          setTimeout(load_room, 2000);    
+        }
+      }
+    });  
+  }
+}
+load_room();
 if(navigator.canShare && navigator.canShare()) {
   document.querySelector("#share").style.display = 'inline';
 }
@@ -57,11 +122,13 @@ if(localStorage.terms_accepted) {
   document.querySelector('#accept').checked = true;
 }
 if(!navigator.share) {
-
   document.querySelector('#share').style.display = 'none';
   document.querySelector('#copy').classList.add('solo')
 }
 localStorage.removeItem('teach_return_url');
+if(localStorage.room_id != room_id) {
+  localStorage.removeItem('self_as_communicator');  
+}
 document.addEventListener('click', function(event) {
   var url = (document.querySelector('.join_link') || {}).innerText;
   if(event.target.closest('a.join')) {
@@ -119,17 +186,19 @@ if(location.href.match(/rooms\/teach/)) {
   document.querySelector('#ready_to_chat').innerText = "Ready to Chat";
 }
 var match = location.href.match(/rooms\/(.+)+\/join/);
-if(match && match[1] && !match[1].match(/^(mirror|teach)/)) {
-  var data = {
-    status: 'entered',
-    system: input.compat.system,
-    browser: input.compat.browser,
-    mobile: !!input.compat.mobile
-  };
-  localStorage.pending_id = Math.round(Math.random() * 999999) + "." + (new Date()).getTime();
-  data.pending_id = localStorage.pending_id;
-  session.ajax("/api/v1/rooms/" + match[1] + "/coming", {type: 'GET', data: data}).then(function(res) {
-  }, function(err) { });
+var room_pending = function() {
+  if(match && match[1] && !match[1].match(/^(mirror|teach)/)) {
+    var data = {
+      status: 'entered',
+      system: input.compat.system,
+      browser: input.compat.browser,
+      mobile: !!input.compat.mobile
+    };
+    localStorage.pending_id = Math.round(Math.random() * 999999) + "." + (new Date()).getTime();
+    data.pending_id = localStorage.pending_id;
+    session.ajax("/api/v1/rooms/" + match[1] + "/coming", {type: 'GET', data: data}).then(function(res) {
+    }, function(err) { });
+  }  
 }
 function getMedia() {
   var status = function(message, options) {
@@ -148,6 +217,7 @@ function getMedia() {
   };
   room.join_status = status;
   var handled = false;
+  document.querySelector('#preview_box').classList.add('ready');
   setTimeout(function() {
     if(!handled) {
       status("Waiting for camera...");
@@ -208,6 +278,5 @@ function getMedia() {
     room.handle_camera_error(null, status);
   }
 };
-getMedia();
 
 </script>

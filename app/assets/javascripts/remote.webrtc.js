@@ -743,6 +743,8 @@ remote.webrtc = {
     if(remote.webrtc.pcs.length > 0 && all_connections_ended) {
       console.log("RTC: no active connections, try to reconnect");
       remote.webrtc.reconnect();
+    } else if(!room.active) {
+      room.set_active(true);
     }
     remote.webrtc.poll_status.timer = setTimeout(remote.webrtc.poll_status, 10000);
   },

@@ -24,8 +24,13 @@
       </div>
       <p class='error'></p>
     </form>
-    <div style='margin-top: 20px; text-align: right;'>
-      <a href="#" id='join_code_help'><img class='icon' src='/icons/question-circle.svg' alt='' style='opacity: 0.7;' />        What's a Join Code?</a>
+    <div style='width: 250px; height: 60px; margin-left: auto;'>
+    <div style='margin-top: 20px;'>
+      <a href="#" id='join_code_help'><img class='icon' src='/icons/question-circle.svg' alt='' style='opacity: 0.7;' /> What's a Join Code?</a>
+    </div>
+    <div id='manage_schedule_container' style='margin-top: 20px; display: none;'>
+      <a href="/schedule" id='manage_schedule'><img class='icon' src='/icons/calendar.svg' alt='' style='opacity: 0.7;' /> Manage Session Schedule</a>
+    </div>
     </div>
   </div>
 </div>
@@ -57,10 +62,14 @@ var ts = parseInt(localStorage.room_set_at || "0", 10);
 if(ts > ((new Date()).getTime() - (30 * 60 * 1000)) && localStorage.room_id && localStorage.user_id) {
   document.querySelector('#existing_room').style.display = 'block';
 }
+document.querySelector('#join_code').addEventListener('input', function(e) {
+  document.querySelector('#manage_schedule_container').style.display = event.target.value ? 'block' : 'none';
+});
 if(location.search) {
   var join = (new URL(location)).searchParams.get('join');
   if(join) {
     document.querySelector('#join_code').value = join;
+    document.querySelector('#manage_schedule_container').style.display = 'block';
   }
 }
 document.querySelector('#join_code_help').addEventListener('click', function(event) {
@@ -71,6 +80,20 @@ document.querySelector('#rejoin').addEventListener('click', function(event) {
   event.preventDefault();
   if(localStorage.user_id && localStorage.room_id) {
     location.href = '/rooms/' + localStorage.room_id;
+  }
+});
+document.querySelector('#manage_schedule').addEventListener('click', function(event) {
+  event.preventDefault();
+  var code = document.querySelector('#join_code').value;
+  if(code) {
+    session.ajax('/api/v1/accounts/join_code', {
+      method: 'POST',
+      data: {join_code: code}
+    }).then(function(res) {
+      location.href = '/schedule/' + res.account.schedule_id;
+    }, function() {
+//      location.href = '/schedule/' + code;
+    });
   }
 });
 document.querySelector('#join').addEventListener('submit', function(event) {
@@ -91,13 +114,8 @@ document.querySelector('#join').addEventListener('submit', function(event) {
     method: 'POST',
     data: {join_code: code, type: remote.backend}
   }).then(function(res) {
-    localStorage.user_id = res.user.id;
-    localStorage.room_id = res.user.room_id;
-    localStorage.room_set_at = (new Date()).getTime();
-    localStorage.self_as_communicator = document.querySelector('#as_communicator').checked ? 'true' : 'false';
-    localStorage.show_images = 'true';
-    localStorage.terms_accepted = 'true';
-    location.href = '/rooms/' + res.user.room_id;
+    res.user.as_communicator = document.querySelector('#as_communicator').checked ? true : false;
+    room.start_and_enter_room(res);
   }, function(err) {
     document.querySelector('#join button').innerText = "Start Room";
     if(err && err.responseJSON && err.responseJSON.throttled) {

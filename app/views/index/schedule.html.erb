@@ -1,0 +1,171 @@
+<div id='middle' class='big'>
+  <h1>Room Schedule</h1>
+  <div id='expired' <% if @account %>style='display: none;'<% end %>>
+    <p class='prompt'>Schedule page has expired, please re-enter join code</p>
+    <form id='join' style='width: 400px; margin-right: auto;'>
+      <input type='text' style='width: calc(100% - 185px);' placeholder='Join Code' id='join_code' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='off'/>
+      <button type='submit' class='primary' style='width: 180px; margin-right: 0;'>
+        Submit
+      </button>
+      <p class='error'></p>
+    </form>
+  </div>
+  <div id='schedule_content' style='display: none;'>
+    <p>Below are all scheduled and recently-joined rooms for this account:</p>
+    <div id='rooms'>
+      <div class='room template'>
+        <a class='name_holder'>
+          <img src='/logo.svg' class='icon' />
+          <span class='name'></span>
+        </a>
+        <span class='name_holder'>
+          <img src='/logo.svg' class='icon' />
+          <span class='name'></span>
+        </span>
+        <span class='start'></span>
+        <a class='delete' href='#'><img src='/icons/trash.svg'/></a>
+      </div>
+    </div>
+    <form id='add_room' style='margin-top: 50px; width: 500px; margin-right: auto;'>
+      <h2>Schedule a Room</h2>
+      <input type='text' style='width: 100%;' placeholder='Room Name' id='room_name'/>
+      <p style='color: #800; margin-top: 3px; margin-bottom: 5px; font-size: 15px;'><strong>REMEMBER:</strong> Do NOT include any personally-identifiable information in room names! Co-VidSpeak is not a private information authority.</p>
+      <div style='margin-top: 5px;'>
+        <input type='date' style='width: 45%;' placeholder="Date" id='room_date'/>
+        <input type='time' style='width: 45%; margin-left: 10px;' placeholder="Time" id='room_time'/>
+      </div>
+      <div class='big_checkbox' style='margin: 10px 0 10px -11px; padding-left: 52px; text-align: left; padding-top: 0; font-size: 14px; font-size: 18px; padding-top: 10px;'>
+        <label>
+          <input type='checkbox' id='as_communicator' checked='true'/>
+          Let me join the room as the communicator
+        </label>
+      </div>
+      <div style='margin-top: 5px;'>
+        <button id='schedule_button' type='submit' class='primary' style='width: 180px; margin-right: 0;'>
+          Schedule Room
+        </button>
+      </div>
+      <p class='error'></p>
+    </form>
+  </div>
+</div>
+<script>
+  // code for re-joining
+  (function() {
+
+  })();
+</script>
+<% if @account %>
+  <script>
+    (function() {
+      var account_id = "<%= @account.schedule_id %>";
+      var now = window.moment();
+      var next_hour = window.moment();
+      next_hour.second(0);
+      next_hour.minute(0);
+      next_hour.add(1, 'hour');
+      document.querySelector('#room_date').value = next_hour.format('YYYY-MM-DD');
+      document.querySelector('#room_time').value = next_hour.format('HH:mm:ss');
+      // look up schedule
+      var load_rooms = function() {
+        var to_remove = [];
+        document.querySelectorAll('#rooms .room').forEach(function(room) {
+          if(!room.classList.contains('template')) {
+            to_remove.push(room);
+          }
+        });
+        to_remove.forEach(function(room) { room.parentNode.removeChild(room); });
+        session.ajax('/api/v1/accounts/' + account_id + '/rooms', {type: 'GET'}).then(function(list) {
+          document.querySelector('#schedule_content').style.display = 'block';
+          var template = document.querySelector('#rooms .room.template');
+          list.rooms.forEach(function(room) {
+            var elem = template.cloneNode(true);
+            elem.classList.remove('template');
+            elem.querySelectorAll('.name').forEach(function(name) {
+              name.innerText = room.name;
+            })
+            if(room.pending) {
+              elem.classList.add('joinable');
+              elem.classList.add('removable');
+              elem.querySelector('a.name_holder').href = "/rooms/pending/" + room.code;
+            } else if(room.joinable) {
+              elem.classList.add('joinable');
+              elem.querySelector('a.name_holder').href = "/rooms/" + room.code;
+            }
+            var started = window.moment(room.start_at || room.started_at);
+            var time_string = started.format('D MMM, YYYY h:mma')
+
+            var status = null;
+            if(room.partner_status == 'attempted') {
+              status = "partner attempted to join";
+            } else if(room.partner_status == 'waiting_room') {
+              status = "partner never left waiting room";
+            } else if(room.partner_status == 'connected') {
+              status = "partner temporarily connected";
+            } else if(room.partner_status == 'pending_waiting_room') {
+              status = "partner waited for room activation";
+            } else if(!room.pending) {
+              status = "partner never connected";
+            }
+            if(room.ended_at && room.partner_status == 'connected') {
+              time_string = time_string + " (" + room.duration + "m)";
+            } else if(status) {
+              time_string = time_string + " (" + status + ")";
+            }
+            elem.querySelector('.start').innerText = time_string;
+            document.querySelector('#rooms').appendChild(elem);
+          })
+        }, function(err) {
+          document.querySelector('#schedule_content').style.display = 'none';
+          document.querySelector('#expired').style.display = 'block';
+          document.querySelector('#expired .prompt').innerText = "There was an error loading the schedule, please try again";
+        });  
+      };
+      load_rooms();
+      document.querySelector('#add_room').addEventListener('submit', function(event) {
+        event.preventDefault();
+        document.querySelector('#schedule_button').innerText = "Scheduling Room...";
+        var time = window.moment(document.querySelector('#room_date').value + " " + document.querySelector('#room_time').value);
+
+        session.ajax('/api/v1/accounts/' + account_id + '/rooms', {
+          type: 'POST',
+          data: {
+            name: document.querySelector('#room_name').value,
+            start_at: time.toISOString(),
+            as_communicator: document.querySelector('#add_room #as_communicator').checked ? 'true' : 'false'
+          }
+        }).then(function(res) {
+          document.querySelector('#schedule_button').innerText = "Schedule Room";
+          load_rooms();
+        }, function(err) {
+          document.querySelector('#schedule_button').innerText = "Error Scheduling Room";
+
+        });
+      })
+    })();
+  </script>
+<% end %>
+<!-- 
+For each pending room, link to activate, link to join
+For active rooms, show whether other side joined
+
+if(room.partner_status == 'attempted') {
+  duration = "attempted";
+} else if(room.partner_status == 'waiting_room') {
+  duration = "never left waiting room";
+} else if(room.partner_status == 'connected') {
+  duration = "temporarily connected";
+} else {
+  duration = "never connected";
+}
+
+
+localStorage.user_id = res.user.id;
+localStorage.room_id = res.user.room_id;
+localStorage.room_set_at = (new Date()).getTime();
+localStorage.self_as_communicator = document.querySelector('#as_communicator').checked ? 'true' : 'false';
+localStorage.show_images = 'true';
+localStorage.terms_accepted = 'true';
+location.href = '/rooms/' + res.user.room_id;
+
+-->

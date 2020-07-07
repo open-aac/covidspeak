@@ -209,6 +209,15 @@ strong {
     }
   }
 }
+#preview_box {
+  background-image: url(/icons/person.svg);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  &.ready {
+    background-image: none;
+  }
+}
 #full_content {
   width: 100vw;
   height: 100vh;
@@ -1295,6 +1304,40 @@ strong {
     }
   }
 }
+.room {
+  .tall_buttons {
+    text-align: center;
+    display: flex;
+    flex-direction: row;
+    button {
+      flex: 1;
+      height: 80px;
+      vertical-align: middle;
+      img {
+        width: 40px;
+        margin: -10px 5px;
+        vertical-align: baseline;
+        &.small {
+          margin: 0 5px 0 0 ;
+          vertical-align: top;
+          width: 20px;
+        }
+      }
+    }
+  }
+  .dates {
+    #started {
+      font-weight: bold;
+      color: #444;
+    }
+    #countdown {
+      color: #888;
+      font-style: italic;
+    }
+    margin-top: 15px;
+    margin-bottom: 30px;
+  }
+}
 #accounts {
   .rooms .room .pre {
     width: 150px;
@@ -1316,9 +1359,12 @@ strong {
     }
     .name {
       display: block;
-      color: #000;
+      color: #888;
       font-size: 25px;
       margin-top: -5px;
+    }
+    &.recent {
+      color: #3594e6;
     }
     .target {
       display: block;
@@ -1513,6 +1559,87 @@ strong {
           display: block;
           clear: left;
         }
+      }
+    }
+  }
+}
+.pending_room {
+  text-align: left;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 10px 20px;
+  margin-bottom: 5px;
+  margin-top: 10px;
+  .title {
+    font-size: 20px;
+    .pending_room_status {
+      font-size: 14px;
+      color: #888;
+      font-style: italic;
+    }
+  }
+  .time {
+    margin-top: 5px;
+    color: #888;
+    .time_string {
+      color: #444;
+    }
+  }
+}
+#rooms {
+  .room {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    padding: 10px 20px;
+    position: relative;
+    &.template {
+      display: none;
+    }
+    .delete {
+      display: none;
+    }
+    &.removable {
+      .delete {
+        display: block;
+        position: absolute;
+        top: 20px;
+        right: 10px;
+        img {
+          width: 20px;
+        }
+      }
+    }
+    .name_holder {
+      display: inline-block;
+    }
+    a.name_holder {
+      display: none;
+    }
+    img.icon {
+      width: 30px;
+      height: 30px;
+      filter: grayscale(100%);
+      vertical-align: bottom;
+    }
+    .name {
+      font-size: 20px;
+    }
+    .start {
+      color: #888;
+      display: block;
+      margin-left: 40px;
+    }
+    &.joinable {
+      img.icon {
+        filter: none;
+      }
+      a.name_holder { 
+        display: inline-block;
+        color: #000;
+      }
+      span.name_holder {
+        display: none;
       }
     }
   }

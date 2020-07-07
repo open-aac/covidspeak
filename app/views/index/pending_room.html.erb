@@ -1,0 +1,86 @@
+<% if @room %>
+  <h1><%= @room.settings['name'] || "Room Settings" %></h1>
+  <div class='room'>
+    <div class='dates'>
+      <span class='date'></span>
+      <div id="started" style='display: none;'>already started</div>
+      <div id='countdown'></div>
+    </div>
+    <div class='tall_buttons'>
+      <% if @room.settings['start_at'] && @room.settings['start_at'] < 3.weeks.ago.utc.iso8601 %>
+      <% else %>
+        <% if @room.activated %>
+          <button id='start_room'><img src='/logo.svg'/> <span class='join_message'>Re-Join Room</span></button>
+        <% else %>
+          <button id='start_room'><img src='/logo.svg'/> <span class='join_message'>Start Room</span></button>
+        <% end %>
+        <button id='copy_link'><img src='/icons/clipboard.svg' class='small'/>Copy<br/>Attendee Link</button>
+        <button id='share_link' style='display: none;'><img src='/icons/reply.svg' class='small'/>Share<br/>Attendee Link</button>
+      <% end %>
+    </div>
+  </div>
+<script>
+  (function() {
+    var code = "<%= @room.code %>";
+    var attendee_code = "<%= @room.attendee_code %>";
+    var as_comm = <%= (!!@room.settings['as_communicator']).to_json %>;
+    var start_at = "<%= @room.settings['start_at'] %>";
+    var activated = <%= @room.activated.to_json %>;
+    if(activated) {
+      document.querySelector('.room #started').style.display = 'block';
+    }
+    var start = window.moment(start_at);
+    var now = window.moment();
+    var attendee_url = location.origin + "/rooms/" + attendee_code + "/join";
+    if(navigator.canShare && navigator.canShare()) {
+      document.querySelector('.room #share_link').style.display = 'inline';
+    }
+
+    var time_string = start.format('D MMM, YYYY h:mma')
+
+    if(start > now) {
+      time_string = "starting " + time_string;
+    } else {
+      time_string = "scheduled for " + time_string;
+    }
+
+    document.querySelector('.room .date').innerText = time_string;
+    document.querySelector('.room .tall_buttons').addEventListener('click', function(e) {
+      e.preventDefault();
+      if(e.target.closest('#start_room')) {
+        e.target.closest('#start_room').querySelector('.join_message').innerText = "Activating...";
+        // activate and redirect
+        session.ajax("/api/v1/rooms/" + code + "/activate", {type: 'POST'}).then(function(res) {
+          e.target.closest('#start_room').querySelector('.join_message').innerText = "Room Ready!";
+          res.user.as_communicator = as_comm;
+          room.start_and_enter_room(res);
+        }, function(err) {
+          e.target.closest('#start_room').querySelector('.join_message').innerText = "Error Activating Room";
+        });
+      // location.href = "/rooms/" + code;
+      } else if(e.target.closest('#copy_link')) {
+        console.log(attendee_url);
+        extras.copy(attendee_url).then(function() {
+          document.querySelector('.room #copy_link').innerHTML = "Link<br/>Copied!";
+        }, function() {
+          document.querySelector('.room #copy_link').innerHTML = "Link Copy<br/>Failed";
+        });
+      } else if(e.target.closest('#share_link')) {
+        debugger
+
+      }
+    });
+    var incr = function() {
+      if(document.querySelector('.room #countdown')) {
+        var str = start.fromNow();
+        document.querySelector('.room #countdown').innerText = str;
+        setTimeout(incr, 300);
+      }
+    };
+    incr();
+  })();
+</script>
+<% else %>
+  <h1>Room Settings</h1>
+  <p>This room has expired, or never existed in the first place. Which is it? We may never know...
+<% end %>

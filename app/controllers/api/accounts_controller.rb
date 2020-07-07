@@ -1,5 +1,5 @@
 class Api::AccountsController < ApplicationController
-  before_action :require_token
+  before_action :require_token, :except => [:join_code]
   
   def index
     list = []
@@ -32,6 +32,15 @@ class Api::AccountsController < ApplicationController
     account.settings['max_concurrent_rooms'] = rooms if rooms > 0
     account.save!
     render json: {account: account_json(account)}
+  end
+
+  def join_code
+    account = Account.find_by_code(params['join_code'])
+    if account
+      render json: {account: {schedule_id: account.schedule_id}}
+    else
+      api_error(400, {error: 'invalid join code'})
+    end
   end
 
   def sub_id

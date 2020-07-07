@@ -23,6 +23,7 @@ class Api::RoomsController < ApplicationController
     if !room
       return api_error(400, {error: "invalid room id, #{params['room_id']}"})
     end
+    # TODO: rooms should become un-joinable after 12 hours
     room_id = room.code
     room_key = room.room_key
     access = nil
@@ -167,5 +168,110 @@ class Api::RoomsController < ApplicationController
       })
     end
     render json: {ok: true}
+  end
+
+  def list_schedule
+    account = Account.find_by_schedule_id(params['account_id'])
+    if !account
+      return api_error(400, {error: 'invalid schedule_id'})
+    end
+    @recent_rooms = account.rooms.where(['created_at > ?', 2.days.ago])
+    @pending_rooms = account.pending_rooms.where(activated: false).select{|r| r.settings['start_at'] && r.settings['start_at'] > 6.hours.ago.iso8601}
+    list = @pending_rooms + @recent_rooms
+    render json: {rooms: list.map{|r| room_json(r) }.sort_by{|r| r[:started_at] || r[:start_at]} }
+  end
+
+  def schedule
+    account = Account.find_by_schedule_id(params['account_id'])
+    PendingRoom.flush_rooms
+    if !account
+      return api_error(400, {error: 'invalid schedule_id'})
+    end
+    pending_room = PendingRoom.generate(account, params)
+    render json: {room: room_json(pending_room)}
+  end
+
+  def activate
+    pending_room = PendingRoom.find_by(code: params['room_id'])
+    return api_error(400, {error: 'room not found'}) unless pending_room
+    if pending_room.activated
+      render json: {user: {id: pending_room.settings['identity'], room_id: pending_room.settings['room_code']}}
+      return
+    end
+    res = pending_room.activate
+    room = res[:room]
+    return api_error(400, {error: "no room generated"}) unless room
+    return api_error(400, {error: "no room slots available", throttled: room.throttled?}) if room.throttled?
+
+    render :json => {:user => {id: res[:identity], room_id: room.code}}
+  end
+
+  def status
+    if params['room_id'].match(/^p/)
+      pending_room = PendingRoom.find_by_attendee_code(params['room_id'])
+      return api_error(400, {error: "no room found"}) unless pending_room
+      if !pending_room.settings['room_id']
+        if !pending_room.settings['partner_checked']
+          pending_room.settings['partner_checked'] = true
+          pending_room.save
+        end
+        render json: room_json(pending_room, true)
+        return
+      end
+      @limit_content = true
+      room = Room.find_by(id: pending_room.settings['room_id'])
+    else
+      room = Room.find_by_code(params['room_id'])
+    end
+    return api_error(400, {error: "no room found"}) unless room
+    render json: room_json(room, !!@limit_content)
+  end
+
+  def unschedule
+    account = Account.find_by_schedule_id(params['account_id'])
+    if !account
+      return api_error(400, {error: 'invalid schedule_id'})
+    end
+    pending_room = account.pending_rooms.find_by(code: params['code'])
+    return api_error(400, {error: 'room not found'}) unless pending_room
+    pending_room.destroy
+    render json: {room: room_json(pending_room)}
+  end
+
+  def room_json(room, simple=false)
+    if room.is_a?(PendingRoom)
+      res = {
+        pending: true,
+        start_at: room.settings['start_at'],
+        joinable: true,
+        code: room.attendee_code
+      }
+      if !simple
+        res = res.merge({
+          as_communicator: room.settings['as_communicator'],
+          name: room.settings['name'],
+          code: room.code
+        })
+      end
+      res
+    elsif room.is_a?(Room)
+      res = {
+        joinable: !room.settings['started_at'] || room.settings['started_at'] > 12.hours.ago.to_i,
+        code: room.code,
+        started_at: (room.settings['started_at'] ? Time.at(room.settings['started_at']) : room.created_at).utc.iso8601,
+        ended_at: room.settings['ended_at'] && Time.at(room.settings['ended_at']).utc.iso8601  
+      }
+      if !simple
+        res = res.merge({
+          name: room.settings['name'] || "Unscheduled Room",
+          partner_status: room.settings['partner_status'],
+          total_users: (room.settings['active_user_ids'] || []).uniq.length,
+          duration: room.duration || 0,  
+        })
+      end
+      res
+    else
+      {}
+    end
   end
 end

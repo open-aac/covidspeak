@@ -10,6 +10,8 @@ var process_room = function(room) {
       duration = "never left waiting room";
     } else if(room.partner_status == 'connected') {
       duration = "temporarily connected";
+    } else if(room.partner_status == 'pending_waiting_room') {
+      duration = "pending waiting room only";
     } else {
       duration = "never connected";
     }
@@ -42,7 +44,13 @@ var process_account = function(account) {
   account.target = target;
   if(account.last_room_at) {
     var date = new Date(account.last_room_at * 1000);
-    account.last_room_string = date.toDateString();
+    var recent_cutoff = window.moment().add(-30, 'day')._d;
+    if(date > recent_cutoff) {
+      account.recent_activity = true;
+    }
+    var current_year = (new Date()).getFullYear();
+    account.last_room_string = date.toDateString().replace(current_year.toString(), '');
+
   }
   if(account.recent_rooms_approx) {
     account.recent_rooms = "~" + account.recent_rooms_approx;
@@ -203,6 +211,9 @@ var admin = {
           "-recent_rooms": account.recent_rooms,
           target: account.target
         })
+        if(account.recent_activity) {
+          elem.classList.add('recent');
+        }
         elem.addEventListener('click', function(event) {
           if(event.target.closest('.code')) {
             // let people copy and paste the code
