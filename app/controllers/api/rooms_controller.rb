@@ -246,6 +246,10 @@ class Api::RoomsController < ApplicationController
         joinable: true,
         code: room.attendee_code
       }
+      if !room.activated && room.settings['partner_checked']
+        res[:partner_status] = 'pending_waiting_room'
+      end
+  
       if !simple
         res = res.merge({
           as_communicator: room.settings['as_communicator'],

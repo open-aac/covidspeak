@@ -108,7 +108,7 @@
               status = "partner never connected";
             }
             if(room.ended_at && room.partner_status == 'connected') {
-              time_string = time_string + " (" + room.duration + "m)";
+              time_string = time_string + " (" + (Math.round(room.duration / 60 * 10) / 10) + "m)";
             } else if(status) {
               time_string = time_string + " (" + status + ")";
             }

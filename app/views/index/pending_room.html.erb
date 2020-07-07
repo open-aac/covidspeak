@@ -59,12 +59,11 @@
         });
       // location.href = "/rooms/" + code;
       } else if(e.target.closest('#copy_link')) {
-        console.log(attendee_url);
         extras.copy(attendee_url).then(function() {
           document.querySelector('.room #copy_link').innerHTML = "Link<br/>Copied!";
         }, function() {
           document.querySelector('.room #copy_link').innerHTML = "Link Copy<br/>Failed";
-        });
+        });  
       } else if(e.target.closest('#share_link')) {
         debugger
 
