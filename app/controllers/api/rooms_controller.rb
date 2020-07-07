@@ -224,7 +224,7 @@ class Api::RoomsController < ApplicationController
       room = Room.find_by_code(params['room_id'])
     end
     return api_error(400, {error: "no room found"}) unless room
-    render json: room_json(room, !!@limit_content)
+    render json: room_json(room, true)
   end
 
   def unschedule
@@ -246,11 +246,11 @@ class Api::RoomsController < ApplicationController
         joinable: true,
         code: room.attendee_code
       }
-      if !room.activated && room.settings['partner_checked']
-        res[:partner_status] = 'pending_waiting_room'
-      end
   
       if !simple
+        if !room.activated && room.settings['partner_checked']
+          res[:partner_status] = 'pending_waiting_room'
+        end
         res = res.merge({
           as_communicator: room.settings['as_communicator'],
           name: room.settings['name'],

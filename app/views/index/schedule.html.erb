@@ -36,8 +36,8 @@
       </div>
       <div class='big_checkbox' style='margin: 10px 0 10px -11px; padding-left: 52px; text-align: left; padding-top: 0; font-size: 14px; font-size: 18px; padding-top: 10px;'>
         <label>
-          <input type='checkbox' id='as_communicator' checked='true'/>
-          Let me join the room as the communicator
+          <input type='checkbox' id='as_communicator'/>
+          I will join the room as the communicator
         </label>
       </div>
       <div style='margin-top: 5px;'>
@@ -136,7 +136,7 @@
           }
         }).then(function(res) {
           document.querySelector('#schedule_button').innerText = "Schedule Room";
-          load_rooms();
+          location.href = "/rooms/pending/" + res.room.code;
         }, function(err) {
           document.querySelector('#schedule_button').innerText = "Error Scheduling Room";
 
