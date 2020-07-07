@@ -27,7 +27,7 @@ class Account < ApplicationRecord
   def schedule_id(ts=nil)
     if !self.settings['nonce']
       self.generate_defaults
-      self.save
+      self.save!
     end
     parts = [self.id.to_s, ts || Time.now.to_i.to_s]
     parts << GoSecure.sha512(parts.to_json, "schedule_id_#{self.settings['nonce']}")
