@@ -24,22 +24,22 @@ class Account < ApplicationRecord
     end
   end
 
-  def schedule_id
+  def schedule_id(ts=nil)
     if !self.settings['nonce']
       self.generate_defaults
       self.save
     end
-    parts = [self.id.to_s, Time.now.to_i.to_s]
+    parts = [self.id.to_s, ts || Time.now.to_i.to_s]
     parts << GoSecure.sha512(parts.to_json, "schedule_id_#{self.settings['nonce']}")
     parts.join('_')
   end
 
-  def self.find_by_schedule_id(id)
-    id, ts, verifier = (id || '').split(/_/)
+  def self.find_by_schedule_id(aid)
+    id, ts, verifier = (aid || '').split(/_/)
     return nil unless id && ts && verifier
     return nil if ts.to_i < 12.hours.ago.to_i
     account = Account.find_by(id: id)
-    return nil unless account && verifier == GoSecure.sha512([id, ts].to_json, "schedule_id_#{account.settings['nonce']}")
+    return nil unless account && aid == account.schedule_id(ts)
     return account
   end
 
