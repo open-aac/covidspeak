@@ -38,19 +38,41 @@ class Account < ApplicationRecord
     return 3 # super-short meetings don't count
   end
 
-  def track_usage(force)
+  def track_usage(room)
     month_start = Date.today.beginning_of_month
-    if !force
+    total_minutes = 0
+    total_rooms = 0
+    force = false
+    usage = JSON.parse(RedisAccess.default.get("usage_excluding/#{self.id}/#{room.id}")) rescue nil
+    if !usage
       recent_rooms = Room.where(account_id: self.id).where(['created_at > ?', 45.days.ago])
-      current_month_rooms = rooms.select{|r| r.duration && r.duration > self.ignore_duration && r.settings['started_at'] && r.settings['started_at'] > month_start.to_i }
-      tally_duration = current_month_rooms.map{|r| r.duration }.sum
-      force = true if tally_duration > Account.free_duration
+      current_month_rooms = rooms.select{|r| r.duration && r.duration > Account.ignore_duration && r.settings['started_at'] && r.settings['started_at'] > month_start.to_time.to_i }
+      concurrent_rooms = rooms.select{|r| r != room && r.duration && r.duration > Account.ignore_duration && r.settings['ended_at'] && r.settings['ended_at'] > 20.minutes.ago.to_i }
+      total_rooms = current_month_rooms.length
+      total_minutes = current_month_rooms.map{|r| r.duration }.sum
+      if concurrent_rooms.length == 0
+        RedisAccess.default.setex("usage_excluding/#{self.id}/#{room.id}", 5.minutes.to_i, {rooms: total_rooms - 1, minutes: total_minutes - room.duration}.to_json)
+      end
+    else  
+      total_minutes = usage['minutes'] + room.duration
+      total_rooms = usage['rooms'] + 1
     end
+    force = true if total_minutes > Account.free_duration
+    self.settings['subscription'] ||= {}  
+    self.settings['subscription']['months'] ||= {}
+    month_code = month_start.iso8601
+    self.settings['subscription']['months'][month_code] = (self.settings['subscription']['months'][month_code] || {}).merge({
+      minutes: total_minutes,
+      rooms: total_rooms
+    })
     if force && self.paid_account?
       if self.settings['subscription'] && self.settings['subscription_id']
         account_rooms = self.settings['max_concurrent_rooms'] || 1
-        Purchasing.update_meter(account, {quantity: account_rooms}
+        # TODO: for really excessive usage, charge extra??
+        Purchasing.update_meter(account, {quantity: account_rooms})
       end
+    else
+      self.save
     end
   end
 

@@ -18,6 +18,9 @@ if no @account
           data: { account_code: code }
         }
       ).then(function(res) {
+        if(location.host.match(/localhost/)) {
+          localStorage.last_session_id = res.session_id;
+        }
         stripe.redirectToCheckout({
           sessionId: res.session_id
         }).then(function (result) {

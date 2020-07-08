@@ -248,7 +248,7 @@ var room = {
       room.active_timeout = setTimeout(function() {
         room.active_timeout = null;
         room.set_active();
-      }, 40000 + Math.round(Math.random() * 40000)); // add jitter
+      }, 20000 + Math.round(Math.random() * 20000)); // add jitter
     };
     if(set) {
       room.active = true;

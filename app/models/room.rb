@@ -143,7 +143,7 @@ class Room < ApplicationRecord
     self.settings['buffered_ended_at'] = now + 5.minutes.to_i
     res = self.save
     if self.account
-      self.account.track_usage(self.duration > Account.free_duration)
+      self.account.track_usage(self)
     end
     res
   end

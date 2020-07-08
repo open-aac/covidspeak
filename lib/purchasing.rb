@@ -43,7 +43,7 @@ module Purchasing
                 subscription_id: object['id'],
                 customer_id: object['customer'],
                 source_id: 'stripe',
-                source: 'customer.subscription.updated'
+                source: 'customer.subscription.updated',
                 cancel_reason: reason
               })
             end
@@ -105,17 +105,17 @@ module Purchasing
     Stripe.api_key = ENV['STRIPE_SECRET_KEY']
     Stripe.api_version = '2020-03-02'
     price_id = ENV['STRIPE_PRICE_ID']
-    session = Stripe::Session.create({
-      mode: 'subscription',
+    session = Stripe::Checkout::Session.create({
+      mode: 'setup',
       success_url: opts[:success_url],
       cancel_url: opts[:cancel_url],
       customer_email: opts[:contact_email],
       payment_method_types: ['card'],
       metadata: { source: 'covidspeak' },
-      subscription_data: {
-        metadata: { source: 'covidspeak' }
-      },
-      line_items: [{price: price_id, quantity: opts[:quantity]}]
+      # subscription_data: {
+      #   metadata: { source: 'covidspeak' }
+      # },
+      # line_items: [{price: price_id, quantity: opts[:quantity]}]
     })
     opts['source'] = 'purchase'
     RedisAccess.default.setex("purchase_settings/#{session.id}", 36.hours.to_i, opts.to_json)
@@ -123,26 +123,49 @@ module Purchasing
   end
 
   def confirm_purchase(session_id)
+    Stripe.api_key = ENV['STRIPE_SECRET_KEY']
+    Stripe.api_version = '2020-03-02'
+    price_id = ENV['STRIPE_PRICE_ID']
     opts = JSON.parse(RedisAccess.default.get("purchase_settings/#{session.id}")) rescue {}
-    session = Stripe::Session.retrieve({id: session_id, expand: ['customer.invoice_settings.default_payment_method', 'subscription.default_payment', 'setup_intent.payment_method']})
+    session = Stripe::Checkout::Session.retrieve({id: session_id, expand: ['customer.invoice_settings.default_payment_method', 'subscription.default_payment', 'setup_intent.payment_method']})
     return false unless session
+    subscription = session['subscription']
+    customer = session['customer']
     method = (session['setup_intent'] || {})['payment_method']
-    method ||= (session['subscription'] || {})['default_payment_method']
     method ||= ((session['customer'] || {})['invoice_settings'] || {})['default_payment_method']
+    if !customer || !subscription
+      return false unless method
+      # find customer (list all by email) or create customer
+      # attach a new subscription with default_payment_method = method['id']
+      customer = Stripe::Customer.list({email: opts['contact_email'], limit: 1})[0]
+      customer ||= Stripe::Customer.create({
+        email: opts['contact_email'],
+        payment_method: method['id']
+      })
+      subscription = customer.subscriptions.data.detect{|s| s['items'].any?{|i| i['price']['id'] == price_id } && ['active', 'unpaid', 'past_due'].include?(['status']) }
+      # attach the subscription
+      subscription ||= Stripe::Subscription.create({
+        customer: customer['id'],
+        items: [
+          {price: price_id},
+        ],
+        default_payment_method: method['id'],
+        metadata: { source: 'covidspeak' }
+      })
+    end
     add_purchase_summary(opts, method)
-    # TODO: if no subscription present
     
-    if method && ((session['subscription'] || {})['default_payment_method'] || {})['id'] != method['id']
+    if method && (subscription['default_payment_method'] || {})['id'] != method['id']
       # assert default payment method on the subscription
       # this should be a noop on purchase, but on update
       # it will change billing settings correctly
-      subscription = Stripe::Subscription.retrieve({id: session['subscription']['id']})
+      subscription = Stripe::Subscription.retrieve({id: subscription['id']})
       subscription.default_payment_method = method['id']
       subscription.save
     end
     account = Account.find_by(code: opts['join_code'])
     if account
-      if account.settings['subscription']['subscription_id'] && account.settings['subscription']['subscription_id'] != session['id']
+      if account.settings['subscription']['subscription_id'] && account.settings['subscription']['subscription_id'] != subscription['id']
         # On mismatch, just create a new account with a longer
         # join code so you don't lose the purchase process
         account.log_subscription_event({:log => 'mismatched subscription', :current_id => account.settings['subscription']['subscription_id'], :asserted_id => session['subscription']})
@@ -158,7 +181,7 @@ module Purchasing
         account.settings['subscription']['last_purchase_update_source'] = opts['source']
         # TODO: email about purchase information being updated if do_email
         account.save
-        account.log_subscription_event({:log => 'already confirmed subscription', :id => session['subscription']})
+        account.log_subscription_event({:log => 'already confirmed subscription', :id => subscription['id']})
         return account
       end
     end
@@ -168,23 +191,23 @@ module Purchasing
     account.settings['free_account'] = false
     account.settings['last_purchase_update_source'] = opts['source']
     account.settings['contact_name'] = (opts['contact_name'] || 'Contact Name Lost').to_s
-    account.settings['contact_email'] = (opts['contact_email'] || session['customer']['email']).to_s
+    account.settings['contact_email'] = (opts['contact_email'] || customer['email']).to_s
     account.copy_server_from('webrtc')
     account.settings['max_concurrent_rooms'] = [1, opts['quantity'].to_i].max
     account.save!
-    customer_meta = (session['customer'] || {})['metadata'] || {}
+    customer_meta = customer['metadata'] || {}
     if customer_meta['covidchat_account_id'] != account.id || customer_meta['source']
-      customer = Stripe::Customer.retrieve({id: session['customer']['id']})
+      customer = Stripe::Customer.retrieve({id: customer['id']})
       customer.metadata ||= {}
       customer.metadata['covidchat_account_id'] = account.id
       customer.save
     end
-    account.log_subscription_event({:log => 'confirming subscription', :id => session['subscription']['id']})
+    account.log_subscription_event({:log => 'confirming subscription', :id => subscription['id']})
     Account.confirm_subscription({
       state: 'active',
       account_id: account.id,
-      subscription_id: session['subscription']['id'],
-      customer_id: session['customer']['id'],
+      subscription_id: subscription['id'],
+      customer_id: customer['id'],
       source_id: 'stripe',
       source: 'web.purchase',
       purchase_summary: opts['purchase_summary']          
@@ -195,16 +218,16 @@ module Purchasing
   end
 
   def self.purchase_modify(opts)
-    session = Stripe::Session.create({
+    session = Stripe::Checkout::Session.create({
       mode: 'setup',
       customer: opts[:customer_id],
       metadata: { source: 'covidspeak' },
       subscription_data: {
         metadata: { source: 'covidspeak' }
       },
-      setup_intent_data: {
-        metadata: { subscription_id: opts[:subscription_id] }
-      },
+      # setup_intent_data: {
+      #   metadata: { subscription_id: opts[:subscription_id] }
+      # },
       success_url: opts[:successs_url],
       cancel_url: opts[:cancel_url]
     })
@@ -216,7 +239,8 @@ module Purchasing
   def self.update_meter(account, opts)
     opts['action'] = 'set'
     opts['timestamp'] = Time.now.to_i
-    start_of_month = Date.today.beginning_of_month.to_time.to_i
+    month_start = Date.today.beginning_of_month
+    start_of_month = month_start.to_time.to_i
     if account.settings['subscription']['last_meter_update']
       if account.settings['subscription']['last_meter_update']['quantity'] >= opts[:quantity] && account.settings['subscription']['last_meter_update']['timestamp'] > start_of_month
         # No need to re-send if we already successfully sent this amount
@@ -226,21 +250,25 @@ module Purchasing
     # https://stripe.com/docs/billing/subscriptions/metered-billing
     Stripe.api_key = ENV['STRIPE_SECRET_KEY']
     Stripe.api_version = '2020-03-02'
-    customer = Stripe::Customer.retrieve(account.settings['subscription']['customer_id']) rescue nil
-    if !customer
-      account.log_subscription_event({error: 'no customer found when updating meter'})
-    end
-    sub = customer.subscriptions.data.detect{|s| s.id == account.settings['subscription']['subscription_id'] }
+    sub = Stripe::Subscription.retrieve(account.settings['subscription']['subscription_id']) rescue nil
     if !sub
       account.log_subscription_event({error: 'no subscription found when updating meter'})
+      return false
     end
-    sub_item = sub.items.data.detect{|si| si.price.id == ENV['STRIPE_PRICE_ID'] }
+    if sub['customer'] != account.settings['subscription']['customer_id']
+      account.log_subscription_event({error: 'no customer found when updating meter'})
+      return false
+    end
+    sub_item = sub.items.data.detect{|si| si['price']['id'] == ENV['STRIPE_PRICE_ID'] }
     if !sub
       account.log_subscription_event({error: 'no matching subscription item found when updating meter'})
+      return false
     end
     usage = sub_item.usage_records.create(opts) rescue nil
     if usage
       account.settings['subscription']['last_meter_update'] = opts
+      account.settings['subscription']['months'] ||= {}
+      account.settings['subscription']['months'][month_start.iso8601] = (account.settings['subscription']['months'][month_start.iso8601] || {}).merge(opts)
       account.save
     else
       account.log_subscription_event({error: 'failed to create usage'}) unless usage

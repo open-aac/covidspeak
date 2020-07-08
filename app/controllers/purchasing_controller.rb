@@ -13,13 +13,13 @@ class PurchasingController < ApplicationController
     host = "#{request.protocol}#{request.host_with_port}"
 
     session_id = Purchasing.purchase_prep({
-      contact_email: paramss['contact_email'],
+      contact_email: params['contact_email'],
       contact_name: params['contact_name'],
       quantity: [1, params['quantity'].to_i].max,
       join_code: join_code,
       name: params['name'],
       success_url: "#{host}/purchasing/success?session_id={CHECKOUT_SESSION_ID}",
-      cancel_url: "#{hosst}/pricing?canceled=true"
+      cancel_url: "#{host}/pricing?canceled=true"
     })
     render json: {ready: !!session_id, session_id: session_id}
   end

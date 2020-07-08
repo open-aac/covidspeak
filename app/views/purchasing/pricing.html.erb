@@ -1,32 +1,79 @@
-<h1>Co-VidSpeak Room Plans</h1>
-TODO: add session_id to localStorage for debugging
-<pre>
-- two-person video chat room with grid-based layouts
-- runs on Windows, Mac, iOS, Android in native browserss
-- $8/month/simultaneous room, cancel anytime
-- no charge for months with < 30min usage
-- set preferred default layouts
-- add individualized layouts
-- schedule rooms in advance
-- dedicated technical support
-- upgrades and new features included
-</pre>
+<div id='middle' class='big'>
+  <h1>Room Pricing</h1>
+  <p>Co-VidSpeak includes the following features with every account:</p>
+  <ul id='features'>
+    <li><img src='/icons/camera-video.svg'/> Two-person video chat with communication grids</li>
+    <li><img src='/icons/display.svg'/> Runs on Windows, Mac, iOS, Android in native browsers</li>
+    <li>
+      <b style='font-size: 18px;'>US$8 / month / simultaneous room, cancel anytime</b>
+      <div><i>No charge for months with under 30 minutes usage</i></div>
+    </li>
+    <li><img src='/icons/chat-text.svg'/> Unlimited 1-1 meetings</li>
+    <li><img src='/icons/gear.svg'/> Set preferred default layouts</li>
+    <li><img src='/icons/heart.svg'/> Add individualized layouts</li>
+    <li><img src='/icons/calendar.svg'/> Schedule rooms in advance</li>
+    <li><img src='/icons/headset.svg'/> Dedicated technical support</li>
+    <li><img src='/icons/hourglass.svg'/> Upgrades and new features included</li>
+    <li id='buy_links'>
+      <div style='margin-left: 20px;'>
+        <button id='buy_now' class='primary' style='min-width: 200px;'>Buy Now</button>
+        <a href="/about">Learn More First...</a>
+      </div>
+    </li>
+  </ul>
+  <div id='buy' style='margin-top: 50px; display: none; max-width: 485px;'>
+    <h2>Buy Now</h2>
+    <div style='margin-bottom: 5px;'>
+      <input type='text' id='name' placeholder='Account Name' style='width: calc(50% - 5px);'/>
+      <input type='text' id='join_code' placeholder='Preferred Join Code' style='width: 50%;'/>
+    </div><div style='margin-bottom: 5px;'>
+      <input type='text' id='contact_name' placeholder='Contact Name' style='width: calc(50% - 5px);'/>
+      <input type='email' id='contact_email' placeholder='Contact Email' style='width: 50%;'/>
+    </div><div style='margin-bottom: 5px;'>
+      <input type='number' id='rooms' min='1' placeholder='Simultaneous Rooms Needed' style='width: 485px; max-width: 100%;'/>
+    </div><div style='margin-bottom: 5px;'>
+      <button class='primary' id='purchase' style='width: 485px; max-width: 100%;'>Sign Up for US$<span id='purchase_amount'>8</span>/month</button>
+    </div>
+  </div>
+</div>
 <script>
   (function() {
+    document.querySelector('#rooms').addEventListener('input', function(e) {
+      var total = parseInt(e.target.value, 10);
+      if(isNaN(total) || total < 1) { total = 1; }
+      document.querySelector('#purchase_amount').innerText = total * 8;
+    });
+    
+    document.querySelector('#buy_now').addEventListener('click', function(event) {
+      event.preventDefault();
+      document.querySelector('#buy_links').parentNode.removeChild(document.querySelector('#buy_links'))
+      document.querySelector('#buy').style.display = 'block';
+    });
     var start_purchase = function() {
+      var quantity = parseInt(document.querySelector('#rooms'), 10);
+      if(isNaN(quantity) || quantity < 1) { quantity = 1; }
+
+      var name = document.querySelector('#name').value;
+      var contact_name = document.querySelector('#contact_name').value;
+      var contact_email = document.querySelector('#contact_email').value;
+      if(!contact_email.match(/.+@.+\..+/)) { contact_email = null; }
+      if(!name || !contact_name || !contact_email) { return; }
       session.ajax('/api/v1/purchasing/setup', 
         {
           type: 'POST',
           data: { 
-            join_code: 'asdf',
-            name: 'account name',
-            contact_name: 'person',
-            contact_email: 'email'
-            account_code: code,
-            quantity: 1
+            join_code: document.querySelector('#join_code').value,
+            name: name,
+            contact_name: contact_name,
+            contact_email: contact_email,
+            quantity: quantity
           }
         }
       ).then(function(res) {
+        if(location.host.match(/localhost/)) {
+          localStorage.last_session_id = res.session_id;
+        }
+        debugger
         stripe.redirectToCheckout({
           sessionId: res.session_id
         }).then(function (result) {
@@ -36,5 +83,9 @@ TODO: add session_id to localStorage for debugging
         // oopsies!
       });
     };
+    document.querySelector('#purchase').addEventListener('click', function(event) {
+      event.preventDefault();
+      start_purchase();
+    })
   })();
 </script>

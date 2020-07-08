@@ -35,5 +35,8 @@
       </footer>
     </div>
     <%= more_scripts %>
+    <script>
+      var stripe = Stripe("<%= ENV['STRIPE_PUBLIC_KEY'] %>");
+    </script>
   </body>
 </html>

@@ -1,20 +1,35 @@
+<div id='middle'>
+  <h1>Purchase Confirmation</h1>
+  <p id='purchase_status' style='font-size: 20px; margin: 20px 0;'>Finalizing Update...</p>
+  <div id='confirmed' style='display: none; text-align: center;'>
+    <button>View Account Details</button>
+  </div>
+</div>
 <script>
   var session_id = "<%= params['session_id'] %>";
   (function() {
-    session.ajax('/api/v1/purchasing/confirm', {
-      type: 'POST',
-      data: { session_id: session_id }
-    }).then(function(res) {
-      if(res.source == 'purchase') {
-        // account confirmed! show link to account page
-      } else if(res.source == 'update') {
-        // billing details updated! show link to account page
-      }
-    }, function(err) {
-
-    });
+    var check = function() {
+      session.ajax('/api/v1/purchasing/confirm', {
+        type: 'POST',
+        data: { session_id: session_id }
+      }).then(function(res) {
+        if(res.source == 'purchase') {
+          document.querySelector('#purchase_status').innerText = "Subscription confirmed! Thank you for purchasing Co-VidSpeak!";
+          document.querySelector('#confirmed').style.display = 'block';
+        } else if(res.source == 'update') {
+          document.querySelector('#purchase_status').innerText = "Billing details updated!";
+          document.querySelector('#confirmed').style.display = 'block';
+        }
+      }, function(err) {
+        check.errors = (check.errors || 0) + 1;
+        if(check.errors > 5) {
+          document.querySelector('#purchase_status').innerText = "We couldn't update the billing state, please contact technical support for help";
+        } else {
+          document.querySelector('#purchase_status').innerText = "There was an error checking the billing status, trying again...";
+          setTimeout(check, 3000);
+        }
+      });  
+    };
+    check();
   })();
 </script>
-
-post '/api/v1/purchasing/setup' => 'purchasing#initiate'
-post '/api/v1/purchasing/confirm' => 'purchasing#confirm'

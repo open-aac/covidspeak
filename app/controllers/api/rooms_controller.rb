@@ -143,7 +143,7 @@ class Api::RoomsController < ApplicationController
 
   def keepalive
     room = Room.find_by(code: params[:room_id])
-    if room && room.user_allowed?(params[:user_id]) && 
+    if room && room.user_allowed?(params[:user_id])
       if room.concluded?
         render json: {updated: true, closed: true}
         return
