@@ -12,6 +12,7 @@ class Account < ApplicationRecord
     self.settings ||= {}
     self.settings['nonce'] ||= GoSecure.nonce('account_verifier')
     self.archived = !!(self.settings['last_room_at'] && self.settings['last_room_at'] < 6.months.ago.to_i)
+    self.email_hash = Account.generate_email_hash(self.settings['contact_email']) if !self.settings['contact_email'].blank?
     true
   end
 
@@ -23,6 +24,53 @@ class Account < ApplicationRecord
       self.settings['recent_rooms'] = Room.where(account_id: self.id).where(['created_at > ?', 2.weeks.ago]).map{|r| (r.duration || 0) > 3 }.length
       self.save
     end
+  end
+
+  def self.generate_email_hash(email)
+    GoSecure.sha512(email.to_s.strip.downcase, 'email_hash_code')
+  end
+  
+  def self.free_duration
+    return 30 # 30 minutes free every month
+  end
+
+  def self.ignore_duration
+    return 3 # super-short meetings don't count
+  end
+
+  def track_usage(force)
+    month_start = Date.today.beginning_of_month
+    if !force
+      recent_rooms = Room.where(account_id: self.id).where(['created_at > ?', 45.days.ago])
+      current_month_rooms = rooms.select{|r| r.duration && r.duration > self.ignore_duration && r.settings['started_at'] && r.settings['started_at'] > month_start.to_i }
+      tally_duration = current_month_rooms.map{|r| r.duration }.sum
+      force = true if tally_duration > Account.free_duration
+    end
+    if force && self.paid_account?
+      if self.settings['subscription'] && self.settings['subscription_id']
+        account_rooms = self.settings['max_concurrent_rooms'] || 1
+        Purchasing.update_meter(account, {quantity: account_rooms}
+      end
+    end
+  end
+
+  def admin_code(ts=nil)
+    if !self.settings['nonce']
+      self.generate_defaults
+      self.save!
+    end
+    parts = [self.id.to_s, ts || Time.now.to_i.to_s]
+    parts << GoSecure.sha512(parts.to_json, "admin_code_#{self.settings['nonce']}")
+    parts.join('_')
+  end
+
+  def self.find_by_admin_code(aid)
+    id, ts, verifier = (aid || '').split(/_/)
+    return nil unless id && ts && verifier
+    return nil if ts.to_i < 12.hours.ago.to_i
+    account = Account.find_by(id: id)
+    return nil unless account && aid == account.schedule_id(ts)
+    return account
   end
 
   def schedule_id(ts=nil)
@@ -155,7 +203,10 @@ class Account < ApplicationRecord
     # TODO: Right now if you start a bunch of rooms without
     # the partner joining then it won't throttle based on
     # live rooms. Maybe this is ok.
-    if !room.id && (max_live_rooms || max_daily_rooms)
+    if !room.id && (max_live_rooms || max_daily_rooms || self.paid_account?)
+      if !self.can_start_room?
+        return Room.throttle_response('not_active')
+      end
       # Only run these checks when creating the room,
       # not when validating room code
       live_rooms = 0
@@ -171,7 +222,7 @@ class Account < ApplicationRecord
         ended_at = room.settings['buffered_ended_at'] || room.settings['ended_at']
         monthly_rooms += 1
         monthly_subrooms +=1 if @sub_id && room.settings['account_sub_id'] == @sub_id
-        if ended_at && ended_at > 12.hours.ago.to_i && room.duration && room.duration > 3
+        if ended_at && ended_at > 12.hours.ago.to_i && room.duration && room.duration > Account.ignore_duration
           daily_rooms += 1
           daily_subrooms +=1 if @sub_id && room.settings['account_sub_id'] == @sub_id
         end
@@ -252,5 +303,46 @@ class Account < ApplicationRecord
 
   def self.hex_shortened(hex)
     Base64.urlsafe_encode64([hex].pack("H*"))
+  end
+
+  def log_subscription_event
+  end
+
+  def paid_account?
+    !self.settings['free_account']
+  end
+
+  def can_start_room?
+    !!(!self.paid_account? || self.settings['subscription_id'])
+  end
+
+  def self.confirm_subscription(opts)
+    return false unless self.paid_account?
+    if opts[:state] == 'active'
+      self.settings['subscription'] ||= {}
+      if self.settings['subscription']['subscription_id'] && self.settings['subscription']['subscription_id'] != opts[:subscription_id]
+        self.settings['subscription']['past_subscriptions'] ||= []
+        self.settings['subscription']['past_subscriptions'] << {sub_id: self.settings['subscription']['subscription_id'], cus_id: self.settings['subscription']['customer_id'], reason: 'replaced'}
+        self.settings['subscription']['purchase_summary'] = nil
+      end
+      self.settings['subscription']['subscription_id'] = opts[:subscription_id]
+      self.settings['subscription']['customer_id'] = opts[:customer_id]
+      self.settings['subscription']['source_id'] = opts[:source_id]
+      self.settings['subscription']['source'] = opts[:source]
+      self.settings['subscription']['purchase_summary'] = opts[:purchase_summary]
+      return true
+    elsif opts[:state] == 'canceled' || opts[:state] == 'deleted'
+      self.settings['subscription'] ||= {}
+      self.settings['subscription']['past_subscriptions'] ||= []
+      self.settings['subscription']['past_subscriptions'] << {sub_id: self.settings['subscription']['subscription_id'], cus_id: self.settings['subscription']['customer_id'], reason: opts[:state]}
+
+      self.settings['subscription']['subscription_id'] = nil
+      self.settings['subscription']['customer_id'] = nil
+      self.settings['subscription']['source_id'] = nil
+      self.settings['subscription']['source'] = nil
+      self.settings['subscription']['purchase_summary'] = nil
+    else
+      return false
+    end
   end
 end

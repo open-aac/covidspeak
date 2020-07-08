@@ -39,6 +39,23 @@ class Room < ApplicationRecord
     find_by(code: code)
   end
 
+  def time_cutoff
+    if !self.settings['started_at']
+      self.settings['started_at'] ||= Time.now.to_i
+      self.save
+    end
+    if self.settings['short_room']
+      3.minutes.ago.to_i
+    else
+      24.hours.ago.to_i
+    end
+  end
+
+  def expired?
+    cutoff = self.time_cutoff
+    self.settings['started_at'] < cutoff
+  end
+
   def throttled?
     !!@throttled
   end
@@ -65,7 +82,7 @@ class Room < ApplicationRecord
     self.settings ||= {}
     now = Time.now.to_i
     self.settings['started_at'] ||= now
-    self.settings = [self.settings['ended_at'], now].compact.min
+    self.settings['ended_at'] = [self.settings['ended_at'], now].compact.min
     self.settings.delete('buffered_ended_at')
     self.save
   end
@@ -124,6 +141,10 @@ class Room < ApplicationRecord
     self.settings['started_at'] ||= now
     self.settings['ended_at'] = now
     self.settings['buffered_ended_at'] = now + 5.minutes.to_i
-    self.save
+    res = self.save
+    if self.account
+      self.account.track_usage(self.duration > Account.free_duration)
+    end
+    res
   end
 end

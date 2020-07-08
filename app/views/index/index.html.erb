@@ -121,12 +121,16 @@ document.querySelector('#join').addEventListener('submit', function(event) {
     if(err && err.responseJSON && err.responseJSON.throttled) {
       if(err.responseJSON.throttled == 'too_many_live') {
         error.innerText = "All rooms are in use for this join code";
+      } else if(err.responseJSON.throttled == 'not_active') {
+        error.innerText = "This join code doesn't have an active subscription";
       } else if(err.responseJSON.throttled == 'too_many_daily') {
         error.innerText = "Daily room limit has been reached for this join code";
         } else if(err.responseJSON.throttled == 'too_many_monthly') {
           error.innerText = "Monthly room limit has been reached for this join code";
         } else {
         error.innerText = "No rooms are available for this join code";
+      } else {
+        error.innerText = "Couldn't start room";
       }
     } else if(err && err.status == 500) {
       error.innerText = "Unexpected error starting room";

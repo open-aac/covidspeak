@@ -24,4 +24,8 @@ class IndexController < ApplicationController
 
   def admin
   end
+
+  def account
+    @account = Account.find_by_admin_code(params['admin_code'])
+  end
 end

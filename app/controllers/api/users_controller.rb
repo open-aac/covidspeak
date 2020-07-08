@@ -8,6 +8,7 @@ class Api::UsersController < ApplicationController
       identity = params['user_id']
     elsif params['join_code']
       root_user = true
+      # TODO: throttle
       account = Account.find_by_code(params['join_code'])
       if account
         identity = Account.generate_user

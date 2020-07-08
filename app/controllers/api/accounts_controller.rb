@@ -1,7 +1,9 @@
 class Api::AccountsController < ApplicationController
-  before_action :require_token, :except => [:join_code]
+  before_action :require_token, :except => [:join_code, :show, :update]
+  before_action :require_admin_code, :only => [:show, :update]
   
   def index
+    return api_error(400, {error: 'not auth'})
     list = []
     accounts = {}
     Account.all.each do |account|
@@ -23,6 +25,7 @@ class Api::AccountsController < ApplicationController
     account.generate_defaults
     account.code = params['code'].to_s
     account.settings['name'] = params['name'].to_s
+    account.settings['free_account'] = true
     account.settings['contact_name'] = params['contact_name'].to_s
     account.settings['contact_email'] = params['contact_email'].to_s
     if params['server_code']
@@ -34,7 +37,13 @@ class Api::AccountsController < ApplicationController
     render json: {account: account_json(account)}
   end
 
+  def purchasing_event
+    res = Purchasing.subscription_event(request)
+    render json: res[:data], :status => res[:status]
+  end
+
   def join_code
+    # TODO: throttle
     account = Account.find_by_code(params['join_code'])
     if account
       render json: {account: {schedule_id: account.schedule_id}}
@@ -56,15 +65,29 @@ class Api::AccountsController < ApplicationController
   end
 
   def show
-    account = Account.find_by(id: params['id'])
-    return api_error(404, {error: 'not found', id: params['id']}) unless account
-    res = account_json(account)
-    res[:sub_ids] = account.settings['codes'] || {}
-    res[:rooms] = []
-    rooms = Room.where(account_id: account.id).where(['created_at > ?', 4.weeks.ago])
-    rooms.each do |room|
-      res[:rooms] << room_json(room)
+    account = nil
+    if @allowed_account
+      account = @allowed_account if @allowed_account.id == params['id']
+    else
+      account = Account.find_by(id: params['id'])
     end
+    return api_error(404, {error: 'not found', id: params['id']}) unless account
+    res = account_json(account, true)
+    render json: {account: res}
+  end
+
+  def update
+    account = nil
+    if @allowed_account
+      account = @allowed_account if @allowed_account.id == params['id']
+    else
+      account = Account.find_by(id: params['id'])
+    end
+    return api_error(404, {error: 'not found', id: params['id']}) unless account
+    # TODO: update and stuff
+    # allow updating name, contact info, join code (check uniqueness)
+    # default grid layouts
+    res = account_json(account, true)
     render json: {account: res}
   end
 
@@ -91,15 +114,22 @@ class Api::AccountsController < ApplicationController
     end
     res
   end
-  def account_json(account)
+
+  def account_json(account, include_extras=false)
     account.generate_defaults
-    {
+    meter_ts = ((account.settings['subscription'] || {})['last_meter_update'] || {})['timestamp']
+    last_meter = meter_ts && Time.at(meter_ts).utc.iso8601
+    res = {
       id: account.id,
       code: account.code,
       name: account.settings['name'] || account.code,
       type: account.backend_type,
       contact_name: account.settings['contact_name'],
       contact_email: account.settings['contact_email'],
+      type: account.paid_account? ? 'paid' : 'free',
+      purchase_summary: (account.settings['subscription'] || {})['purchase_summary'],
+      last_meter_update: last_meter,
+      can_start_room: account.can_start_room?,
       archived: account.archived,
       source: account.settings['source'],
       address: account.settings['address'],
@@ -113,5 +143,14 @@ class Api::AccountsController < ApplicationController
       max_monthly_rooms: account.settings['max_monthly_rooms'],
       max_monthly_rooms_per_user: account.settings['max_monthly_rooms_per_user'],
     }
+    if include_extras
+      res[:sub_ids] = account.settings['codes'] || {}
+      res[:rooms] = []
+      rooms = Room.where(account_id: account.id).where(['created_at > ?', 4.weeks.ago])
+      rooms.each do |room|
+        res[:rooms] << room_json(room)
+      end
+    end
+    res
   end
 end

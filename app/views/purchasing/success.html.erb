@@ -1,0 +1,20 @@
+<script>
+  var session_id = "<%= params['session_id'] %>";
+  (function() {
+    session.ajax('/api/v1/purchasing/confirm', {
+      type: 'POST',
+      data: { session_id: session_id }
+    }).then(function(res) {
+      if(res.source == 'purchase') {
+        // account confirmed! show link to account page
+      } else if(res.source == 'update') {
+        // billing details updated! show link to account page
+      }
+    }, function(err) {
+
+    });
+  })();
+</script>
+
+post '/api/v1/purchasing/setup' => 'purchasing#initiate'
+post '/api/v1/purchasing/confirm' => 'purchasing#confirm'

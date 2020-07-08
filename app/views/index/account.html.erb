@@ -1,0 +1,31 @@
+<h1>Account Details</h1>
+<pre>
+- summary
+- recent sessions
+- modify billing settings/re-subscribe
+post '/api/v1/purchasing/modify' => 'purchasing#update_billing'
+
+- cancel subscription
+if no @account
+- enter join code to get access link emailed
+</pre>
+<script>
+  (function() {
+    var update_billing = function() {
+      session.ajax('/api/v1/purchasing/modify', 
+        {
+          type: 'POST',
+          data: { account_code: code }
+        }
+      ).then(function(res) {
+        stripe.redirectToCheckout({
+          sessionId: res.session_id
+        }).then(function (result) {
+          // other oopsies!
+        });
+      }, function(err) {
+        // oopsies!
+      });
+    };
+  })();
+</script>

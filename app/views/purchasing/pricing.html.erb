@@ -1,0 +1,40 @@
+<h1>Co-VidSpeak Room Plans</h1>
+TODO: add session_id to localStorage for debugging
+<pre>
+- two-person video chat room with grid-based layouts
+- runs on Windows, Mac, iOS, Android in native browserss
+- $8/month/simultaneous room, cancel anytime
+- no charge for months with < 30min usage
+- set preferred default layouts
+- add individualized layouts
+- schedule rooms in advance
+- dedicated technical support
+- upgrades and new features included
+</pre>
+<script>
+  (function() {
+    var start_purchase = function() {
+      session.ajax('/api/v1/purchasing/setup', 
+        {
+          type: 'POST',
+          data: { 
+            join_code: 'asdf',
+            name: 'account name',
+            contact_name: 'person',
+            contact_email: 'email'
+            account_code: code,
+            quantity: 1
+          }
+        }
+      ).then(function(res) {
+        stripe.redirectToCheckout({
+          sessionId: res.session_id
+        }).then(function (result) {
+          // other oopsies!
+        });
+      }, function(err) {
+        // oopsies!
+      });
+    };
+  })();
+</script>

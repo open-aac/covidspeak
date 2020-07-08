@@ -11,8 +11,15 @@ Rails.application.routes.draw do
   get '/rooms/:room_id/join' => 'index#join'
   get '/schedule/:schedule_id' => 'index#schedule'
   get '/admin' => 'index#admin'
+  get '/accounts/:admin_code' => 'index#admin'
   get '/bundles/:code' => 'index#bundle'
   
+  get '/pricing' => 'purchasing#pricing'
+  get '/purchasing/success' => 'purchasing#success'
+  post '/api/v1/purchasing/setup' => 'purchasing#initiate'
+  post '/api/v1/purchasing/confirm' => 'purchasing#confirm'
+  post '/api/v1/purchasing/modify' => 'purchasing#update_billing'
+
   mount ActionCable.server => '/cable'
 
   scope 'api/v1', module: 'api' do
@@ -26,9 +33,11 @@ Rails.application.routes.draw do
     post 'tokens' => 'tokens#token'
     post 'bundles' => 'users#bundle'
     get 'tokens/check' => 'tokens#check_token'
+    
     resources :accounts do
       post 'sub_ids' => 'accounts#sub_id'
       post 'join_code' => 'accounts#join_code', on: :collection
+      post 'purchasing_events' => 'accounts#purchasing_event', on: :collection
       get 'rooms' => 'rooms#list_schedule'
       post 'rooms' => 'rooms#schedule'
     end

@@ -267,6 +267,14 @@ var room = {
         method: 'POST',
         data: data
       }).then(function(res) {
+        if(res.closed) {
+          // TODO: modal notifying of room closure,
+          // start timer for force exit
+          modal.open('Room Expired')
+          setTimeout(function() {
+            room.leave_room();
+          }, 5000)
+        }
         resume();
       }, function(err) {
         resume();
@@ -1937,6 +1945,11 @@ var room = {
     }
     return res;
   },
+  leave_room: function() {
+    setTimeout(function() {
+      location.href = localStorage.teach_return_url || "/thanks";
+    }, 300);
+  },
   start_and_enter_room: function(res) {
     localStorage.removeItem('teach_return_url');
     localStorage.user_id = res.user.id;
@@ -2147,9 +2160,7 @@ document.addEventListener('click', function(event) {
           if(room.current_room) {
             remote.send_message(room.current_room.id, {action: 'goodbye'}).then(null, function() { });
           }
-          setTimeout(function() {
-            location.href = localStorage.teach_return_url || "/thanks";
-          }, 300);
+          room.leave_room();
         }},
         {label: "Cancel", action: "close"}
       ]);

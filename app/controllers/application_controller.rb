@@ -27,4 +27,14 @@ class ApplicationController < ActionController::Base
       return false
     end
   end
+
+  def require_admin_code
+    if params['admin_code']
+      @allowed_account = Account.find_by_admin_code(params['admin_code'])
+      return false unless @account
+    else
+      return require_token
+    end
+    require_admin_code    
+  end
 end
