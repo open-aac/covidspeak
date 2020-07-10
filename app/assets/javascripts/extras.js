@@ -16,7 +16,7 @@ var extras = {
       if(sub && lookups[key] != null && do_populate) {
         sub.innerText = lookups[key];
         sub.style.display = '';
-      } else if(sub && hide_if_blank && lookups[key] == null) {
+      } else if(sub && hide_if_blank && (lookups[key] == null || lookups[key] == false)) {
         sub.style.display = 'none';
       }
     }

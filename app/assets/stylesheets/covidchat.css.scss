@@ -1405,6 +1405,14 @@ strong {
       font-size: 25px;
       margin-top: -5px;
     }
+    .billing_type {
+      float: left;
+      padding-right: 5px;
+      margin-left: -10px;
+      img {
+        width: 20px;
+      }
+    }
     &.recent .name {
       color: #3594e6;
     }
@@ -1628,28 +1636,30 @@ strong {
     }
   }
 }
-dl#account_details {
-  dt {
-    float: left;
-    clear: left;
-    width: 200px;
-    text-align: right;
-    margin-right: 10px;
-    color: #888;
-    height: 25px;
-  }
-  dd {
-    height: 25px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-  }
-  &:after { 
-    display: block;
-    content: "";
-    clear: left;
-  }
-  margin-bottom: 50px;
+#account {
+  dl {
+    dt {
+      float: left;
+      clear: left;
+      width: 200px;
+      text-align: right;
+      margin-right: 10px;
+      color: #888;
+      height: 25px;
+    }
+    dd {
+      height: 25px;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+    &:after { 
+      display: block;
+      content: "";
+      clear: left;
+    }
+    margin-bottom: 50px;
+  }  
 }
 #rooms {
   .room {

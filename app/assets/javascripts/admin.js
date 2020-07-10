@@ -40,7 +40,7 @@ var process_account = function(account) {
       target = 'webrtc (' + account.address + ')';
     }
   }
-  if(account.type == 'paid') {
+  if(account.payment_type == 'paid') {
     if(account.can_start_room) {
       account.purchase_state = "Active";
     } else {
@@ -153,8 +153,10 @@ var admin = {
         recent_rooms: account.recent_rooms,
         contact_name: account.contact_name,
         contact_email: account.contact_email,
+        cancel_reason: account.cancel_reason,
+        "--cancel_reason_parent": !!account.cancel_reason,
         purchase_state: account.purchase_state,
-        "--purchase_summary_parent": !!(account.type == 'paid' && account.can_start_room),
+        "--purchase_summary_parent": !!(account.payment_type == 'paid' && account.can_start_room),
         "-max_concurrent_rooms": account.max_concurrent_rooms,
         "-max_concurrent_rooms_per_user": account.max_concurrent_rooms,
         "-max_daily_rooms": account.max_daily_rooms,
@@ -260,6 +262,15 @@ var admin = {
           "-recent_rooms": account.recent_rooms,
           target: account.target
         })
+        if(elem.querySelector('.billing_type img')) {
+          if(account.payment_type == 'paid') {
+            if(account.can_start_room) {
+              elem.querySelector('.billing_type img').src = "/icons/cart-check.svg";
+            } else {
+              elem.querySelector('.billing_type img').src = "/icons/cart-dash.svg";
+            }
+          }
+        }
         if(account.recent_activity) {
           elem.classList.add('recent');
         }

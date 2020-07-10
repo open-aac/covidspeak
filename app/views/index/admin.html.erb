@@ -18,6 +18,7 @@
       <div class="status"></div>
       <div class='account template'>
         <span>
+          <span class='billing_type'><img src='/icons/heart.svg'/></span>
           <span class="name"></span>
           <span class="code"></span>
         </span>
@@ -61,11 +62,17 @@
   <div id="middle" class='big'>
     <a href="#" class='back' style='display: inline-block; margin-bottom: 20px;'>&lt; Back to Accounts</a>
     <h2>Account Details: <strong><span class='name'></span></strong></h2>
-    <dl>
+    <dl style='margin-top: 20px;'>
       <dt>Join Code:</dt>
         <dd class='code'></dd>
       <dt>Account Management:</dt>
         <dd><a href="#" class='manage_link'>manage account <img src='/icons/link-45deg.svg'/></a></dd>
+      <dt>Status:</dt>
+        <dd class='purchase_state'></dd>
+      <div class='cancel_reason_parent'>
+        <dt>Cancel Reason:</dt>
+          <dd class='cancel_reason'></dd>
+      </div>
       <dt>Target:</dt>
         <dd class='target'></dd>
       <dt class='max_concurrent_rooms_dt'>Max Concurrent Rooms:</dt>

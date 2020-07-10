@@ -3,7 +3,6 @@ class Api::AccountsController < ApplicationController
   before_action :require_admin_code, :only => [:show, :update]
   
   def index
-    return api_error(400, {error: 'not auth'})
     list = []
     accounts = {}
     Account.all.each do |account|
@@ -127,7 +126,7 @@ class Api::AccountsController < ApplicationController
       type: account.backend_type,
       contact_name: account.settings['contact_name'],
       contact_email: account.settings['contact_email'],
-      type: account.paid_account? ? 'paid' : 'free',
+      payment_type: account.paid_account? ? 'paid' : 'free',
       purchase_summary: (account.settings['subscription'] || {})['purchase_summary'],
       last_meter_update: last_meter,
       can_start_room: account.can_start_room?,
