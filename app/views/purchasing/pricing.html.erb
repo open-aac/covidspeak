@@ -73,7 +73,6 @@
         if(location.host.match(/localhost/)) {
           localStorage.last_purchase_session_id = res.session_id;
         }
-        debugger
         stripe.redirectToCheckout({
           sessionId: res.session_id
         }).then(function (result) {
@@ -88,4 +87,7 @@
       start_purchase();
     })
   })();
+</script>
+<script>
+var stripe = Stripe("<%= ENV['STRIPE_PUBLIC_KEY'] %>");
 </script>
