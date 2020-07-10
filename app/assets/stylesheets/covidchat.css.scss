@@ -1292,24 +1292,7 @@ strong {
 .admin_view {
   height: 100%;
 }
-#account {
-  dl {
-    margin-top: 20px;
-    margin-bottom: 30px;
-    dt {
-      display: inline-block;
-      width: 150px;
-      margin-left: 10px;
-      color: #888;
-      margin-bottom: 5px;
-    }
-    dd {
-      display: inline-block;
-      width: calc(100% - 170px);
-      margin-bottom: 5px;
-    }
-  }
-}
+
 #account,#accounts {
   .rooms {
     .room {
@@ -1318,6 +1301,10 @@ strong {
       margin-bottom: 5px;
       border: 1px solid #ccc;
       border-radius: 5px;
+      &.status {
+        border: none;
+        padding-left: 20px;
+      }
       .pre {
         display: inline-block;
         width: 200px;
@@ -1330,6 +1317,31 @@ strong {
       .devices {
         margin-left: 230px;
         color: #888;
+      }
+    }
+  }
+  .bills {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    .bill {
+      &.template { display: none; }
+      padding: 10px;
+      margin-bottom: 5px;
+      border-bottom: 1px solid #ccc;
+      &.status {
+        border: none;
+        padding-left: 20px;
+      }
+      .month {
+        width: 200px;
+        color: #888;
+      }
+      .billing_string {
+        font-style: italic;
+        color: #888;
+      }
+      &:last-child {
+        border-bottom: none;
       }
     }
   }
@@ -1615,6 +1627,29 @@ strong {
       color: #444;
     }
   }
+}
+dl#account_details {
+  dt {
+    float: left;
+    clear: left;
+    width: 200px;
+    text-align: right;
+    margin-right: 10px;
+    color: #888;
+    height: 25px;
+  }
+  dd {
+    height: 25px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+  &:after { 
+    display: block;
+    content: "";
+    clear: left;
+  }
+  margin-bottom: 50px;
 }
 #rooms {
   .room {

@@ -40,6 +40,15 @@ var process_account = function(account) {
       target = 'webrtc (' + account.address + ')';
     }
   }
+  if(account.type == 'paid') {
+    if(account.can_start_room) {
+      account.purchase_state = "Active";
+    } else {
+      account.purchase_state = "Canceled";
+    }
+  } else {
+    account.purchase_state = "Free";
+  }
   account.code_string = code;
   account.target = target;
   if(account.last_room_at) {
@@ -103,35 +112,39 @@ var admin = {
       window.location = admin.hashstate;
     }
   },
-  load_account: function(account_id) {
-    session.ajax("/api/v1/accounts/" + account_id, {type: 'GET'}).then(function(data) {
+  load_account: function(account_id, account_code) {
+    session.ajax("/api/v1/accounts/" + account_id, {type: 'GET', data: {admin_code: account_code}}).then(function(data) {
       var account = data.account;
-      admin.set_state("#account:" + account.id);
+      if(!account_code) {
+        admin.set_state("#account:" + account.id);
+      }
       process_account(account);
 
       var content = document.querySelector('#account');
-      if(account.sub_codes) {
-        content.querySelector('.sub_codes').innerText = "";
-        for(var key in (account.sub_ids || {})) {
-          var link = document.createElement('a');
-          link.style.display = 'block';
-          link.href = "/?join=" + account.code + "." + key;
-          var exp = 'permanent';
-          if(account.sub_ids[key] != 'permanent') {
-            var date = new Date(account.sub_ids[key] * 1000 - tz_offset);
-            exp = date.toISOString().substring(0, 10);
+      if(!account_code) {
+        if(account.sub_codes) {
+          content.querySelector('.sub_codes').innerText = "";
+          for(var key in (account.sub_ids || {})) {
+            var link = document.createElement('a');
+            link.style.display = 'block';
+            link.href = "/?join=" + account.code + "." + key;
+            var exp = 'permanent';
+            if(account.sub_ids[key] != 'permanent') {
+              var date = new Date(account.sub_ids[key] * 1000 - tz_offset);
+              exp = date.toISOString().substring(0, 10);
+            }
+            link.innerText = key + " (" + exp + ")";
+            content.querySelector('.sub_codes').appendChild(link);
           }
-          link.innerText = key + " (" + exp + ")";
-          content.querySelector('.sub_codes').appendChild(link);
+          content.querySelector('#generate_sub_code').style.display = 'block';
+        } else {
+          content.querySelector('.sub_codes').innerText = "Not Available";
+          content.querySelector('#generate_sub_code').style.display = 'none';
         }
-        content.querySelector('#generate_sub_code').style.display = 'block';
-      } else {
-        content.querySelector('.sub_codes').innerText = "Not Available";
-        content.querySelector('#generate_sub_code').style.display = 'none';
-      }
 
-      admin.current_account = account;
-      admin.show_view('account');
+        admin.current_account = account;
+        admin.show_view('account');
+      }
       extras.populate(content, {
         name: account.name,
         code: account.code_string,
@@ -140,6 +153,8 @@ var admin = {
         recent_rooms: account.recent_rooms,
         contact_name: account.contact_name,
         contact_email: account.contact_email,
+        purchase_state: account.purchase_state,
+        "--purchase_summary_parent": !!(account.type == 'paid' && account.can_start_room),
         "-max_concurrent_rooms": account.max_concurrent_rooms,
         "-max_concurrent_rooms_per_user": account.max_concurrent_rooms,
         "-max_daily_rooms": account.max_daily_rooms,
@@ -153,14 +168,48 @@ var admin = {
         "--max_monthly_rooms_dt": account.max_monthly_rooms,
         "--max_monthly_rooms_per_user_dt": account.max_monthly_rooms_per_user,
       });
+      if(content.querySelector('.join_link')) {
+        content.querySelector('.join_link').setAttribute('href', "/?join=account.join_code");
+      }
       content.querySelectorAll('.rooms .room').forEach(function(room) {
         if(!room.classList.contains('template')) {
           room.parentNode.removeChild(room);
         }
       });
+      content.querySelectorAll('.bills .bill').forEach(function(room) {
+        if(!room.classList.contains('template')) {
+          room.parentNode.removeChild(room);
+        }
+      });
+      if(account.history) {
+        var template = content.querySelector('.bills .bill.template');
+        if(template) {
+          account.history.forEach(function(month) {
+            var elem = template.cloneNode(true);
+            elem.classList.remove('template');
+            extras.populate(elem, {
+              month: month.month,
+              minutes: month.minutes,
+              rooms: month.rooms,
+              billing_string: month.billed ? "billed" : "not billed"
+            });
+            content.querySelector('.bills').appendChild(elem);
+          });
+        }
+      }
+      if(account.admin_code && document.querySelector(".manage_link")) {
+        document.querySelector(".manage_link").setAttribute('href', "/accounts/" + account.admin_code);
+      }
       if(account.rooms) {
         var template = content.querySelector('.rooms .room.template');
         account.rooms = account.rooms.sort(function(a, b) { return b.started - a.started; })
+        if(account.rooms.length == 0) {
+          var div = document.createElement('div');
+          div.classList.add('room');
+          div.classList.add('status');
+          div.innerText = "No Recent Rooms";
+          content.querySelector('.rooms').appendChild(div);
+        }
         account.rooms.forEach(function(room) {
           var elem = template.cloneNode(true);
           elem.classList.remove('template');

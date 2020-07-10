@@ -11,7 +11,8 @@ Rails.application.routes.draw do
   get '/rooms/:room_id/join' => 'index#join'
   get '/schedule/:schedule_id' => 'index#schedule'
   get '/admin' => 'index#admin'
-  get '/accounts/:admin_code' => 'index#admin'
+  get '/accounts/:admin_code' => 'index#account'
+  get '/accounts/:admin_code/activate/:check_id' => 'index#activate_account_code'
   get '/bundles/:code' => 'index#bundle'
   
   get '/pricing' => 'purchasing#pricing'
@@ -19,6 +20,7 @@ Rails.application.routes.draw do
   post '/api/v1/purchasing/setup' => 'purchasing#initiate'
   post '/api/v1/purchasing/confirm' => 'purchasing#confirm'
   post '/api/v1/purchasing/modify' => 'purchasing#update_billing'
+  post '/api/v1/purchasing/cancel' => 'purchasing#cancel'
 
   mount ActionCable.server => '/cable'
 
@@ -31,6 +33,8 @@ Rails.application.routes.draw do
     end
     resources :users
     post 'tokens' => 'tokens#token'
+    post 'tokens/admin_code' => 'tokens#email_admin_code'
+    get 'tokens/admin_code/:check_id' => 'tokens#check_admin_code'
     post 'bundles' => 'users#bundle'
     get 'tokens/check' => 'tokens#check_token'
     

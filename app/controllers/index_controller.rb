@@ -28,4 +28,10 @@ class IndexController < ApplicationController
   def account
     @account = Account.find_by_admin_code(params['admin_code'])
   end
+  
+  def activate_account_code
+    @account = Account.find_by_admin_code(params['admin_code'])
+    RedisAccess.default.setex("admin_code/#{params['check_id']}", 3.hours.to_i, @account.admin_code) if @account
+  end
+
 end

@@ -67,7 +67,7 @@ class Api::AccountsController < ApplicationController
   def show
     account = nil
     if @allowed_account
-      account = @allowed_account if @allowed_account.id == params['id']
+      account = @allowed_account if @allowed_account.id.to_s == params['id']
     else
       account = Account.find_by(id: params['id'])
     end
@@ -122,6 +122,7 @@ class Api::AccountsController < ApplicationController
     res = {
       id: account.id,
       code: account.code,
+      created_at: account.created_at.iso8601,
       name: account.settings['name'] || account.code,
       type: account.backend_type,
       contact_name: account.settings['contact_name'],
@@ -131,8 +132,6 @@ class Api::AccountsController < ApplicationController
       last_meter_update: last_meter,
       can_start_room: account.can_start_room?,
       archived: account.archived,
-      source: account.settings['source'],
-      address: account.settings['address'],
       last_room_at: account.settings['last_room_at'],
       recent_rooms_approx: account.settings['recent_rooms'] || 0,
       sub_codes: account.settings['sub_codes'],
@@ -143,9 +142,18 @@ class Api::AccountsController < ApplicationController
       max_monthly_rooms: account.settings['max_monthly_rooms'],
       max_monthly_rooms_per_user: account.settings['max_monthly_rooms_per_user'],
     }
+    if @admin_token
+      res[:address] = account.settings['address']
+      res[:source] = account.settings['source']
+      res[:history] = account.month_history
+    end
+
     if include_extras
       res[:sub_ids] = account.settings['codes'] || {}
       res[:rooms] = []
+      res[:admin_code] = account.admin_code
+      res[:cancel_reason] = (account.settings['subscription'] || {})['cancel_reason']
+      res[:history] = account.month_history
       rooms = Room.where(account_id: account.id).where(['created_at > ?', 4.weeks.ago])
       rooms.each do |room|
         res[:rooms] << room_json(room)

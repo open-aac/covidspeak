@@ -1,33 +1,239 @@
-<h1>Account Details</h1>
-<pre>
-- summary
-- recent sessions
-- modify billing settings/re-subscribe
-post '/api/v1/purchasing/modify' => 'purchasing#update_billing'
+<% if @account %>
+  <div id='middle' class='big'>
+    <div id='account'>
+      <h1>Account Details - <span class='name'><%= @account.settings['name'] %></span></h1>
+      <p><%= @account.settings['description'] %></p>
+      <dl id='account_details'>
+        <dt>Created:</dt>
+          <dd class='created_string'><%= @account.created_at.strftime("%e %b, %Y") %></dd>
+        <dt>Join Code:</dt>
+          <dd><a href="/?join=<%= @account.code %>" class='join_link'><span class='join_code'><%= @account.code %></span> <img src='/icons/link-45deg.svg'/></a></dd>
+        <dt>Simultaneous Rooms:</dt>
+          <dd class='max_concurrent_rooms'><%= @account.settings['max_concurrent_rooms'] || 1 %></dd>
+        <dt>Contact:</dt>
+          <dd class='contact_name'><%= @account.settings['contact_name'] %></dd>
+        <dt>Contact Email:</dt>
+          <dd class='contact_email'><%= @account.settings['contact_email'] %></dd>
+        <dt>Status</dt>
+          <dd class='purchase_status'>
+            <% if @account.paid_account? %>
+              <% if @account.can_start_room? %>
+                <span class='purchase_state'>Active</span>
+              <% else %>
+                <span class='purchase_state'>Canceled</span>
+              <% end %>
+            <% else %>
+              <span class='purchase_state'>Free</span>
+            <% end %>
+            <% if @account.settings['subscription']['purchase_summary'] %>
+              <span class='purchase_summary_parent'>
+                - <i style='color: #888;' class='purchase_summary'><%= @account.settings['subscription']['purchase_summary'] %></i>
+              </span>
+            <% end %>
+          </dd>
+          <dt>Last Room:</dt>
+            <dd class='last_room'>
+              <% if @account.settings['last_room_at'] %>
+                <%= Time.at(@account.settings['last_room_at'].strftimee("%e %b, %Y")) %>
+              <% else %>
+                None
+              <% end %>
+            </dd>
+      </dl>
+      <h2>Recent Rooms</h2>
+      <div class='rooms'>
+        <div class='room template'>
+          <span class='pre'><span class='sub_id'></span><span class='started'></span></span> 
+          - 
+          <span class='duration'></span>
+          <div class='devices'></div>
+        </div>
+      </div>
+      <h2 style='margin-top: 50px;'>Activity History</h2>
+      <div class='bills'>
+        <div class='bill template'>
+        <span class='month'></span>
+        - 
+        <span class='rooms'></span> rooms, for 
+        <span class='minutes'></span> minutes
+        <span class='billing_string'></span>
 
-- cancel subscription
-if no @account
-- enter join code to get access link emailed
-</pre>
+        </div>
+      </div>
+    </div>
+    <div style='margin-top: 50px; display: flex; flex-direction: row;'>
+      <button id='update_billing' style='flex: 1; height: 75px;'>
+      <% if @account.paid_account? %>
+        <% if @account.can_start_room? %>
+          Update Billing Settings
+        <% else %>
+          Re-Activate Subscription
+        <% end %>
+      <% else %>
+        Purchase Subscription for US$<%= (@account.settings['max_concurrent_rooms'] || 1) * 8 %> / month
+      <% end %>
+      </button>
+      <% if @account.paid_account? && @account.can_start_room? %>
+        <button id='cancel_billing' style='flex: 1; height: 75px;'>Cancel Subscription</button>
+      <% end %>
+    </div>
+    <div id='cancel_billing_confirm' style='margin-top: 20px; display: none;'>
+      <h2>Cancel Subscription</h2>
+      <p>Are you sure you want to cancel your subscription? To confirm, enter this account's join code below:</p>
+      <form id='cancel_billing_form'>
+        <input type='text' style='width: 100%; margin-bottom: 5px; margin-top: 10px;' placeholder='Reason for Cancelling (optional)' id='cancel_reason'/>
+        <input type='text' style='width: calc(100% - 255px);' placeholder='Join Code' id='join_code' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='off'/>
+        <button id='cancel_button' type='submit' class='primary' style='width: 250px; margin-right: 0;'>
+          End Subscription
+        </button>
+        <p id='cancel_error' class='error' style='display: none;'>Cancellation failed, please contact support.</p>
+      </form>
+    </div>
+  </div>
+<% else %>
+  <h1>Account Details</h1>
+  <div id="middle">
+    <div style='width: 400px; text-align: left; margin: 0 auto;'>
+      <div id='admin_login_check' style='display: none;'>
+        <p class='prompt' style='margin-bottom: 20px;'>Email Sent! Waiting for activation (click the link from your email)...</p>
+        <button id='re_check'>Re-Check</button>
+        <a href="#" class='link' style='display: none; font-size: 20px;'>Manage Your Account</a>
+      </div>
+      <form id='admin_login'>
+        <p class='prompt' style='margin-bottom: 20px;'>To access your account, enter your account details below and we'll email a link you can use to activate this page for accesing your account.</p>
+        <input type='text' style='width: calc(100% - 185px);' placeholder='E-Mail or Join Code' id='join_code' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='off'/>
+        <button id='login_button' type='submit' class='primary' style='width: 180px; margin-right: 0;'>
+          Log In
+        </button>
+        <p id='login_error' class='error' style='display: none;'>Login failed, please make sure you entered a valid join code or email.</p>
+      </form>
+    </div>
+  </div>
+<% end %>
 <script>
   (function() {
+    var poll_activation = function() {
+      if(poll_activation.timer) {
+        clearTimeout(poll_activation.timer);
+        poll_activation.timer = null;
+      }
+      var prompt = document.querySelector('#admin_login_check .prompt');
+      prompt.innerText = "Checking for activation...";
+      session.ajax('/api/v1/tokens/admin_code/' + poll_activation.check_id, {type: 'GET'}).then(function(res) {
+        if(res.ready && res.admin_code) {
+          prompt.innerText = "Success! Hit the link below to manage your account.";
+          localStorage["admin_code_for_" + poll_activation.join_code] = JSON.stringify({admin_code: res.admin_code, timestamp: (new Date()).getTime()});
+          var link = document.querySelector('#admin_login_check .link');
+          link.style.display = 'inline';
+          link.setAttribute('href', "/accounts/" + res.admin_code);
+          document.querySelector('#re_check').style.display = 'none';
+        } else {
+          prompt.innerText = "Waiting for activation (click the link from your email)...";
+          poll_activation.timer = setTimeout(poll_activation, 15000);
+        }
+      }, function(err) {
+        prompt.innerText = "Activation check failed, trying again...";
+        poll_activation.timer = setTimeout(poll_activation, 30000);
+      });
+      // cancel timer
+      // ajax request
+      // on success, store in localStorage and redirect
+      // on non-success, schedule for retry
+    };
+    if(document.querySelector('#admin_login')) {
+      document.querySelector('#re_check').addEventListener('click', function(e) {
+        e.preventDefault();
+        poll_activation();
+      })
+      document.querySelector('#admin_login').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var join_code = document.querySelector('#join_code').value;
+        var existing = localStorage.getItem("admin_code_for_" + join_code);
+        var json = null;
+        if(existing) {
+          try {
+            json = JSON.parse(existing);
+          } catch(e) { }
+        }
+        var now = (new Date()).getTime();
+        if(false && json && json.admin_code && json.timestamp > (now - (3 * 60 * 60 * 1000))) {
+          // TODO: if on a public device, we don't want to allow re-logging in
+          location.href = "/accounts/" + json.admin_code;
+        } else {
+          session.ajax('/api/v1/tokens/admin_code', {
+            type: 'POST',
+            data: {code: join_code}
+          }).then(function(res) {
+            if(res.sent && res.check_id) {
+              poll_activation.check_id = res.check_id;
+              poll_activation.join_code = join_code;
+              document.querySelector('#admin_login').style.display = 'none';
+              document.querySelector('#admin_login_check').style.display = 'block';
+              poll_activation.timer = setTimeout(poll_activation, 15000);
+            } else {
+              document.querySelector('#login_error').style.display = 'block';
+            }
+          }, function(err) {
+            document.querySelector('#login_error').style.display = 'block';
+          });
+        }
+      });  
+    }
+
+    var account_id = "<%= @account && @account.id %>";
+    var account_code = "<%= @account && params['admin_code'] %>";
+    if(account_id && account_code) {
+      admin.load_account(account_id, account_code);
+    }
+    if(document.querySelector('#cancel_billing')) {
+      document.querySelector('#cancel_billing').addEventListener('click', function(e) {
+        document.querySelector('#cancel_billing_confirm').style.display = document.querySelector('#cancel_billing_confirm').style.display == 'block' ? 'none' : 'block';
+      });  
+    }
+    document.querySelector('#cancel_billing_form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var code = e.target.querySelector('#join_code').value;
+      var reason = e.target.querySelector('#cancel_reason').value;
+      var current_code = document.querySelector('#account .join_code').innerText;
+      if(code != current_code) { return; }
+      e.target.querySelector('#cancel_button').innerText = 'Updating...';
+      session.ajax('/api/v1/purchasing/cancel', {
+        type: 'POST', 
+        data: {admin_code: account_code, reason: reason}
+      }).then(function(res) {
+        e.target.querySelector('#cancel_button').innerText = 'End Subscription';
+        document.querySelector('#cancel_billing_confirm').style.display = 'none';
+        if(res.canceled) {
+          modal.note("Thank you for using Co-VidSpeak! Your subscription will stop at the end of the current billing period.");
+          admin.load_account(account_id, account_code);
+        } else {
+          modal.note("Cancellation failed unexpectedly, please contact support");
+        }
+      }, function(err) {
+        e.target.querySelector('#cancel_button').innerText = 'End Subscription';
+        e.target.querySelector('#cancel_error').style.display = 'block';
+      });
+    });
+    document.querySelector('#update_billing').addEventListener('click', function(e) {
+      update_billing();
+    });
     var update_billing = function() {
       session.ajax('/api/v1/purchasing/modify', 
         {
           type: 'POST',
-          data: { account_code: code }
+          data: { admin_code: account_code }
         }
       ).then(function(res) {
         if(location.host.match(/localhost/)) {
-          localStorage.last_session_id = res.session_id;
+          localStorage.last_purchase_session_id = res.session_id;
         }
         stripe.redirectToCheckout({
           sessionId: res.session_id
         }).then(function (result) {
-          // other oopsies!
+          modal.note("Couldn't reach the purchasing system");
         });
       }, function(err) {
-        // oopsies!
+        modal.note("There was an unexpected error communicating with the purchasing system");
       });
     };
   })();

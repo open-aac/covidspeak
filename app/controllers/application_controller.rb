@@ -25,6 +25,8 @@ class ApplicationController < ActionController::Base
     if !Account.valid_access_token?(token)
       api_error(404, {error: 'no valid token'})
       return false
+    else
+      @admin_token = true
     end
   end
 

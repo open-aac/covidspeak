@@ -15,7 +15,7 @@ module Purchasing
     previous = event['data'] && event['data']['previous_attributes']
     event_result = nil
     if object
-      if event['type'] == 'customer.subscription.created' && (object['metadata'] || {})['source'] == 'covidspeak'
+      if event['type'] == 'customer.subscription.created' && (object['metadata'] || {})['platform_source'] == 'covidspeak'
         customer = Stripe::Customer.retrieve(object['customer'])
         valid = customer && customer['metadata'] && customer['metadata']['covidchat_account_id']
         if valid
@@ -29,7 +29,7 @@ module Purchasing
           })
         end
         data = {:subscribe => true, :valid => !!valid}
-      elsif event['type'] == 'customer.subscription.updated' && (object['metadata'] || {})['source'] == 'covidspeak'
+      elsif event['type'] == 'customer.subscription.updated' && (object['metadata'] || {})['platform_source'] == 'covidspeak'
         customer = Stripe::Customer.retrieve(object['customer'])
         valid = customer && customer['metadata'] && customer['metadata']['covidchat_account_id']
         if object['status'] == 'unpaid' || object['status'] == 'canceled'
@@ -62,7 +62,7 @@ module Purchasing
           end
           data = {:subscribe => true, :valid => !!valid}
         end
-      elsif event['type'] == 'customer.subscription.deleted' && (object['metadata'] || {})['source'] == 'covidspeak'
+      elsif event['type'] == 'customer.subscription.deleted' && (object['metadata'] || {})['platform_source'] == 'covidspeak'
         customer = Stripe::Customer.retrieve(object['customer'])
         valid = customer && customer['metadata'] && customer['metadata']['covidchat_account_id']
         if valid
@@ -76,7 +76,7 @@ module Purchasing
           })
         end
         data = {:unsubscribe => true, :valid => !!valid}
-      elsif event['type'] == 'checkout.session.completed'  && (object['metadata'] || {})['source'] == 'covidspeak'
+      elsif event['type'] == 'checkout.session.completed'  && (object['metadata'] || {})['platform_source'] == 'covidspeak'
         valid = Purchasing.confirm_purchase(object['id']) != false
         data = {:checkout => true, :valid => valid}
       elsif event['type'] == 'ping'
@@ -111,7 +111,7 @@ module Purchasing
       cancel_url: opts[:cancel_url],
       customer_email: opts[:contact_email],
       payment_method_types: ['card'],
-      metadata: { source: 'covidspeak' },
+      metadata: { platform_source: 'covidspeak' },
       # subscription_data: {
       #   metadata: { source: 'covidspeak' }
       # },
@@ -122,27 +122,29 @@ module Purchasing
     session.id
   end
 
-  def confirm_purchase(session_id)
+  def self.confirm_purchase(session_id)
     Stripe.api_key = ENV['STRIPE_SECRET_KEY']
     Stripe.api_version = '2020-03-02'
     price_id = ENV['STRIPE_PRICE_ID']
-    opts = JSON.parse(RedisAccess.default.get("purchase_settings/#{session.id}")) rescue {}
-    session = Stripe::Checkout::Session.retrieve({id: session_id, expand: ['customer.invoice_settings.default_payment_method', 'subscription.default_payment', 'setup_intent.payment_method']})
+    opts = JSON.parse(RedisAccess.default.get("purchase_settings/#{session_id}")) rescue {}
+    session = Stripe::Checkout::Session.retrieve({id: session_id, expand: ['customer.invoice_settings.default_payment_method', 'subscription.default_payment_method', 'setup_intent.payment_method']})
     return false unless session
     subscription = session['subscription']
     customer = session['customer']
     method = (session['setup_intent'] || {})['payment_method']
     method ||= ((session['customer'] || {})['invoice_settings'] || {})['default_payment_method']
+    method ||= (session['subscription'] || {})['default_payment']
     if !customer || !subscription
       return false unless method
       # find customer (list all by email) or create customer
       # attach a new subscription with default_payment_method = method['id']
-      customer = Stripe::Customer.list({email: opts['contact_email'], limit: 1})[0]
+      customer = Stripe::Customer.list({email: opts['contact_email'], limit: 1}).data[0]
       customer ||= Stripe::Customer.create({
         email: opts['contact_email'],
-        payment_method: method['id']
+        payment_method: method['id'],
+        metadata: {platform_source: 'covidspeak'}
       })
-      subscription = customer.subscriptions.data.detect{|s| s['items'].any?{|i| i['price']['id'] == price_id } && ['active', 'unpaid', 'past_due'].include?(['status']) }
+      subscription = customer.subscriptions.data.detect{|s| s.items.data.any?{|i| i['price']['id'] == price_id } && ['active', 'unpaid', 'past_due'].include?(s['status']) }
       # attach the subscription
       subscription ||= Stripe::Subscription.create({
         customer: customer['id'],
@@ -150,7 +152,7 @@ module Purchasing
           {price: price_id},
         ],
         default_payment_method: method['id'],
-        metadata: { source: 'covidspeak' }
+        metadata: { platform_source: 'covidspeak' }
       })
     end
     add_purchase_summary(opts, method)
@@ -165,6 +167,7 @@ module Purchasing
     end
     account = Account.find_by(code: opts['join_code'])
     if account
+      account.settings['subscription'] ||= {}
       if account.settings['subscription']['subscription_id'] && account.settings['subscription']['subscription_id'] != subscription['id']
         # On mismatch, just create a new account with a longer
         # join code so you don't lose the purchase process
@@ -175,24 +178,35 @@ module Purchasing
         end
         account = nil
       else
-        account.settings['subscription'] ||= {}
         do_email = account.settings['subscription']['purchase_summary'] != opts['purchase_summary']
         account.settings['subscription']['purchase_summary'] = opts['purchase_summary'] || account.settings['subscription']['purchase_summary']
         account.settings['subscription']['last_purchase_update_source'] = opts['source']
         # TODO: email about purchase information being updated if do_email
         account.save
         account.log_subscription_event({:log => 'already confirmed subscription', :id => subscription['id']})
+        Account.confirm_subscription({
+          state: 'active',
+          account_id: account.id,
+          subscription_id: subscription['id'],
+          customer_id: customer['id'],
+          source_id: 'stripe',
+          source: 'web.purchase',
+          purchase_summary: opts['purchase_summary']          
+        })
         return account
       end
     end
     account = Account.new
     account.code = opts['join_code'].to_s
+    account.settings ||= {}
     account.settings['name'] = (opts['name'] || 'Account Name Lost').to_s
     account.settings['free_account'] = false
-    account.settings['last_purchase_update_source'] = opts['source']
+    account.settings['subscription'] ||= {}
+    account.settings['subscription']['last_purchase_update_source'] = opts['source']
     account.settings['contact_name'] = (opts['contact_name'] || 'Contact Name Lost').to_s
     account.settings['contact_email'] = (opts['contact_email'] || customer['email']).to_s
-    account.copy_server_from('webrtc')
+    config_server = (ENV['PURCHASE_ACCOUNT_CODES_POOL'] || 'test').split(',').sample
+    account.copy_server_from(config_server)
     account.settings['max_concurrent_rooms'] = [1, opts['quantity'].to_i].max
     account.save!
     customer_meta = customer['metadata'] || {}
@@ -220,18 +234,20 @@ module Purchasing
   def self.purchase_modify(opts)
     session = Stripe::Checkout::Session.create({
       mode: 'setup',
+      customer_email: opts[:contact_email],
       customer: opts[:customer_id],
-      metadata: { source: 'covidspeak' },
-      subscription_data: {
-        metadata: { source: 'covidspeak' }
-      },
-      # setup_intent_data: {
-      #   metadata: { subscription_id: opts[:subscription_id] }
+      metadata: { platform_source: 'covidspeak' },
+      payment_method_types: ['card'],
+      # subscription_data: {
+      #   metadata: { source: 'covidspeak' }
       # },
-      success_url: opts[:successs_url],
+      setup_intent_data: {
+        metadata: { subscription_id: opts[:subscription_id] }
+      },
+      success_url: opts[:success_url],
       cancel_url: opts[:cancel_url]
     })
-    opts['source'] = 'update'
+    opts['source'] = opts[:subscription_id] ? 'update' : 'purchase'
     RedisAccess.default.setex("purchase_settings/#{session.id}", 36.hours.to_i, opts.to_json)
     session.id
   end
@@ -487,7 +503,7 @@ module Purchasing
     end
     
     if customer
-      if !customer.metadata || customer.metadata['covidchat_account_id'] != account.id
+      if !customer.metadata || customer.metadata['covidchat_account_id'] != account.id.to_s
         account.log_subscription_event({:log => 'customer metadata mismatch, cancel not possible', :metadata_account_id => customer.metadata['covidchat_account_id'], :current_account_id => account.id})
         return false
       end
@@ -506,6 +522,14 @@ module Purchasing
           sub.cancel_at_period_end = true
           sub.save
           account.log_subscription_event({:log => 'subscription canceling success', id: sub['id'], reason: subscription_id})
+          Account.confirm_subscription({
+            state: 'deleted',
+            account_id: account.id,
+            subscription_id: subscription_id,
+            customer_id: customer_id,
+            source_id: 'stripe',
+            source: 'user.cancelled'
+          })
           return true
         rescue => e
           account.log_subscription_event({:log => 'subscription canceling error', :detail => 'error canceling subscription', :error => e.to_s, :trace => e.backtrace})

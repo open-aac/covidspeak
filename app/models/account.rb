@@ -76,6 +76,23 @@ class Account < ApplicationRecord
     end
   end
 
+  def month_history
+    res = []
+    date = self.created_at.beginning_of_month
+    while date <= Date.today
+      date_string = date.iso8601
+      data = ((self.settings['subscription'] || {})['months'] || {})[date_string] || {}
+      res << {
+        month: date.strftime('%b %Y'),
+        minutes: data['minutes'] || 0,
+        rooms: data['rooms'] || 0,
+        billed: !!(data['quantity'] && data['quantity'] > 0)
+      }
+      date = date.next_month
+    end
+    res
+  end
+
   def admin_code(ts=nil)
     if !self.settings['nonce']
       self.generate_defaults
@@ -91,7 +108,7 @@ class Account < ApplicationRecord
     return nil unless id && ts && verifier
     return nil if ts.to_i < 12.hours.ago.to_i
     account = Account.find_by(id: id)
-    return nil unless account && aid == account.schedule_id(ts)
+    return nil unless account && aid == account.admin_code(ts)
     return account
   end
 
@@ -327,7 +344,7 @@ class Account < ApplicationRecord
     Base64.urlsafe_encode64([hex].pack("H*"))
   end
 
-  def log_subscription_event
+  def log_subscription_event(opts)
   end
 
   def paid_account?
@@ -335,34 +352,37 @@ class Account < ApplicationRecord
   end
 
   def can_start_room?
-    !!(!self.paid_account? || self.settings['subscription_id'])
+    !!(!self.paid_account? || (self.settings['subscription'] || {})['subscription_id'])
   end
 
   def self.confirm_subscription(opts)
-    return false unless self.paid_account?
+    account = Account.find(opts[:account_id] || opts['account_id'])
+    return false unless account.paid_account?
     if opts[:state] == 'active'
-      self.settings['subscription'] ||= {}
-      if self.settings['subscription']['subscription_id'] && self.settings['subscription']['subscription_id'] != opts[:subscription_id]
-        self.settings['subscription']['past_subscriptions'] ||= []
-        self.settings['subscription']['past_subscriptions'] << {sub_id: self.settings['subscription']['subscription_id'], cus_id: self.settings['subscription']['customer_id'], reason: 'replaced'}
-        self.settings['subscription']['purchase_summary'] = nil
+      account.settings['subscription'] ||= {}
+      if account.settings['subscription']['subscription_id'] && saccountelf.settings['subscription']['subscription_id'] != opts[:subscription_id]
+        account.settings['subscription']['past_subscriptions'] ||= []
+        account.settings['subscription']['past_subscriptions'] << {sub_id: account.settings['subscription']['subscription_id'], cus_id: account.settings['subscription']['customer_id'], reason: 'replaced'}
+        account.settings['subscription']['purchase_summary'] = nil
       end
-      self.settings['subscription']['subscription_id'] = opts[:subscription_id]
-      self.settings['subscription']['customer_id'] = opts[:customer_id]
-      self.settings['subscription']['source_id'] = opts[:source_id]
-      self.settings['subscription']['source'] = opts[:source]
-      self.settings['subscription']['purchase_summary'] = opts[:purchase_summary]
+      account.settings['subscription']['subscription_id'] = opts[:subscription_id]
+      account.settings['subscription']['customer_id'] = opts[:customer_id]
+      account.settings['subscription']['source_id'] = opts[:source_id]
+      account.settings['subscription']['source'] = opts[:source]
+      account.settings['subscription']['purchase_summary'] = opts[:purchase_summary]
+      account.save
       return true
     elsif opts[:state] == 'canceled' || opts[:state] == 'deleted'
-      self.settings['subscription'] ||= {}
-      self.settings['subscription']['past_subscriptions'] ||= []
-      self.settings['subscription']['past_subscriptions'] << {sub_id: self.settings['subscription']['subscription_id'], cus_id: self.settings['subscription']['customer_id'], reason: opts[:state]}
+      account.settings['subscription'] ||= {}
+      account.settings['subscription']['past_subscriptions'] ||= []
+      account.settings['subscription']['past_subscriptions'] << {sub_id: account.settings['subscription']['subscription_id'], cus_id: account.settings['subscription']['customer_id'], reason: opts[:state]}
 
-      self.settings['subscription']['subscription_id'] = nil
-      self.settings['subscription']['customer_id'] = nil
-      self.settings['subscription']['source_id'] = nil
-      self.settings['subscription']['source'] = nil
-      self.settings['subscription']['purchase_summary'] = nil
+      account.settings['subscription']['subscription_id'] = nil
+      account.settings['subscription']['customer_id'] = nil
+      account.settings['subscription']['source_id'] = nil
+      account.settings['subscription']['source'] = nil
+      account.settings['subscription']['purchase_summary'] = nil
+      account.save
     else
       return false
     end

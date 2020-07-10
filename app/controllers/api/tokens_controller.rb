@@ -16,10 +16,23 @@ class Api::TokensController < ApplicationController
       accounts = Accounts.where(email_hash: Account.generate_email_hash(params['code']))
     end
     return api_error(400, {error: 'invalid code'}) unless accounts.length > 0
+    account = accounts[0]
+    check_id = [account.id, GoSecure.nonce('admin_code_checker')].join('_')
     email = accounts[0].settings['email']
-    codes = accounts.map(&:admin_code)
+    host = "#{request.protocol}#{request.host_with_port}"
+    codes = accounts.map do |a|
+      {
+        url: "#{host}/accounts/#{a.admin_code}/activate/#{check_id}",
+        name: a.settings['name'] || "Account created #{a.created_at}"
+      }
+    end
     # TODO: email code to account email address
-    render json: {sent: true}
+    render json: {sent: true, check_id: check_id}
+  end
+
+  def check_admin_code
+    code = RedisAccess.default.get("admin_code/#{params['check_id']}")
+    render json: {ready: !!code, admin_code: code}
   end
 
   def check_token

@@ -2,19 +2,25 @@
   <h1>Purchase Confirmation</h1>
   <p id='purchase_status' style='font-size: 20px; margin: 20px 0;'>Finalizing Update...</p>
   <div id='confirmed' style='display: none; text-align: center;'>
-    <button>View Account Details</button>
+    <button id='details'>View Account Details</button>
   </div>
 </div>
 <script>
   var session_id = "<%= params['session_id'] %>";
+  var admin_code = null;
   (function() {
+    document.querySelector('#confirmed #details').addEventListener('click', function(e) {
+      e.preventDefault();
+      location.href = "/accounts/" + (admin_code || 'login');
+    });
     var check = function() {
       session.ajax('/api/v1/purchasing/confirm', {
         type: 'POST',
         data: { session_id: session_id }
       }).then(function(res) {
+        admin_code = res.admin_code;
         if(res.source == 'purchase') {
-          document.querySelector('#purchase_status').innerText = "Subscription confirmed! Thank you for purchasing Co-VidSpeak!";
+          document.querySelector('#purchase_status').innerText = "Subscription confirmed! Thank you for purchasing Co-VidSpeak! Remember: you will only be billed at the end of months with 30 or more minutes of activity";
           document.querySelector('#confirmed').style.display = 'block';
         } else if(res.source == 'update') {
           document.querySelector('#purchase_status').innerText = "Billing details updated!";

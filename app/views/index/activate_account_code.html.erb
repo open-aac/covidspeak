@@ -1,0 +1,14 @@
+<h1>Activate Account Access</h1>
+<div id="middle">
+  <div style='width: 400px; text-align: left; margin: 0 auto;'>
+    <% if @account %>
+      <p style='margin-bottom: 20px;'>You have successfully logged in! Jump back to the browser
+      window you were logging in from, or hit the link below
+      to continue.</p>
+      <a href="/accounts/<%= @account.admin_code %>" style='font-size: 20px;'>Manage Your Account</a>
+    <% else %>
+      <p>The link you used to get here was not valid, or has expired.
+        You can try to log in again and get a new link.</p>
+    <% end %>
+  </div>
+</div>

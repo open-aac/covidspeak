@@ -71,16 +71,16 @@
         }
       ).then(function(res) {
         if(location.host.match(/localhost/)) {
-          localStorage.last_session_id = res.session_id;
+          localStorage.last_purchase_session_id = res.session_id;
         }
         debugger
         stripe.redirectToCheckout({
           sessionId: res.session_id
         }).then(function (result) {
-          // other oopsies!
+          modal.note("There was an unexpected error communicating with the purchasing system");
         });
       }, function(err) {
-        // oopsies!
+        modal.note("There was an unexpected error communicating with the purchasing system");
       });
     };
     document.querySelector('#purchase').addEventListener('click', function(event) {
