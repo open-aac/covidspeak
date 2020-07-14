@@ -63,7 +63,11 @@ if(ts > ((new Date()).getTime() - (30 * 60 * 1000)) && localStorage.room_id && l
   document.querySelector('#existing_room').style.display = 'block';
 }
 document.querySelector('#join_code').addEventListener('input', function(e) {
-  document.querySelector('#manage_schedule_container').style.display = event.target.value ? 'block' : 'none';
+  if(event.target.value && event.target.value == "demo".substring(0, event.target.value.length)) {
+    document.querySelector('#manage_schedule_container').style.display = 'none';
+  } else {
+    document.querySelector('#manage_schedule_container').style.display = event.target.value ? 'block' : 'none';
+  }
 });
 if(location.search) {
   var join = (new URL(location)).searchParams.get('join');
@@ -92,7 +96,7 @@ document.querySelector('#manage_schedule').addEventListener('click', function(ev
     }).then(function(res) {
       location.href = '/schedule/' + res.account.schedule_id;
     }, function() {
-//      location.href = '/schedule/' + code;
+      modal.note('Please re-check your join code');
     });
   }
 });

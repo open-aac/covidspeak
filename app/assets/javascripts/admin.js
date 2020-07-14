@@ -6,6 +6,8 @@ var process_room = function(room) {
   if(room.duration == 0) {
     if(room.partner_status == 'attempted') {
       duration = "attempted";
+    } else if(room.partner_status == 'invited') {
+      duration = "invited";
     } else if(room.partner_status == 'waiting_room') {
       duration = "never left waiting room";
     } else if(room.partner_status == 'connected') {
@@ -47,7 +49,11 @@ var process_account = function(account) {
       account.purchase_state = "Canceled";
     }
   } else {
-    account.purchase_state = "Free";
+    if(account.demo) {
+      account.purchase_state = "Demo";
+    } else {
+      account.purchase_state = "Free";
+    }
   }
   account.code_string = code;
   account.target = target;

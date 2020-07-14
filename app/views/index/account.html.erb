@@ -5,7 +5,7 @@
       <p><%= @account.settings['description'] %></p>
       <dl id='account_details'>
         <dt>Created:</dt>
-          <dd class='created_string'><%= @account.created_at.strftime("%e %b, %Y") %></dd>
+          <dd class='created_string'><%= @account.created_at.strftime("%e,%b %Y") %></dd>
         <dt>Join Code:</dt>
           <dd><a href="/?join=<%= @account.code %>" class='join_link'><span class='join_code'><%= @account.code %></span> <img src='/icons/link-45deg.svg'/></a></dd>
         <dt>Simultaneous Rooms:</dt>
@@ -34,7 +34,7 @@
           <dt>Last Room:</dt>
             <dd class='last_room'>
               <% if @account.settings['last_room_at'] %>
-                <%= Time.at(@account.settings['last_room_at']).strftime("%e %b, %Y") %>
+                <%= Time.at(@account.settings['last_room_at']).strftime("%e, %b %Y") %>
               <% else %>
                 None
               <% end %>

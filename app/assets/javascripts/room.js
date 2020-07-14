@@ -268,12 +268,7 @@ var room = {
         data: data
       }).then(function(res) {
         if(res.closed) {
-          // TODO: modal notifying of room closure,
-          // start timer for force exit
-          modal.open('Room Expired')
-          setTimeout(function() {
-            room.leave_room();
-          }, 5000)
+          room.leave_room_soon(res.demo);
         }
         resume();
       }, function(err) {
@@ -934,6 +929,13 @@ var room = {
         });
       }
       room_check.then(function(res) {
+        if(res.room && res.room.closed) {
+          room.leave_room_soon(res.room.demo);
+          return;
+        } else if(res.room && res.room.demo) {
+          modal.open("Welcome to Co-VidSpeak!", document.querySelector('#demo_modal'));
+        }
+
         room.current_user_id = res.user_id;
         remote.backend = res.room.type;
         var local_tried = false;
@@ -1684,6 +1686,11 @@ var room = {
   },
   invite: function() {
     var url = location.origin + "/rooms/" + room.room_id + "/join";
+    session.ajax('/api/v1/rooms/' + room.room_id + '/coming', {
+      method: 'GET',
+      data: {status: 'invite_modal'}
+    }).then(function(res) { }, function(err) { });
+
     document.querySelector('#invite_modal .link').innerText = url;
     var actions = [
       {action: 'copy', label: "Copy Link", callback: function() {
@@ -1949,6 +1956,23 @@ var room = {
     setTimeout(function() {
       location.href = localStorage.teach_return_url || "/thanks";
     }, 300);
+  },
+  leave_room_soon: function(demo) {
+    var dom_id = demo ? '#demo_room_expired' : '#room_expired';
+    var opts = [
+      {label: "Leave Room", action: 'leave', callback: function() {
+        room.leave_room();
+      }},
+    ];
+    if(demo) {
+      opts.push({label: "Request Join Code", action: 'request', callback: function() {
+        location.href = "https://www.covidspeak.org/contact.html";
+      }});
+    }
+    modal.open('Room Expired', document.querySelector(dom_id), opts);
+    setTimeout(function() {
+      room.leave_room();
+    }, 15000);
   },
   start_and_enter_room: function(res) {
     localStorage.removeItem('teach_return_url');

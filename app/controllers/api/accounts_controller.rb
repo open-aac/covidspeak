@@ -44,7 +44,7 @@ class Api::AccountsController < ApplicationController
   def join_code
     # TODO: throttle
     account = Account.find_by_code(params['join_code'])
-    if account
+    if account && !account.settings['short_rooms']
       render json: {account: {schedule_id: account.schedule_id}}
     else
       api_error(400, {error: 'invalid join code'})
@@ -127,6 +127,7 @@ class Api::AccountsController < ApplicationController
       contact_name: account.settings['contact_name'],
       contact_email: account.settings['contact_email'],
       payment_type: account.paid_account? ? 'paid' : 'free',
+      demo: !!account.settings['short_rooms'],
       purchase_summary: (account.settings['subscription'] || {})['purchase_summary'],
       last_meter_update: last_meter,
       can_start_room: account.can_start_room?,

@@ -4,7 +4,7 @@
     <p>Layout not found</p>
   <% else %>
     <h1>Layout Bundle: <%= @bundle.settings['name'] %></h1>
-    Created: <%= @bundle.created_at.strftime("%e %b, %Y") %><br/>
+    Created: <%= @bundle.created_at.strftime("%e, %b %Y") %><br/>
     <% if !@bundle.settings['author'].blank? %>
       Author: <%= @bundle.settings['author'] %><br/>
     <% end %>

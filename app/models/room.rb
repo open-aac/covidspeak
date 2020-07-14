@@ -39,21 +39,23 @@ class Room < ApplicationRecord
     find_by(code: code)
   end
 
-  def time_cutoff
+  def short_room?
+    !!self.settings['short_room']
+  end
+
+  def time_left
     if !self.settings['started_at']
       self.settings['started_at'] ||= Time.now.to_i
       self.save
     end
-    if self.settings['short_room']
-      3.minutes.ago.to_i
-    else
-      24.hours.ago.to_i
-    end
+    time_cutoff = self.short_room? ? 3.minutes.to_i : 24.hours.to_i
+    time_cutoff - (self.duration || 0)
   end
 
   def expired?
-    cutoff = self.time_cutoff
-    self.settings['started_at'] < cutoff
+    res = self.time_left < 0
+    RedisAccess.default.setex("room_expired/#{self.code}", 6.hours.to_i, 'true')
+    res
   end
 
   def throttled?
@@ -89,6 +91,9 @@ class Room < ApplicationRecord
 
   def partner_joined(waiting_room=true)
     self.settings ||= {}
+    # in_use calls (keepalive) will set status to connected,
+    # so if a partner joins but never reaches connected, we
+    # should mark how close they got
     if self.settings['partner_status'] != 'connected'
       self.settings['partner_status'] = (waiting_room ? 'waiting_room' : 'attempted')
     end

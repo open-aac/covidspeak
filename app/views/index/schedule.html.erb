@@ -98,6 +98,8 @@
             var status = null;
             if(room.partner_status == 'attempted') {
               status = "partner attempted to join";
+            } else if(room.partner_status == 'invited') {
+              status = "partner invited";
             } else if(room.partner_status == 'waiting_room') {
               status = "partner never left waiting room";
             } else if(room.partner_status == 'connected') {

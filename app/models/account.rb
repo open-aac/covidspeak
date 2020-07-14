@@ -221,6 +221,7 @@ class Account < ApplicationRecord
     str = str + ":" + GoSecure.sha512(str, 'room_id confirmation')[0, 40]
     room = Room.find_or_initialize_by(code: str, account_id: self.id)
     room.settings ||= {}
+    room.settings['short_room'] = true if self.settings['short_rooms']
     max_live_rooms = self.settings['max_concurrent_rooms']
     max_daily_rooms = self.settings['max_daily_rooms']
     max_monthly_rooms = self.settings['max_monthly_rooms']

@@ -138,7 +138,7 @@ class Api::RoomsController < ApplicationController
     js_url = (room.account && room.account.settings['js_url']) || nil
 
     # Generate the token
-    render :json => {:room => {id: room_id, key: room_key, type: room.type, high_res: false, js: js_url}, user_id: trimmed_identity, access: access}
+    render :json => {:room => {id: room_id, key: room_key, type: room.type, high_res: false, js: js_url, demo: room.short_room?, closed: room.expired?}, user_id: trimmed_identity, access: access}
   end
 
   def keepalive
@@ -154,7 +154,7 @@ class Api::RoomsController < ApplicationController
         params['ip'] = request.remote_ip
         room.in_use(params[:user_id], params)
       end
-      render json: {updated: true, closed: room.expired?}
+      render json: {updated: true, closed: room.expired?, demo: room.short_room?, time_left: room.time_left}
     else
       api_error(400, {error: "room or user not found"})
     end
@@ -163,13 +163,20 @@ class Api::RoomsController < ApplicationController
   def user_coming
     room = Room.find_by(code: params['room_id'])
     if room && room.room_key && !room.concluded?
-      room.partner_joined(params['status'] != 'connecting')
-      params['ip'] = request.remote_ip
-      room.user_accessed(params['pending_id'], params) if params['pending_id']
-      RoomChannel.broadcast(room.room_key, {
-        type: 'user_coming',
-        status: params['status'].to_s
-      })
+      if params['status'] == 'invite_modal'
+        # When the initiator opens the invite modal,
+        # that indicates this probably wasn't a throwaway room
+        room.settings['partner_status'] ||= 'invited'
+        room.save
+      else
+        room.partner_joined(params['status'] != 'connecting')
+        params['ip'] = request.remote_ip
+        room.user_accessed(params['pending_id'], params) if params['pending_id']
+        RoomChannel.broadcast(room.room_key, {
+          type: 'user_coming',
+          status: params['status'].to_s
+        })
+      end
     end
     render json: {ok: true}
   end
