@@ -38,4 +38,9 @@ class Api::UsersController < ApplicationController
     bundle = Bundle.generate(params)
     render json: {bundle: {id: bundle.code}}
   end
+
+  def feedback
+    feedback = UserFeedback.process(params)
+    render json: {ref_id: feedback && feedback.ref_id}
+  end
 end

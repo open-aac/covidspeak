@@ -32,11 +32,13 @@ Rails.application.routes.draw do
       post 'activate' => 'rooms#activate'
     end
     resources :users
+    post 'feedback' => 'users#feedback'
     post 'tokens' => 'tokens#token'
     post 'tokens/admin_code' => 'tokens#email_admin_code'
     get 'tokens/admin_code/:check_id' => 'tokens#check_admin_code'
     post 'bundles' => 'users#bundle'
     get 'tokens/check' => 'tokens#check_token'
+    get 'feedback' => 'accounts#feedback'
     
     resources :accounts do
       post 'sub_ids' => 'accounts#sub_id'

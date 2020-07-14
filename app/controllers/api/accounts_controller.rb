@@ -1,5 +1,5 @@
 class Api::AccountsController < ApplicationController
-  before_action :require_token, :except => [:join_code, :show, :update]
+  before_action :require_token, :except => [:join_code, :show, :update, :purchasing_event]
   before_action :require_admin_code, :only => [:show, :update]
   
   def index
@@ -39,6 +39,20 @@ class Api::AccountsController < ApplicationController
   def purchasing_event
     res = Purchasing.subscription_event(request)
     render json: res[:data], :status => res[:status]
+  end
+
+  def feedback
+    feedback = UserFeedback.order('ID DESC').limit(50)
+    feedback = feedback.select{|f| f.created_at > 6.months.ago }
+    json = feedback.map do |entry|
+      {
+        created: entry.created_at.to_i,
+        stars: entry.settings['stars'],
+        feedback: entry.settings['feedback'],
+        device: "#{entry.settings['system']}.#{entry.settings['browser']}#{entry.settings['mobile'] ? '.mobile' : ''}",
+      }
+    end
+    render json: {feedback: json}
   end
 
   def join_code

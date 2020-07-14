@@ -73,7 +73,9 @@ if(location.search) {
   var join = (new URL(location)).searchParams.get('join');
   if(join) {
     document.querySelector('#join_code').value = join;
-    document.querySelector('#manage_schedule_container').style.display = 'block';
+    if(join != 'demo') {
+      document.querySelector('#manage_schedule_container').style.display = 'block';
+    }
   }
 }
 document.querySelector('#join_code_help').addEventListener('click', function(event) {

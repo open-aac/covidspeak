@@ -13,6 +13,7 @@
 </div>
 <div class='admin_view' id="accounts" style='display: none;'>
   <div id="middle" class='big'>
+    <a href="#" style='float: right;' id='recent_feedback'>Recent Feedback</a>
     <h2>Accounts</h2>
     <div class='list'>
       <div class="status"></div>
@@ -119,6 +120,26 @@
     </div>
   </div>
 </div>
+<div class='admin_view' id="feedback" style='display: none;'>
+  <div id="middle" class='big'>
+    <a href="#" class='back' style='display: inline-block; margin-bottom: 20px;'>&lt; Back to Accounts</a>
+    <h2>Recent Feedback: <strong><span class='name'></span></strong></h2>
+    <div class='list'>
+      <div class='feedback template'>
+        <span class='created'></span> 
+        <span class='stars'>
+          <img src="/icons/star-yellow.png" class='star_1'/>
+          <img src="/icons/star-yellow.png" class='star_2'/>
+          <img src="/icons/star-yellow.png" class='star_3'/>
+          <img src="/icons/star-yellow.png" class='star_4'/>
+          <img src="/icons/star-yellow.png" class='star_5'/>
+        </span> 
+        <div class='device'></div>
+        <div class='text'></div>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
 if(!session.token_validated) {
   admin.show_view('login');
@@ -132,6 +153,17 @@ if(!session.token_validated) {
   handle_hash();
 }
 document.querySelector('#account').addEventListener('click', function(e) {
+  if(e.target.closest('.back')) {
+    e.preventDefault();
+    admin.set_state('#');
+    admin.show_view('accounts');
+  }
+});
+document.querySelector('#recent_feedback').addEventListener('click', function(e) {
+  e.preventDefault();
+  admin.show_view('feedback');
+})
+document.querySelector('#feedback').addEventListener('click', function(e) {
   if(e.target.closest('.back')) {
     e.preventDefault();
     admin.set_state('#');
@@ -195,6 +227,8 @@ var handle_hash = function() {
   if(location.hash && location.hash.match(/#account:\d+/)) {
     var id = location.hash.match(/#account:(\d+)/)[1];
     admin.load_account(id);
+  } else if(location.hash == '#feedback') {
+    admin.show_view('feedback');
   } else {
     admin.show_view('accounts');
   }

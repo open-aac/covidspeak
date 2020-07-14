@@ -1,16 +1,108 @@
 <div id='middle' class='join'>
-  <h2>Thank you!</h2>
-  <div id='goback' style='margin-top: 50px;'>
+  <h2>Thank you for using Co-VidSpeak!</h2>
+  <div style='margin-top: 10px;'>
+    How was your experience?
+    <div class='stars'>
+      <img src="/icons/star.svg" data-id='1'/>
+      <img src="/icons/star.svg" data-id='2'/>
+      <img src="/icons/star.svg" data-id='3'/>
+      <img src="/icons/star.svg" data-id='4'/>
+      <img src="/icons/star.svg" data-id='5'/>
+      <img src="/icons/star-yellow.svg" data-id='6' style='position: absolute; left: -1000px;'/>
+    </div>
+  </div>
+  <div style='margin-top: 10px; visibility: hidden;' id='thanks_feedback'>
+    Please share feedback or suggestions!<br/>
+    <span style='color: #888; font-style: italic;'>Include your email if we can follow up for more details</span>
+    <div style='width: 400px; margin: 0 auto;'>
+      <textarea id='feedback_text' style='width: 100%; height: 60px;'></textarea>
+      <div style='text-align: right;'>
+        <button id='feedback' class='primary' style='margin-right: 0;'>Submit Feedback</button>
+      </div>
+    </div>
+  </div>
+  <div id='goback' style='margin-top: 20px;'>
     <button id='back' style='width: 100%;'>Back to Main Page</button>
   </div>
 </div>
 
 <script>
-document.querySelector('#back').addEventListener('click', function(event) {
-  event.preventDefault();
-  location.href = '/';
-});
-if(localStorage.room_id) {
-  document.querySelector('#goback').style.display = 'block';
-}
+(function() {
+  var state = {chosen: false, cleared: true};
+  var submit = function(ui) {
+    state.ref_id = state.ref_id || Math.random() + ":" + (new Date()).getTime();
+    if(ui) {
+      document.querySelector('#feedback').innerText = 'Submitting...';
+    }
+    session.ajax('/api/v1/feedback', {
+      type: 'POST',
+      data: {
+        ref_id: state.ref_id,
+        stars: state.stars,
+        feedback: state.feedback,
+        system: input.compat.system,
+        browser: input.compat.browser,
+        mobile: input.compat.mobile,
+      }
+    }).then(function(res) {
+      if(ui) {
+        document.querySelector('#feedback').innerText = 'Thank You!';
+      }
+    }, function(err) {
+      if(ui) {
+        document.querySelector('#feedback').innerText = 'Submit Failed, Please Try Again';
+      } else {
+        modal.note('There was an error recording your feedback, please try again');
+      }
+    });
+  };
+  document.querySelector('#feedback').addEventListener('click', function(event) {
+    event.preventDefault();
+    state.feedback = document.querySelector('#feedback_text').value;
+    submit(true);
+  });
+  document.addEventListener('mouseover', function(event) {
+    if(state.chosen) { return; }
+    if(event.target.closest('.stars')) {
+      state.cleared = false;
+      var tag_id = event.target && event.target.getAttribute('data-id');
+      if(tag_id) {
+        var stars = parseInt(tag_id, 10);
+        document.querySelectorAll('.stars img').forEach(function(img, idx) {
+          img.src = idx < stars ? '/icons/star-yellow.png' : '/icons/star.svg';
+        });
+      }  
+    } else if(!state.cleared) {
+      state.cleared = true;
+      document.querySelectorAll('.stars img').forEach(function(img, idx) {
+        img.src = '/icons/star.svg';
+      });
+    }
+  });
+  document.querySelector('.stars').addEventListener('click', function(event) {
+    if(event.target.closest('.stars')) {
+      state.chosen = true;
+      var tag_id = event.target && event.target.getAttribute('data-id');
+      if(tag_id) {
+        var stars = parseInt(tag_id, 10);
+        state.stars = stars;
+        submit();
+        if(stars < 5) {
+          document.querySelector('#thanks_feedback').style.visibility = 'visible';
+        }
+        document.querySelectorAll('.stars img').forEach(function(img, idx) {
+          img.src = idx < stars ? '/icons/star-yellow.png' : '/icons/star.svg';
+        });
+      }  
+    }  
+  });
+  document.querySelector('#back').addEventListener('click', function(event) {
+    event.preventDefault();
+    location.href = '/';
+  });
+  if(localStorage.room_id) {
+    document.querySelector('#goback').style.display = 'block';
+  }
+})();
+
 </script>

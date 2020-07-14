@@ -138,12 +138,89 @@ button {
     }
   }
 }
+#feedback {
+  .list .feedback {
+    &.template {
+      display: none;
+    }
+    padding: 10px;
+    margin-bottom: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    &.status {
+      border: none;
+      padding-left: 20px;
+    }
+    &.stars_1 {
+      .stars {
+        .star_2, .star_3, .star_4, .star_5 {
+          display: none;
+        }
+      }
+    }
+    &.stars_2 {
+      .stars {
+        .star_3, .star_4, .star_5 {
+          display: none;
+        }
+      }
+    }
+    &.stars_3 {
+      .stars {
+        .star_4, .star_5 {
+          display: none;
+        }
+      }
+    }
+    &.stars_4 {
+      .stars {
+        .star_5 {
+          display: none;
+        }
+      }
+    }
+
+    .created {
+      color: #444;
+      width: 150px;
+      display: inline-block;
+    }
+    .stars {
+      img {
+        width: 15px;
+        margin: 0;
+        opacity: 0.8;
+      }
+    }
+    .device {
+      color: #aaa;
+      margin-left: 20px;
+      font-size: 14px;
+    }
+    .text {
+      margin-top: 20px;
+      margin-left: 20px;
+      margin-right: 20px;
+      white-space: pre-line;
+      &:empty {
+        margin-top: 0;
+      }
+    }
+  }
+}
 input {
   border: 1px solid #ccc;
   height: 50px;
   color: #222;
   padding: 10px 15px;
   font-size: 20px;
+  border-radius: 5px;
+}
+textarea {
+  border: 1px solid #ccc;
+  color: #222;
+  padding: 10px 15px;
+  font-size: 15px;
   border-radius: 5px;
 }
 p.error {
@@ -1378,6 +1455,13 @@ strong {
     }
     margin-top: 15px;
     margin-bottom: 30px;
+  }
+}
+.stars {
+  margin-top: 15px;
+  img {
+    width: 30px;
+    margin: 0 8px;
   }
 }
 #accounts {

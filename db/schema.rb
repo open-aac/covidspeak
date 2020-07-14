@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_07_08_193613) do
+ActiveRecord::Schema.define(version: 2020_07_14_185901) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -54,6 +54,14 @@ ActiveRecord::Schema.define(version: 2020_07_08_193613) do
     t.integer "duration"
     t.index ["account_id", "updated_at"], name: "index_rooms_on_account_id_and_updated_at"
     t.index ["code"], name: "index_rooms_on_code", unique: true
+  end
+
+  create_table "user_feedbacks", force: :cascade do |t|
+    t.text "settings"
+    t.string "ref_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ref_id", "created_at"], name: "index_user_feedbacks_on_ref_id_and_created_at"
   end
 
 end

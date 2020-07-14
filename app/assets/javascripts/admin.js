@@ -84,6 +84,8 @@ var admin = {
     document.querySelector('.admin_view#' + view).style.display = 'block';
     if(view == 'accounts') {
       admin.reload_accounts();
+    } else if(view == 'feedback') {
+      admin.load_feedback();
     }
   },
   create_account: function(data) {
@@ -237,6 +239,38 @@ var admin = {
       }  
     }, function(err) {
 
+    });
+  },
+  load_feedback: function() {
+    admin.set_state("#feedback");
+    if(admin.loading_feedback) { return; }
+    admin.loading_feedback = true;
+    document.querySelectorAll("#feedback .list .feedback").forEach(function(elem) {
+      if(!elem.classList.contains('template')) {
+        elem.parentNode.removeChild(elem);
+      }
+    });
+
+    session.ajax("/api/v1/feedback", {type: 'GET'}).then(function(data) {
+      admin.loading_feedback = false;
+      var template = document.querySelector("#feedback .list .feedback.template");
+      data.feedback.forEach(function(feedback) {
+        var elem = template.cloneNode(true);
+        elem.classList.remove('template');
+        // process_feedback(feedback);
+        elem.classList.add('stars_' + feedback.stars);
+        var date = new Date(feedback.created * 1000);
+        var date_string = window.moment(date).calendar(); //.format('D MMM h:mma');
+  
+        extras.populate(elem, {
+          created: date_string,
+          text: feedback.feedback,
+          device: feedback.device
+        });
+        document.querySelector("#feedback .list").appendChild(elem);
+      });
+    }, function() {
+      admin.loading_feedback = false;
     });
   },
   reload_accounts: function() {
