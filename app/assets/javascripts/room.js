@@ -85,7 +85,7 @@ remote.addEventListener('track_removed', function(data) {
   }
 });
 remote.addEventListener('room_empty', function(data) {
-  room.status('No One is Here', {invite: true});
+  room.status('No One is Here', {invite: true, leave: true});
   room.active = false;
 });
 remote.addEventListener('user_added', function(data) {
@@ -209,6 +209,7 @@ var room = {
   },
   status: function(str, opts) {
     document.querySelector('#status_invite').style.display = 'none';
+    document.querySelector('#status_leave').style.display = 'none';
     document.querySelector('#status_popout').style.display = 'none';
     document.querySelector('#status_continue').style.display = 'none';
     document.querySelector('#status').style.display = 'block';
@@ -225,6 +226,10 @@ var room = {
       if(room.current_room && room.current_room.room_initiator) {
         if(opts && opts.invite && !mirror_type && !teaching_type) {
           document.querySelector('#status_invite').style.display = 'block';
+        }
+      } else {
+        if(opts && opts.leave && !mirror_type && !teaching_type) {
+          document.querySelector('#status_leave').style.display = 'block';
         }
       }
       if(opts && opts.continue && opts.callback) {
@@ -2095,6 +2100,7 @@ document.addEventListener('click', function(event) {
   var $button = $(event.target).closest('.button');
   var $partner = $(event.target).closest('#partner,#eyes,#no_preview,#status_holder');
   var $invite = $(event.target).closest('#invite_partner');
+  var $leave = $(event.target).closest('#leave_room');
   var $continue = $(event.target).closest('#continue_teaching');
   var $popout = $(event.target).closest('#popout_view');
   var $popout = $(event.target).closest('#popout_view');
@@ -2126,6 +2132,8 @@ document.addEventListener('click', function(event) {
     room.toggle_controls();
   } else if($invite.length > 0) {
     room.invite();
+  } else if($leave.length > 0) {
+    room.leave_room();
   } else if(personalize) {
     room.manage_grids();
     event.preventDefault();
