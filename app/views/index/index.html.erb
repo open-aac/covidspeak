@@ -65,6 +65,10 @@ if(ts > ((new Date()).getTime() - (30 * 60 * 1000)) && localStorage.room_id && l
 document.querySelector('#join_code').addEventListener('input', function(e) {
   if(event.target.value && event.target.value == "demo".substring(0, event.target.value.length)) {
     document.querySelector('#manage_schedule_container').style.display = 'none';
+  } else if(event.target.value && event.target.value == "mirror".substring(0, event.target.value.length)) {
+    document.querySelector('#manage_schedule_container').style.display = 'none';
+  } else if(event.target.value && event.target.value == "teach".substring(0, event.target.value.length)) {
+    document.querySelector('#manage_schedule_container').style.display = 'none';
   } else {
     document.querySelector('#manage_schedule_container').style.display = event.target.value ? 'block' : 'none';
   }
@@ -73,7 +77,7 @@ if(location.search) {
   var join = (new URL(location)).searchParams.get('join');
   if(join) {
     document.querySelector('#join_code').value = join;
-    if(join != 'demo') {
+    if(join != 'demo' && join != 'mirror' && join != 'teach') {
       document.querySelector('#manage_schedule_container').style.display = 'block';
     }
   }

@@ -65,12 +65,15 @@
 </div>
 <script>
 var room_id = "<%= params['room_id'] %>";
+var match = location.href.match(/rooms\/(.+)+\/join/);
 var load_room = function() {
   document.querySelector('.room_status').innerText = "Checking Room...";
   document.querySelector('.pending_room_status').innerText = "Checking Room...";
   var room_ready = function() {
     getMedia();
-    room_pending();
+    if(match && match[1] && !match[1].match(/^(mirror|teach)/)) {
+      room_pending();
+    }
     document.querySelector('.room_status').style.display = 'none';
     document.querySelector('.pending_room').style.display = 'none';
     document.querySelectorAll('.joinable').forEach(function(elem) {
@@ -185,7 +188,6 @@ if(location.href.match(/rooms\/teach/)) {
   document.querySelector('#learn_first').style.display = 'inline';
   document.querySelector('#ready_to_chat').innerText = "Ready to Chat";
 }
-var match = location.href.match(/rooms\/(.+)+\/join/);
 var room_pending = function() {
   if(match && match[1] && !match[1].match(/^(mirror|teach)/)) {
     var data = {
