@@ -256,7 +256,7 @@ if(navigator.userAgent.match(/ipod|ipad|iphone/i)) {
   if(navigator.userAgent.match(/macintosh/i)) {
     // srsly apple? If you're going to say iPadOS==MacOS
     // then at least give them the same bugs
-    if(document.body.ontouchstart && navigator.maxTouchPoints > 2) {
+    if(navigator.maxTouchPoints > 2) {
       input.compat.system = "iPadOS";
       input.compat.mobile = true;
     } else {
