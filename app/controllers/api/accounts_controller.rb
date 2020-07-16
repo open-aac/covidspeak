@@ -5,12 +5,14 @@ class Api::AccountsController < ApplicationController
   def index
     list = []
     accounts = {}
+    check_account_ids = []
     Account.all.each do |account|
       accounts[account.id] = [account.code, account.settings['name']]
       list << account_json(account)
+      check_account_ids << account.id # unless account.settings['short_rooms']
     end
     rooms_list = []
-    rooms = Room.where(['created_at > ?', 4.weeks.ago]).order('created_at DESC').limit(20)
+    rooms = Room.where(account_id: check_account_ids).where(['created_at > ?', 4.weeks.ago]).order('created_at DESC').limit(50)
     rooms.each do |room|
       code, name = accounts[room.account_id] || []
       rooms_list << room_json(room, code, name)
@@ -156,6 +158,7 @@ class Api::AccountsController < ApplicationController
       max_monthly_rooms: account.settings['max_monthly_rooms'],
       max_monthly_rooms_per_user: account.settings['max_monthly_rooms_per_user'],
     }
+
     if @admin_token
       res[:address] = account.settings['address']
       res[:source] = account.settings['source']
@@ -168,7 +171,7 @@ class Api::AccountsController < ApplicationController
       res[:admin_code] = account.admin_code
       res[:cancel_reason] = (account.settings['subscription'] || {})['cancel_reason']
       res[:history] = account.month_history
-      rooms = Room.where(account_id: account.id).where(['created_at > ?', 4.weeks.ago])
+      rooms = Room.where(account_id: account.id).where(['created_at > ?', 6.months.ago]).limit(20)
       rooms.each do |room|
         res[:rooms] << room_json(room)
       end
