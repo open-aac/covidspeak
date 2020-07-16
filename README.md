@@ -1,4 +1,6 @@
 # Co-VidSpeak
+[![OpenAAC](https://www.openaac.org/images//OpenAAC-advocate-blue.svg)](https://www.openaac.org/advocates.html)
+
 Co-VidSpeak was created from discussions by Bill Binko and
 Brian Whitmer. We realized during the Covid-19 pandemic that
 people on a breathing tube in the ICU are being physically 
@@ -136,4 +138,6 @@ https://www.hipaajournal.com/hipaa-conduit-exception-rule/
 
 ## License
 
-MIT
+Copyright 2020 CoughDrop, Inc.
+
+Released under GPLv3 License or later.

@@ -259,6 +259,7 @@ var room = {
       room.active = true;
     }
     if(room.active) {
+      room.status('ready');
       var data = {user_id: room.current_user_id};
       if(!room.active && room.current_room.room_initiator) {
         data.empty = true;
@@ -280,7 +281,7 @@ var room = {
         resume();
       });
     } else {
-      setTimeout(room.set_active, 15000);
+      setTimeout(room.set_active, 5000);
     }
   },
   toggle_self_mute: function(mute) {
@@ -995,7 +996,7 @@ var room = {
                 room.status("Partner in Waiting Room...", {invite: true});
                 setTimeout(function() {
                   if(!room.active) {
-                    room.status("Waiting for Partner...", {invite: true});
+                    room.status("Waiting for Partner to Connect...", {invite: true});
                   }
                 }, 30000);
               }
@@ -1004,7 +1005,6 @@ var room = {
             room_session.room_initiator = (room.room_id == localStorage.room_id);
             room.current_room = room_session;
             room.status('Waiting for Partner...', {invite: true});
-            // TODO: if nothing happens for a while, try auto-reloading the page or something
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
             room_session.user_id = res.user_id;
             room_session.as_communicator = true;
@@ -1116,12 +1116,37 @@ var room = {
       text = null;
     }
     if(text) {      
-      if(window.speechSynthesis && room.settings.tts && !button.load_id) {
+      if(window.speechSynthesis && room.settings.tts && room.settings.tts != 'none' && !button.load_id) {
+        var elems = document.querySelector('.grid .mid .preview').querySelectorAll('video,audio');
+        if(input.compat.system == 'iOS' || input.compat.system == 'iPadOS') {
+          elems.forEach(function(elem, idx) {
+            if(!elem.fixed_for_ios_safari) {
+              elem.pause();
+            }
+          });  
+        }
+
         var voices = window.speechSynthesis.getVoices().filter(function(v) { return v.lang && v.lang.split(/-|_/)[0].toLowerCase() == (room.board_locale || 'en'); });
         var voice = voices.find(function(v) { return v.name.match(/^Google/)});
         voice = voice || voices[0];
         var u = new SpeechSynthesisUtterance(text);
         window.speechSynthesis.speak(u);
+        
+        if(input.compat.system == 'iOS' || input.compat.system == 'iPadOS') {
+          // Weird iOS/iPadOS Safari bug that terminates audio
+          // and video feeds the first time TTS is activated
+          elems.forEach(function(elem, idx) {
+            if(!elem.fixed_for_ios_safari) {
+              setTimeout(function() {
+                elem.srcObject = elem.srcObject;
+                setTimeout(function() {
+                  elem.play();
+                }, 1000);
+              }, 1000);
+              elem.fixed_for_ios_safari = true;
+            }  
+          });
+        }
         return;
       }
       if(!room.current_room.as_communicator) {
@@ -2469,7 +2494,7 @@ if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 var canvas_elem = document.createElement('canvas');
 if(canvas_elem.captureStream) {
   var userAgent = window.navigator.userAgent.toLowerCase();
-  if(input.compat.system == 'iOS') {
+  if(input.compat.system == 'iOS' || input.compat.system == 'iPadOS') {
     // https://bugs.webkit.org/show_bug.cgi?id=181663
   } else {
     room.image_sharing = true;  

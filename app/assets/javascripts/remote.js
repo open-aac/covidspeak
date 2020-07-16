@@ -213,7 +213,6 @@ Object.assign(remote, {
         room: remote.rooms[room.id].room,
         room_id: room.id
       });
-  
     }
   },
   connection_error: function(room, user) {

@@ -254,7 +254,14 @@ if(navigator.userAgent.match(/ipod|ipad|iphone/i)) {
   input.compat.system = "Windows Phone";
 } else {
   if(navigator.userAgent.match(/macintosh/i)) {
-    input.compat.system = "Mac";
+    // srsly apple? If you're going to say iPadOS==MacOS
+    // then at least give them the same bugs
+    if(document.body.ontouchstart && navigator.maxTouchPoints > 2) {
+      input.compat.system = "iPadOS";
+      input.compat.mobile = true;
+    } else {
+      input.compat.system = "Mac";
+    }
   } else if(navigator.userAgent.match(/windows\snt/i)) {
     input.compat.system = "Windows";
   }
