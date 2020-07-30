@@ -1159,6 +1159,14 @@ var room = {
           });
         }
         return;
+      } else {
+        // iOS seems to pause feeds on init randomly
+        var elems = document.querySelector('.grid .mid .preview').querySelectorAll('video,audio');
+        if(input.compat.system == 'iOS' || input.compat.system == 'iPadOS') {
+          elems.forEach(function(elem, idx) {
+            elem.play();
+          });  
+        }
       }
       if(!room.current_room.as_communicator) {
         setTimeout(function() {
