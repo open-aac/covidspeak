@@ -121,10 +121,12 @@ class Api::AccountsController < ApplicationController
     }
     if room.settings['user_configs']
       res[:configs] = []
+      res[:actions] = []
       list = room.settings['user_configs'].to_a.sort_by{|k, c| c['timestamp']}
       list.each do |id, opts|
         ip_hash = (opts['ip_hash'] || opts['partial_ip'] || '0').sub(/\.0\.0$/, '')
         res[:configs] << "#{opts['system']}.#{opts['browser']}#{opts['mobile'] ? '.mobile' : ''}.#{ip_hash}"
+        res[:actions] << {reactions: opts['reactions'], buttons: opts['buttons'], minutes_heard: opts['minutes_heard']}
       end
     end
     res
@@ -171,7 +173,7 @@ class Api::AccountsController < ApplicationController
       res[:admin_code] = account.admin_code
       res[:cancel_reason] = (account.settings['subscription'] || {})['cancel_reason']
       res[:history] = account.month_history
-      rooms = Room.where(account_id: account.id).where(['created_at > ?', 6.months.ago]).limit(20)
+      rooms = Room.where(account_id: account.id).where(['created_at > ?', 6.months.ago]).order('id DESC').limit(20)
       rooms.each do |room|
         res[:rooms] << room_json(room)
       end

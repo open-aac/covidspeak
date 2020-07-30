@@ -1394,6 +1394,11 @@ strong {
       .devices {
         margin-left: 230px;
         color: #888;
+        .actions {
+          margin-left: 30px;
+          font-size: 12px;
+          font-style: italic;
+        }
       }
     }
   }

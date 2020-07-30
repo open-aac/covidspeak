@@ -213,7 +213,7 @@ module Purchasing
     account.settings['max_concurrent_rooms'] = [1, opts['quantity'].to_i].max
     account.save!
     customer_meta = customer['metadata'] || {}
-    if customer_meta['covidchat_account_id'] != account.id || customer_meta['source']
+    if customer_meta['covidchat_account_id'] != account.id || customer_meta['platform_source']
       customer = Stripe::Customer.retrieve({id: customer['id']})
       customer.metadata ||= {}
       customer.metadata['covidchat_account_id'] = account.id

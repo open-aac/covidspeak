@@ -269,6 +269,11 @@ var room = {
         data.browser = input.compat.browser;
         data.mobile = !!input.compat.mobile;
       }
+      if(room.usage_stats) {
+        data.reactions = room.usage_stats.reactions;
+        data.buttons = room.usage_stats.buttons;
+        data.minutes_heard = input.heard_minutes;
+      }
       session.ajax('/api/v1/rooms/' + room.room_id + '/keepalive', {
         method: 'POST',
         data: data
@@ -591,6 +596,7 @@ var room = {
       room.show_image(image_url, alt, false);
     }
     if(!room.current_room) { return; }
+    (room.usage_stats || {}).reactions++;
     remote.send_message(room.current_room.id, {
       from_communicator: room.current_room.as_communicator,
       action: 'image',
@@ -845,6 +851,10 @@ var room = {
     if(room.camera === false) {
       room.handle_camera_error();
     }
+    room.usage_stats = {
+      reactions: 0,
+      buttons: 0,
+    };
     // TODO: if the user hasn't accepted terms, pop them up
     var room_id = (location.pathname.match(/\/rooms\/([\w:]+)$/) || {})[1];
     if(!mirror_type && !teaching_type) {
@@ -1074,6 +1084,7 @@ var room = {
         // click failed to deliver
       });
     }
+    (room.usage_stats || {}).buttons++;
     $cell.addClass('my_highlight');
     $cell.blur();
     var btn = $cell[0].button;

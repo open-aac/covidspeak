@@ -117,6 +117,9 @@ class Room < ApplicationRecord
       self.settings['user_configs'][user_id_hash]['system'] ||= opts['system']
       self.settings['user_configs'][user_id_hash]['browser'] ||= opts['browser']
       self.settings['user_configs'][user_id_hash]['mobile'] ||= (opts['mobile'] && opts['mobile'] != 'false' && opts['mobile'] != '')
+      self.settings['user_configs'][user_id_hash]['reactions'] = opts['reactions'].to_i
+      self.settings['user_configs'][user_id_hash]['buttons'] = opts['buttons'].to_i
+      self.settings['user_configs'][user_id_hash]['minutes_heard'] = opts['minutes_heard'].to_i
       self.settings['user_configs'][user_id_hash]['timestamp'] ||= Time.now.to_i
       if opts['ip']
         begin

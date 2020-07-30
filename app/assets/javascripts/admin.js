@@ -224,10 +224,16 @@ var admin = {
           var elem = template.cloneNode(true);
           elem.classList.remove('template');
           process_room(room);
-          (room.configs || []).forEach(function(config) {
+          (room.configs || []).forEach(function(config, idx) {
             var div = document.createElement('div');
             div.innerText = config;
             elem.querySelector('.devices').appendChild(div);
+            if(room.actions && room.actions[idx]) {
+              var sub = document.createElement('div');
+              sub.classList.add('actions');
+              sub.innerText =  (room.actions[idx].buttons || 0) + " buttons, " + (room.actions[idx].reactions || 0) + " reactions, " + (room.actions[idx].minutes_heard || 0) + "m audio";
+              div.appendChild(sub);
+            }
           });
           extras.populate(elem, {
             started: room.started_string,

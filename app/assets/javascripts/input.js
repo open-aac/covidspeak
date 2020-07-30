@@ -184,7 +184,16 @@ var audio_loop = function() {
       }
     });
     if(biggest != null && volume) {
-      volume.style.width = (biggest.output || 0) + "px";
+      audio_loop.max_overall = Math.max(audio_loop.max_overall || 50, biggest.output);
+      var volume_as_percent = biggest.output / audio_loop.max_overall;
+      if(volume_as_percent > 0.3) {
+        var minute = Math.floor((new Date()).getTime() /  1000 / 60);
+        if(input.last_heard_minute != minute) {
+          input.last_heard_minute = minute;
+          input.heard_minutes = (input.heard_minutes || 0) + 1;
+        }
+      }
+      volume.style.width = ((volume_as_percent * 50) || 0) + "px";
       if(preview_volume.offsetWidth > 0) {
         if(audio_loop.iter == 0) {
           var amt = Math.round(Math.min(audio_loop.max, 100));

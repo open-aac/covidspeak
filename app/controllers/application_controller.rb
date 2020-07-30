@@ -37,6 +37,5 @@ class ApplicationController < ActionController::Base
     else
       return require_token
     end
-    require_admin_code    
   end
 end
