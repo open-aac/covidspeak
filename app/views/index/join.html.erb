@@ -72,6 +72,7 @@ var load_room = function() {
   var room_ready = function() {
     getMedia();
     if(match && match[1] && !match[1].match(/^(mirror|teach)/)) {
+      // Mark the room as ready to be entered
       room_pending();
     }
     document.querySelector('.room_status').style.display = 'none';
@@ -84,7 +85,13 @@ var load_room = function() {
   if(location.href.match(/rooms\/mirror/) || location.href.match(/rooms\/teach/)) {
     room_ready();
   } else {
-    session.ajax("/api/v1/rooms/" + room_id + "/status", {type: 'GET'}).then(function(res) {
+    var data = {
+      system: input.compat.system,
+      browser: input.compat.browser,
+      mobile: !!input.compat.mobile,
+      pending_id: localStorage.pending_id
+    };
+    session.ajax("/api/v1/rooms/" + room_id + "/status", {type: 'GET', data: data}).then(function(res) {
       load_room.errors = 0;
       document.querySelector('.pending_room_status').innerText = "";
       if(res.pending) {
@@ -116,6 +123,11 @@ var load_room = function() {
       }
     });  
   }
+}
+var mini_room_id = room_id.substring(0, 5);
+var re = new RegExp("^" + mini_room_id);
+if(!(localStorage.pending_id || '').match(re)) {
+  localStorage.pending_id = mini_room_id + "-" + Math.round(Math.random() * 999999) + "." + (new Date()).getTime();
 }
 load_room();
 if(navigator.canShare && navigator.canShare()) {
@@ -191,12 +203,11 @@ if(location.href.match(/rooms\/teach/)) {
 var room_pending = function() {
   if(match && match[1] && !match[1].match(/^(mirror|teach)/)) {
     var data = {
-      status: 'entered',
+      status: 'ready_to_enter',
       system: input.compat.system,
       browser: input.compat.browser,
       mobile: !!input.compat.mobile
     };
-    localStorage.pending_id = Math.round(Math.random() * 999999) + "." + (new Date()).getTime();
     data.pending_id = localStorage.pending_id;
     session.ajax("/api/v1/rooms/" + match[1] + "/coming", {type: 'GET', data: data}).then(function(res) {
     }, function(err) { });

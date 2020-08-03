@@ -8,10 +8,16 @@ var process_room = function(room) {
       duration = "attempted";
     } else if(room.partner_status == 'invited') {
       duration = "invited";
-    } else if(room.partner_status == 'waiting_room') {
+    } else if(room.partner_status == 'invite_modal') {
+      duration = "invite copied";
+    } else if(room.partner_status == 'ready_to_enter') {
       duration = "never left waiting room";
+    } else if(room.partner_status == 'training') {
+      duration = "stuck at training";
     } else if(room.partner_status == 'connected') {
       duration = "temporarily connected";
+    } else if(room.partner_status == 'connecting') {
+      duration = "tried to connect";
     } else if(room.partner_status == 'pending_waiting_room') {
       duration = "pending waiting room only";
     } else {

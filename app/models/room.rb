@@ -89,13 +89,17 @@ class Room < ApplicationRecord
     self.save
   end
 
-  def partner_joined(waiting_room=true)
+  def partner_joined(status)
     self.settings ||= {}
     # in_use calls (keepalive) will set status to connected,
     # so if a partner joins but never reaches connected, we
     # should mark how close they got
     if self.settings['partner_status'] != 'connected'
-      self.settings['partner_status'] = (waiting_room ? 'waiting_room' : 'attempted')
+      # connecting - partner joined room, started connecting
+      # invite_modal - initiator sent an invite
+      # training - taking the training
+      # ready_to_enter - partner needs to joion room
+      self.settings['partner_status'] = status || 'attempted'
     end
     self.save
   end
@@ -109,6 +113,8 @@ class Room < ApplicationRecord
     self.settings['active_user_ids'].uniq!
     self.settings['user_configs'] ||= {}
     if opts && opts['pending_id'] && user_id
+      # when the partner joins, they will send both pending_id
+      # and user_id, so we can remove the pending config
       pending_id_hash = GoSecure.sha512(user_id.to_s, "user_id_hash_#{self.settings['room_nonce']}")[0, 5]
       self.settings['user_configs'].delete(pending_id_hash)
     end

@@ -1737,7 +1737,9 @@ var room = {
     var url = location.origin + "/rooms/" + room.room_id + "/join";
     session.ajax('/api/v1/rooms/' + room.room_id + '/coming', {
       method: 'GET',
-      data: {status: 'invite_modal'}
+      data: {
+        status: 'invite_modal'
+      }
     }).then(function(res) { }, function(err) { });
 
     document.querySelector('#invite_modal .link').innerText = url;

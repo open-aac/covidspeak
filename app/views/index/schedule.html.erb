@@ -96,19 +96,23 @@
             var time_string = started.format('D MMM, YYYY h:mma')
 
             var status = null;
+
             if(room.partner_status == 'attempted') {
               status = "partner attempted to join";
             } else if(room.partner_status == 'invited') {
               status = "partner invited";
-            } else if(room.partner_status == 'waiting_room') {
+            } else if(room.partner_status == 'ready_to_enter') {
               status = "partner never left waiting room";
             } else if(room.partner_status == 'connected') {
               status = "partner temporarily connected";
+            } else if(room.partner_status == 'connecting') {
+              status = "partner tried to connect";
             } else if(room.partner_status == 'pending_waiting_room') {
-              status = "partner waited for room activation";
-            } else if(!room.pending) {
+              status = "partner waited for room activation but couldn't join";
+            } else {
               status = "partner never connected";
             }
+        
             if(room.ended_at && room.partner_status == 'connected') {
               time_string = time_string + " (" + (Math.round(room.duration / 60 * 10) / 10) + "m)";
             } else if(status) {

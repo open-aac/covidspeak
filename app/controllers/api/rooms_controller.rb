@@ -169,7 +169,7 @@ class Api::RoomsController < ApplicationController
         room.settings['partner_status'] ||= 'invited'
         room.save
       else
-        room.partner_joined(params['status'] != 'connecting')
+        room.partner_joined(params['status'])
         params['ip'] = request.remote_ip
         room.user_accessed(params['pending_id'], params) if params['pending_id']
         RoomChannel.broadcast(room.room_key, {
