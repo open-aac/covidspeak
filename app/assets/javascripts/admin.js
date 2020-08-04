@@ -205,7 +205,7 @@ var admin = {
             elem.classList.remove('template');
             extras.populate(elem, {
               month: month.month,
-              minutes: month.minutes,
+              minutes: (month.minutes || 0).toLocaleString(),
               rooms: month.rooms,
               billing_string: month.billed ? "billed" : "not billed"
             });

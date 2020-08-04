@@ -45,6 +45,7 @@ Rails.application.routes.draw do
       post 'join_code' => 'accounts#join_code', on: :collection
       post 'purchasing_events' => 'accounts#purchasing_event', on: :collection
       get 'rooms' => 'rooms#list_schedule'
+      post 'invite' => 'rooms#invite'
       post 'rooms' => 'rooms#schedule'
     end
   end

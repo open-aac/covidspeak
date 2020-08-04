@@ -192,6 +192,13 @@ class Api::RoomsController < ApplicationController
     render json: {rooms: list.map{|r| room_json(r) }.sort_by{|r| r[:started_at] || r[:start_at]} }
   end
 
+  def invite
+    room = Room.find_by(code: params[:room_id])
+    host = "#{request.protocol}#{request.host_with_port}"
+    res = room.send_invite(params['target'], host)
+    render json: {invited: !!res}
+  end
+
   def schedule
     account = Account.find_by_schedule_id(params['account_id'])
     PendingRoom.flush_rooms

@@ -153,7 +153,7 @@ class Api::AccountsController < ApplicationController
       last_room_at: account.settings['last_room_at'],
       recent_rooms_approx: account.settings['recent_rooms'] || 0,
       sub_codes: account.settings['sub_codes'],
-      max_concurrent_rooms: account.settings['max_concurrent_rooms'],
+      max_concurrent_rooms: account.settings['max_concurrent_rooms'] || 1,
       max_concurrent_rooms_per_user: account.settings['max_concurrent_rooms_per_user'],
       max_daily_rooms: account.settings['max_daily_rooms'],
       max_daily_rooms_per_user: account.settings['max_daily_rooms_per_user'],
