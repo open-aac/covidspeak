@@ -230,7 +230,6 @@ module Purchasing
       purchase_summary: opts['purchase_summary']          
     })
     account.reload
-    # TODO: send an email confirmation of purchase
     account
   end
 

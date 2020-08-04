@@ -32,7 +32,8 @@ gem 'redis-namespace'
 gem 'pg'
 gem 'go_secure'
 gem 'stripe'
-gem 'aws-ses'
+gem 'mail-ses'
+gem 'aws-sdk-sns'
 
 # Use ActiveStorage variant
 # gem 'mini_magick', '~> 4.8'
@@ -56,6 +57,7 @@ group :development do
   gem 'spring'
   gem 'spring-watcher-listen', '~> 2.0.0'
   gem 'dotenv-rails'
+  gem 'rb-readline'
 end
 
 group :test do

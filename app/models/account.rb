@@ -80,7 +80,7 @@ class Account < ApplicationRecord
     res = []
     date = self.created_at.beginning_of_month
     while date <= Date.today
-      date_string = date.iso8601
+      date_string = date.iso8601[0, 10]
       data = ((self.settings['subscription'] || {})['months'] || {})[date_string] || {}
       res << {
         month: date.strftime('%b %Y'),
@@ -354,6 +354,10 @@ class Account < ApplicationRecord
 
   def can_start_room?
     !!(!self.paid_account? || (self.settings['subscription'] || {})['subscription_id'])
+  end
+
+  def test_email
+    SubscriptionMailer.deliver_message('new_subscription', self)
   end
 
   def self.confirm_subscription(opts)

@@ -5,10 +5,10 @@
       <p><%= @account.settings['description'] %></p>
       <dl id='account_details'>
         <dt>Created:</dt>
-          <dd class='created_string'><%= @account.created_at.strftime("%e,%b %Y") %></dd>
+          <dd class='created_string'><%= @account.created_at.strftime("%e %b %Y") %></dd>
         <dt>Join Code:</dt>
           <dd><a href="/?join=<%= @account.code %>" class='join_link'><span class='join_code'><%= @account.code %></span> <img src='/icons/link-45deg.svg'/></a></dd>
-        <dt>Simultaneous Rooms:</dt>
+        <dt class='max_concurrent_rooms_dt'>Simultaneous Rooms:</dt>
           <dd class='max_concurrent_rooms'><%= @account.settings['max_concurrent_rooms'] || 1 %></dd>
         <dt>Contact:</dt>
           <dd class='contact_name'><%= @account.settings['contact_name'] %></dd>
@@ -101,9 +101,9 @@
       </div>
       <form id='admin_login'>
         <p class='prompt' style='margin-bottom: 20px;'>To access your account, enter your account details below and we'll email a link you can use to activate this page for accesing your account.</p>
-        <input type='text' style='width: calc(100% - 185px);' placeholder='E-Mail or Join Code' id='join_code' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='off'/>
+        <input type='text' style='width: calc(100% - 185px);' value="<%= params['code'] %>" placeholder='E-Mail or Join Code' id='join_code' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='off'/>
         <button id='login_button' type='submit' class='primary' style='width: 180px; margin-right: 0;'>
-          Log In
+          Start Login
         </button>
         <p id='login_error' class='error' style='display: none;'>Login failed, please make sure you entered a valid join code or email.</p>
       </form>

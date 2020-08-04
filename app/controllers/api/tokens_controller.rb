@@ -18,7 +18,7 @@ class Api::TokensController < ApplicationController
     return api_error(400, {error: 'invalid code'}) unless accounts.length > 0
     account = accounts[0]
     check_id = [account.id, GoSecure.nonce('admin_code_checker')].join('_')
-    email = accounts[0].settings['email']
+    email = accounts[0].settings['contact_email']
     host = "#{request.protocol}#{request.host_with_port}"
     codes = accounts.map do |a|
       {
@@ -26,7 +26,7 @@ class Api::TokensController < ApplicationController
         name: a.settings['name'] || "Account created #{a.created_at}"
       }
     end
-    # TODO: email code to account email address
+    AccountMailer.deliver_message('admin_code', email, codes)
     render json: {sent: true, check_id: check_id}
   end
 

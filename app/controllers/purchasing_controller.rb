@@ -56,7 +56,7 @@ class PurchasingController < ApplicationController
     return api_error(400, {error: 'no subscription found'}) unless account && account.settings['subscription'] && account.settings['subscription']['subscription_id']
   
     session_id = Purchasing.purchase_modify({
-      contact_email: account.settings['email'],
+      contact_email: account.settings['contact_email'],
       customer_id: account.settings['subscription']['customer_id'],
       quantity: [1, account.settings['max_concurrent_rooms']].compact.max,
       subscription_id: account.settings['subscription']['subscription_id'],

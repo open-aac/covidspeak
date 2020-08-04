@@ -1,4 +1,9 @@
 <div id='middle' class='big'>
+  <% if @account %>
+  <div style='float: right;'>
+    <a href="/accounts/login?code=<%= @account.code %>">Admin Login</a>
+  </div>
+  <% end %>
   <h1>Room Schedule</h1>
   <div id='expired' <% if @account %>style='display: none;'<% end %>>
     <p class='prompt'>Schedule page has expired, please re-enter join code</p>
@@ -47,7 +52,7 @@
       </div>
       <p class='error'></p>
     </form>
-  </div>
+  </div>  
 </div>
 <script>
   // code for re-joining

@@ -1,0 +1,14 @@
+Someone recently requested access to 
+<%= @codes.length == 1 ? 'the' : 'a' %> Co-VidSpeak admin 
+interface tied to this email address. You can activate
+this login by hitting <%= @codes.length == 1 ? 'the link' : 'one of the links' %> below.
+<p>
+  <% @codes.each do |code| %>
+    <b><%= code[:name] %></b> - <a href="<%= code[:url] %>">click here to activate login</a>
+  <% end %>
+</p>
+<p>
+  If it wasn't you that requested a login link, please ignore this email.
+</p>
+<br/><br/>Thanks!<br/>
+<%= email_signature %>

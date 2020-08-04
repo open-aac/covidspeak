@@ -43,6 +43,22 @@ class Room < ApplicationRecord
     !!self.settings['short_room']
   end
 
+  def send_invite(target, host)
+    type = nil
+    type = :email if target.to_s.match(/@/)
+    type = :sms if target.to_s.strip.match(/\+?[\d-]+/)
+    url = "#{host}/rooms/#{self.code}/join"
+    if type == :email
+      RoomMailer.deliver_message('room_invite', target, url)
+      return true
+    elsif type == :sms
+      Pusher.sms(target, "Room Invite - #{url}")
+      return true
+    else
+      return false
+    end
+  end
+
   def time_left
     if !self.settings['started_at']
       self.settings['started_at'] ||= Time.now.to_i
