@@ -45,11 +45,7 @@ var input = {
     if(!volume) {
       volume = document.querySelector('#volume_level');
       if(volume) {
-        if(location.href.match(/localhost/)) {
-          volume.style.display = 'block';
-        } else {
-          volume.style.display = 'none';
-        }    
+        volume.style.display = 'block';
       }
     }
     preview_volume = document.querySelector('#no_preview .volume .bar');

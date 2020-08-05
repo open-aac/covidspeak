@@ -1211,10 +1211,13 @@ strong {
   display: none;
   top: 10px;
   right: 10px;
-  background: #0f0;
+  background: #59ff59;
+  border: #43cc43;
+  border-radius: 2px;
   box-shadow: 0 2px 5px #fff;
   height: 15px;
   width: 0;
+  opacity: 0.7;
 }
 #settings_modal {
   select {
