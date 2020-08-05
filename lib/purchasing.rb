@@ -49,6 +49,17 @@ module Purchasing
             end
             data = {:unsubscribe => true, :valid => !!valid}
           end
+        elsif object['status'] == 'past_due'
+          if previous && previous['status'] && previous['status'] != 'past_due'
+            if valid
+              account = Account.find_by(id: customer['metadata']['covidchat_account_id'])
+              if account
+                account.settings['past_due'] = true
+                accuont.save
+                SubscriptionMailer.deliver_message('purchase_bounced', account)
+              end
+            end
+          end
         elsif object['status'] == 'active'
           if valid
             valid = Account.confirm_subscription({
@@ -165,9 +176,15 @@ module Purchasing
       subscription.default_payment_method = method['id']
       subscription.save
     end
-    account = Account.find_by(code: opts['join_code'])
+    account = Account.find_by(id: opts['account_id']) if opts['account_id']
+    account ||= Account.find_by(code: opts['join_code']) if opts['join_code']
     if account
       account.settings['subscription'] ||= {}
+      if account.id == opts['account_id'] && account.settings['subscription']['subscription_id'] && account.settings['subscription']['subscription_id'] != subscription['id']
+        # This (existing) account currently has a different subscription_id
+        account.log_subscription_event({:log => 'overwriting subscription', :current_id => account.settings['subscription']['subscription_id'], :asserted_id => session['subscription']})
+        account.settings['subscription']['subscription_id'] = nil
+      end
       if account.settings['subscription']['subscription_id'] && account.settings['subscription']['subscription_id'] != subscription['id']
         # On mismatch, just create a new account with a longer
         # join code so you don't lose the purchase process
@@ -190,7 +207,7 @@ module Purchasing
           subscription_id: subscription['id'],
           customer_id: customer['id'],
           source_id: 'stripe',
-          source: 'web.purchase',
+          source: 'web.purchase.updated',
           purchase_summary: opts['purchase_summary']          
         })
         return account
@@ -234,7 +251,9 @@ module Purchasing
   end
 
   def self.purchase_modify(opts)
-    session = Stripe::Checkout::Session.create({
+    Stripe.api_key = ENV['STRIPE_SECRET_KEY']
+    Stripe.api_version = '2020-03-02'
+      session = Stripe::Checkout::Session.create({
       mode: 'setup',
       customer_email: opts[:contact_email],
       customer: opts[:customer_id],
@@ -494,7 +513,7 @@ module Purchasing
     puts str
   end
   
-  def self.cancel_subscription(account, customer_id, subscription_id)
+  def self.cancel_subscription(account, customer_id, subscription_id, reason)
     return false unless account
     Stripe.api_key = ENV['STRIPE_SECRET_KEY']
     Stripe.api_version = '2020-03-02'
@@ -527,6 +546,7 @@ module Purchasing
           Account.confirm_subscription({
             state: 'deleted',
             account_id: account.id,
+            cancel_reason: reason,
             subscription_id: subscription_id,
             customer_id: customer_id,
             source_id: 'stripe',

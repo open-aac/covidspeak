@@ -6,15 +6,13 @@ class SubscriptionMailer < ActionMailer::Base
   
   def new_subscription(account)
     @account = account
-    if account.settings['contact_email']
-      subj = "#{app_name} - New Subscription"
-      mail(to: account.settings['contact_email'], subject: subj)
-    end
+    subj = "#{app_name} - New Subscription"
+    mail(to: ENV['ADMIN_EMAIL'] || ENV['DEFAULT_EMAIL_FROM'], subject: subj)
   end
 
   def unsubscribe_reason(account, reason=nil)
     @account = account
-    mail(to: account.settings['contact_email'], subject: "#{app_name} - Subcsription Ended")
+    mail(to: ENV['ADMIN_EMAIL'] || ENV['DEFAULT_EMAIL_FROM'], subject: "#{app_name} - Subcsription Ended")
   end
   
   def purchase_bounced(account)
@@ -22,9 +20,19 @@ class SubscriptionMailer < ActionMailer::Base
     mail_message(account, "Problem with your Subscription")
   end
   
-  def purchase_confirmed(account)
+  def subscription_confirmed(account)
     @account = account
     mail_message(account, "Subscription Confirmed")
+  end
+
+  def subscription_updated(account)
+    @account = account
+    mail_message(account, "Billing Details Updated")
+  end
+
+  def subscription_canceled(account)
+    @account = account
+    mail_message(account, "Subscription Canceled")
   end
 
   # def deletion_warning(account, attempts)

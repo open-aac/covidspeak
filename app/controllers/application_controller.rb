@@ -3,6 +3,7 @@ class ApplicationController < ActionController::Base
   before_action :set_app_headers
 
   def set_app_headers
+    ApplicationMailer.set_current_host("#{request.protocol}#{request.host_with_port}")
     headers['Access-Control-Allow-Origin'] = '*'
     headers['Access-Control-Allow-Methods'] = 'POST, GET, PUT, OPTIONS'
 #    headers['Access-Control-Max-Age'] = "1728000"      

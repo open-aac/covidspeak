@@ -1,4 +1,9 @@
-Purchase Bounced :-/
+Thank you for purchasing Co-VidSpeak! Unfortunately there was an unexpected problem procesisng your latest payment for the account "<%= @account.settings['name'] || @account.code %>"
+
+Your credit card information may no longer be valid, and we'll need updated information within the next few days in order to keep your account active.
+
+Click Here to access your account and update your billing settings: <%= ApplicationMailer.current_host %>/accounts/<%= @account.admin_code %>
+
 
 Thanks!
 <%= email_signature %>

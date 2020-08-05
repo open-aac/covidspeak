@@ -184,6 +184,9 @@ var admin = {
         "--max_monthly_rooms_dt": account.max_monthly_rooms,
         "--max_monthly_rooms_per_user_dt": account.max_monthly_rooms_per_user,
       });
+      if(content.querySelector('.past_due')) {
+        content.querySelector('.past_due').style.display = account.past_due ? 'block' : 'none';
+      }
       if(content.querySelector('.join_link')) {
         content.querySelector('.join_link').setAttribute('href', "/?join=account.join_code");
       }

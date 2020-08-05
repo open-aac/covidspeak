@@ -1,3 +1,10 @@
-SOMETHING GOT BOUGHT!
+There was a new subscription activated for Co-VidSpeak!<br/><br/>
+
+Account: <b><%= @account.settings['name'] || 'No Name' %></b><br/>
+Join Code: <b><%= @account.code %></b><br/>
+Contact Name: <b><%= @account.settings['contact_name'] || 'No Name' %></b><br/>
+Contact Email: <b><%= @account.settings['contact_email'] || 'No Email' %></b><br/>
+Rooms: <b><%= @account.settings['max_concurrent_rooms'] %></b><br/>
+
 <br/><br/>Thanks!<br/>
 <%= email_signature %>

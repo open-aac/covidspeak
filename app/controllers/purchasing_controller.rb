@@ -29,12 +29,7 @@ class PurchasingController < ApplicationController
     return api_error(400, {error: 'invalid account code'}) if !account
     return api_error(400, {error: 'no subscription found'}) if !account.settings['subscription'] || !account.settings['subscription']['subscription_id']
       
-    res = Purchasing.cancel_subscription(account, account.settings['subscription']['customer_id'], account.settings['subscription']['subscription_id'])
-    if res
-      account.reload
-      account.settings['subscription']['cancel_reason'] = params['reason']
-      account.save
-    end
+    res = Purchasing.cancel_subscription(account, account.settings['subscription']['customer_id'], account.settings['subscription']['subscription_id'], params['reason'])
     return api_error(400, {error: 'cancel failed'}) unless res
 
     render json: {canceled: true}
@@ -53,12 +48,13 @@ class PurchasingController < ApplicationController
     host = "#{request.protocol}#{request.host_with_port}"
     account = Account.find_by_admin_code(params['admin_code'])
     return api_error(400, {error: 'invalid account code'}) unless account
-    return api_error(400, {error: 'no subscription found'}) unless account && account.settings['subscription'] && account.settings['subscription']['subscription_id']
+    # return api_error(400, {error: 'no subscription found'}) unless account && account.settings['subscription'] && account.settings['subscription']['subscription_id']
   
     session_id = Purchasing.purchase_modify({
       contact_email: account.settings['contact_email'],
       customer_id: account.settings['subscription']['customer_id'],
       quantity: [1, account.settings['max_concurrent_rooms']].compact.max,
+      account_id: account.id,
       subscription_id: account.settings['subscription']['subscription_id'],
       success_url: "#{host}/purchasing/success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "#{host}/accounts/#{account.admin_code}"

@@ -2,6 +2,9 @@
   <div id='middle' class='big'>
     <div id='account'>
       <h1>Account Details - <span class='name'><%= @account.settings['name'] %></span></h1>
+      <div class='past_due' style='display: none;'>
+        <b>This Account's Billing Details Need to be Updated</b>
+      </div>
       <p><%= @account.settings['description'] %></p>
       <dl id='account_details'>
         <dt>Created:</dt>

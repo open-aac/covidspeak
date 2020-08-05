@@ -144,6 +144,7 @@ class Api::AccountsController < ApplicationController
       type: account.backend_type,
       contact_name: account.settings['contact_name'],
       contact_email: account.settings['contact_email'],
+      past_due: !account.settings['past_due'],
       payment_type: account.paid_account? ? 'paid' : 'free',
       demo: !!account.settings['short_rooms'],
       purchase_summary: (account.settings['subscription'] || {})['purchase_summary'],

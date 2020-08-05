@@ -218,7 +218,7 @@ class Account < ApplicationRecord
     if !user_id_or_hash.match(/^r/)
       str = "r" + GoSecure.sha512(user_id_or_hash, 'room_id for user')[0, 40]
     end
-    str = str + ":" + GoSecure.sha512(str, 'room_id confirmation')[0, 40]
+    str = str + "zz" + GoSecure.sha512(str, 'room_id confirmation')[0, 40]
     room = Room.find_or_initialize_by(code: str, account_id: self.id)
     room.settings ||= {}
     room.settings['short_room'] = true if self.settings['short_rooms']
@@ -297,7 +297,7 @@ class Account < ApplicationRecord
   # ??Free tier w/ no room limit for Y days, then Z rooms/month
 
   def self.valid_room_id?(room_id)
-    hash, verifier = room_id.split(/:/)
+    hash, verifier = room_id.split(/zz|:/)
     return room_id == generate_room(hash)
   end
 
@@ -370,10 +370,19 @@ class Account < ApplicationRecord
         account.settings['subscription']['past_subscriptions'] << {sub_id: account.settings['subscription']['subscription_id'], cus_id: account.settings['subscription']['customer_id'], reason: 'replaced'}
         account.settings['subscription']['purchase_summary'] = nil
       end
+      if !account.settings['subscription']['subscription_id']
+        SubscriptionMailer.deliver_message('new_subscription', account)
+        SubscriptionMailer.deliver_message('subscription_confirmed', account)
+      elsif (account.settings['subscription']['last_update_notification'] || 0) < (Time.now.to_i - (5 * 60))
+        account.settings['subscription']['last_update_notification'] = Time.now.to_i
+        SubscriptionMailer.deliver_message('subscription_updated', account)
+      end
+
       account.settings['subscription']['subscription_id'] = opts[:subscription_id]
       account.settings['subscription']['customer_id'] = opts[:customer_id]
       account.settings['subscription']['source_id'] = opts[:source_id]
       account.settings['subscription']['source'] = opts[:source]
+      account.settings.delete('past_due')
       account.settings['subscription']['purchase_summary'] = opts[:purchase_summary]
       account.save
       return true
@@ -381,6 +390,13 @@ class Account < ApplicationRecord
       account.settings['subscription'] ||= {}
       account.settings['subscription']['past_subscriptions'] ||= []
       account.settings['subscription']['past_subscriptions'] << {sub_id: account.settings['subscription']['subscription_id'], cus_id: account.settings['subscription']['customer_id'], reason: opts[:state]}
+      if opts[:cancel_reason]
+        account.settings['subscription']['cancel_reason'] = opts[:cancel_reason]
+      end
+      if account.settings['subscription']['subscription_id']
+        SubscriptionMailer.deliver_message('subscription_canceled', account)
+        SubscriptionMailer.deliver_message('unsubscribe_reason', account)
+      end
 
       account.settings['subscription']['subscription_id'] = nil
       account.settings['subscription']['customer_id'] = nil

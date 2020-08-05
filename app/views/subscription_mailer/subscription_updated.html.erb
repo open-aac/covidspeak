@@ -1,0 +1,14 @@
+Thank you for using Co-VidSpeak! This email is confirmation that
+the billing details for the account
+<b><%= @account.settings['name'] || @account.code %></b>
+have been updated. 
+<br/><br/>
+To review your account details at any time, use this link to
+<a href="<%= ApplicationMailer.current_host %>/accounts/<%= @account.admin_code %>?code=<%= @account.code %>">log in to your account</a>.
+If this was a mistake, please contact us and we can help resolve the issue.
+<br/><br/>
+We hope you continue to find value in using
+Co-VidSpeak, and we are grateful for your support, which helps
+us continue to improve the product going forward.
+<br/><br/>Thanks!<br/>
+<%= email_signature %>

@@ -10,12 +10,12 @@ class UserFeedback < ApplicationRecord
 
   def deliver_if_feedback
     if !self.settings['feedback'].blank?
-      feedback_hash = Digest::MD5.hexdigest(self.settings['feedback'])
+      feedback_hash = Digest::MD5.hexdigest(self.settings['feedback'] || 'no feedback')
       # don't repeat notifications, please
-      if self.settings['feedback_hash'] != feedback_hash
+      if !self.settings['feedback'].blank? && self.settings['feedback_hash'] != feedback_hash
         self.settings['feedback_hash'] = feedback_hash
         self.save
-        # TODO: email admins with the included feedback
+        AccountMailer.deliver_message('call_feedback', self)
       end
     end
   end
