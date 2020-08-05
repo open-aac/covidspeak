@@ -8,7 +8,10 @@ class RoomChannel < ApplicationCable::Channel
     if(!ids.detect{|u| u[:id] == params[:user_id] })
       RedisAccess.default.rpush("users_for_#{@room_id}", params[:user_id])
     end
-    RedisAccess.default.expire("users_for_#{@room_id}", 24.hours.to_i)
+    cutoff = 24.hours.to_i
+    cutoff = 2.weeks.to_i if room.background_room?
+    cutoff = 6.hours.to_i if room.short_room?
+    RedisAccess.default.expire("users_for_#{@room_id}", cutoff)
     self.broadcast_users
   end
 

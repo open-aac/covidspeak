@@ -40,7 +40,24 @@ class Room < ApplicationRecord
   end
 
   def short_room?
+    # Short rooms are for demo purposes, and are just long
+    # enough to kick the tires, but not long enough to 
+    # have a real call
     !!self.settings['short_room']
+  end
+
+  def background_room?
+    # Background rooms are for situations where partners
+    # come and go, but the communicator stays in the empty
+    # room between visits
+    !!self.settings['background_room']
+  end
+
+  def joinable?
+    return false if self.concluded?
+    return true if !self.settings['started_at']
+    return true if self.background_room?
+    return self.settings['started_at'] > 12.hours.ago.to_i
   end
 
   def send_invite(target, host)
@@ -64,7 +81,9 @@ class Room < ApplicationRecord
       self.settings['started_at'] ||= Time.now.to_i
       self.save
     end
-    time_cutoff = self.short_room? ? 3.minutes.to_i : 24.hours.to_i
+    time_cutoff = 6.hours.to_i
+    time_cutoff = 3.minutes.to_i if self.short_room?
+    time_cutoff = 72.hours.to_i if self.background_room?
     time_cutoff - (self.duration || 0)
   end
 

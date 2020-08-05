@@ -83,6 +83,8 @@ class Api::RoomsController < ApplicationController
           "username": token.username
         }
       elsif account.settings['address']
+        # User has 48 hours to join the room, but once
+        # inside the credential should not expire
         timed_trimmed_identity = "#{48.hours.from_now.to_i}:#{trimmed_identity}"
         cred = timed_trimmed_identity
         if account.settings['verifier'] == 'custom_md5'
@@ -278,7 +280,7 @@ class Api::RoomsController < ApplicationController
       res
     elsif room.is_a?(Room)
       res = {
-        joinable: !room.settings['started_at'] || room.settings['started_at'] > 12.hours.ago.to_i,
+        joinable: room.joinable?,
         code: room.code,
         started_at: (room.settings['started_at'] ? Time.at(room.settings['started_at']) : room.created_at).utc.iso8601,
         ended_at: room.settings['ended_at'] && Time.at(room.settings['ended_at']).utc.iso8601  
