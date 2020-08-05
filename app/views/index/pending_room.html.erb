@@ -22,6 +22,7 @@
 <script>
   (function() {
     var code = "<%= @room.code %>";
+    var bundle_id = null;
     var attendee_code = "<%= @room.attendee_code %>";
     var as_comm = <%= (!!@room.settings['as_communicator']).to_json %>;
     var start_at = "<%= @room.settings['start_at'] %>";
@@ -53,7 +54,7 @@
         session.ajax("/api/v1/rooms/" + code + "/activate", {type: 'POST'}).then(function(res) {
           e.target.closest('#start_room').querySelector('.join_message').innerText = "Room Ready!";
           res.user.as_communicator = as_comm;
-          room.start_and_enter_room(res);
+          room.start_and_enter_room(res, bundle_id);
         }, function(err) {
           e.target.closest('#start_room').querySelector('.join_message').innerText = "Error Activating Room";
         });

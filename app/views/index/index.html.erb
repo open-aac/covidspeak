@@ -96,6 +96,7 @@ document.querySelector('#manage_schedule').addEventListener('click', function(ev
   event.preventDefault();
   var code = document.querySelector('#join_code').value;
   if(code) {
+    code = code.split(/:/)[0];
     session.ajax('/api/v1/accounts/join_code', {
       method: 'POST',
       data: {join_code: code}
@@ -109,6 +110,8 @@ document.querySelector('#manage_schedule').addEventListener('click', function(ev
 document.querySelector('#join').addEventListener('submit', function(event) {
   event.preventDefault();
   var code = document.querySelector('#join_code').value;
+  var bundle_id = code.split(/:/)[1];
+  code = code.split(/:/)[0];
   if(code == 'mirror') {
     location.href = '/rooms/mirror-' + (new Date()).getTime() + "x" + Math.round(Math.random() * 99999) + '/join';
     return;
@@ -125,7 +128,7 @@ document.querySelector('#join').addEventListener('submit', function(event) {
     data: {join_code: code, type: remote.backend}
   }).then(function(res) {
     res.user.as_communicator = document.querySelector('#as_communicator').checked ? true : false;
-    room.start_and_enter_room(res);
+    room.start_and_enter_room(res, bundle_id);
   }, function(err) {
     document.querySelector('#join button').innerText = "Start Room";
     if(err && err.responseJSON && err.responseJSON.throttled) {

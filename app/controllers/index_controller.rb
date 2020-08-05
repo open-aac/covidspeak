@@ -4,6 +4,7 @@ class IndexController < ApplicationController
   end
 
   def room
+    @bundle = Bundle.find_by_code(params['bundle_id'])
     render :layout => 'minimal'
   end
 

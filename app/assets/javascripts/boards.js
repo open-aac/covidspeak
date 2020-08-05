@@ -257,7 +257,7 @@ boards.refresh = function() {
   boards.grids = boards.original_grids;
   var settings = {};
   try {
-    settings = JSON.parse(localStorage.grid_settings || "{}");
+    settings = JSON.parse(room.grid_settings_override || localStorage.grid_settings || "{}");
   } catch(e) { }
   var hash = {};
   var grid_urls = [];

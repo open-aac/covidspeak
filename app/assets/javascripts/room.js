@@ -2005,6 +2005,7 @@ var room = {
   },
   leave_room: function() {
     setTimeout(function() {
+      room.grid_settings_override = null;
       location.href = localStorage.teach_return_url || "/thanks";
     }, 300);
   },
@@ -2025,7 +2026,7 @@ var room = {
       room.leave_room();
     }, 15000);
   },
-  start_and_enter_room: function(res) {
+  start_and_enter_room: function(res, bundle_id) {
     localStorage.removeItem('teach_return_url');
     localStorage.user_id = res.user.id;
     localStorage.room_id = res.user.room_id;
@@ -2033,7 +2034,8 @@ var room = {
     localStorage.self_as_communicator = (!!res.user.as_communicator).toString();
     localStorage.show_images = 'true';
     localStorage.terms_accepted = 'true';
-    location.href = '/rooms/' + res.user.room_id;
+    var query = bundle_id ? ("?bundle_id=" + bundle_id) : "";
+    location.href = '/rooms/' + res.user.room_id + query;
   }
 };
 window.addEventListener('resize', function() {

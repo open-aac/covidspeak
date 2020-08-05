@@ -439,6 +439,17 @@
 
 <script>
   room.buttons = room.default_buttons;
+  room.grid_settings_override = null;
+  <% if @bundle %>
+    var str = "<%= @bundle.settings['content'] %>";
+    var list = null;
+    try {
+      list = JSON.parse(atob(str));
+    } catch(e) { }
+    if(list) {
+      room.grid_settings_override = JSON.stringify(list);
+    }
+  <% end %>
   if(localStorage.terms_accepted != "true") {
     location.href = location.href + "/join";
   } else {
