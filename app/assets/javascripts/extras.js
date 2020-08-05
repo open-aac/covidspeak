@@ -33,8 +33,10 @@ var extras = {
           link = document.createElement('a');
           link.style.position = 'absolute';
           link.style.left = '-2000px';
+          link.id = 'copy_link';
           document.body.appendChild(link);
         }
+        link.href = url;
         link.innerText = url;
         var range = document.createRange();  
         range.selectNode(link);  
