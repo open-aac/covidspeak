@@ -17,6 +17,7 @@ class Bundle < ApplicationRecord
   end
 
   def self.find_by_code(str)
+    return nil unless str
     # add plug to url for friendlier urls
     id, verifier = (str.split(/-/)[0] || '').split(/x/)
     # Bundles that haven't been accessed for over a year should be removed
