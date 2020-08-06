@@ -182,8 +182,18 @@ var audio_loop = function() {
     if(biggest != null && volume) {
       audio_loop.max_overall = Math.max(audio_loop.max_overall || 50, biggest.output);
       var volume_as_percent = biggest.output / audio_loop.max_overall;
-      if(volume_as_percent > 0.3) {
-        var minute = Math.floor((new Date()).getTime() /  1000 / 60);
+      audio_loop.min_sample = Math.min(audio_loop.min_sample || 1.0, volume_as_percent);
+      var minute = Math.floor((new Date()).getTime() /  1000 / 60);
+      if(input.last_sampled_minute != minute) {
+        input.last_sampled_minute = minute;
+        audio_loop.min_sample = volume_as_percent;
+      }
+      var sampling_cutoff = 0.3;
+      if(audio_loop.min_sample < 0.3) {
+        // Try to use the background noise level from the prior minute as the cutoff
+        sampling_cutoff = audio_loop.min_sample * 1.5;
+      }
+      if(volume_as_percent > sampling_cutoff) {
         if(input.last_heard_minute != minute) {
           input.last_heard_minute = minute;
           input.heard_minutes = (input.heard_minutes || 0) + 1;

@@ -83,6 +83,7 @@ remote.webrtc = {
     return new Promise(function(res, rej) {
       if(stream_or_track.getTracks) {
         var tracks = [];
+        // Only supports addinig one audio/video track at a time
         if(stream_or_track.getVideoTracks) {
           var vid = stream_or_track.getVideoTracks()[0];
           var aud = stream_or_track.getAudioTracks()[0];
@@ -94,6 +95,7 @@ remote.webrtc = {
           tracks.forEach(function(track) {
             list.push(remote.webrtc.track_ref(track, null, 0));
             var new_track = false;
+            // Check if the track is already in the list of local tracks
             if(remote.webrtc.local_tracks.indexOf(track) == -1) {
               new_track = true;
               remote.webrtc.local_tracks.push(track);
@@ -101,12 +103,14 @@ remote.webrtc = {
             }
             track.enabled = true;
             if(new_track) {
+              // If this is a new track, add it to each sub-connection
               main_room.subroom_ids.forEach(function(subroom_id) {
                 var pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
                 if(pc_ref) {
                   var senders = pc_ref.pc.getSenders();
                   var types = {};
                   var blank_sender = null;
+                  // Check if we're already sending a track of this kind
                   senders.forEach(function(s) {
                     if(s.track && !s.track.muted) { types[s.track.kind] = true; }
                     if(!s.track || (s.track.kind == track.kind && s.track.muted)) { blank_sender = blank_sender || s; }
@@ -114,7 +118,14 @@ remote.webrtc = {
                   main_room.subrooms[subroom_id][pc_ref.id].tracks = main_room.subrooms[subroom_id][pc_ref.id].tracks || {};
                   main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id] = main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id] || {};
                   main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id].track = track;
+                  // When the non-initiator switches their video feed, it needs more assertion to renegotiate
+                  main_room.subrooms[subroom_id].renegotiate_harder = true;
                   if(!types[track.kind] && blank_sender) {
+                    // NOTE: This will result in a lost track
+                    // if renegotiation doesn't happen. The original
+                    // video track won't be on the connection when this
+                    // replaced track is removed. Hence, it's important
+                    // to make sure renegotiation happens.
                     blank_sender.replaceTrack(track).then(function() {
                       setTimeout(function() {
                         main_room.subrooms[subroom_id].renegotiate();
@@ -135,7 +146,7 @@ remote.webrtc = {
                     setTimeout(function() {
                       main_room.subrooms[subroom_id].renegotiate();
                     }, 100);
-                }
+                  }
                 }
               });
             }
@@ -285,6 +296,8 @@ remote.webrtc = {
               });
             }
             if(pc && sender) {
+              // When the non-initiator switches their video feed, it needs more assertion to renegotiate
+              main_room.subrooms[subroom_id].renegotiate_harder = true;
               setTimeout(function() {
                 pc.removeTrack(sender);
                 delete main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id];
@@ -330,7 +343,7 @@ remote.webrtc = {
   pc_ref: function(type, id) {
     return (remote.webrtc.pcs || []).filter(function(ref) { 
       if(type == 'sub') {
-        return ref.subroom_id = id;
+        return ref.subroom_id == id;
       } else {
         return ref.id == type || ref.id == id;
       }
@@ -399,6 +412,7 @@ remote.webrtc = {
       }
       console.log("RTC: negotiating...")
       main_room.subrooms[subroom_id].negotiating = true;
+      main_room.subrooms[subroom_id].renegotiatied = true;
       setTimeout(function() {
         main_room.subrooms[subroom_id].negotiating = false;
       }, 3000);
@@ -406,9 +420,9 @@ remote.webrtc = {
       var pc_ref = remote.webrtc.pc_ref(rtcpc.id || pc_id);
       var latest_pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
       if(!initiator) {
-        console.log("RTC: pinging to ask for new connection");
         // don't trigger a renegotiation when one is already going on
-        if(latest_pc_ref && latest_pc_ref.refState != 'connected') { 
+        if(main_room.subrooms[subroom_id].renegotiate_harder || (latest_pc_ref && latest_pc_ref.refState != 'connected')) { 
+          console.log("RTC: pinging to ask for new connection");
           main_room.send({
             author_id: main_room.user_id,
             target_id: remote_user_id,
@@ -418,6 +432,7 @@ remote.webrtc = {
         }
         return; 
       }
+      main_room.subrooms[subroom_id].renegotiate_harder = false;
       if(pc_ref && pc_ref.refState == 'connected') {
         // We can set up a brand new connection which
         // will prevent the old session from pausing while
@@ -576,6 +591,7 @@ remote.webrtc = {
         // If we still haven't managed a healthy connection, try again
         if(latest_pc_ref && latest_pc_ref.refState != 'connected') {
           if(main_room.subrooms[latest_pc_ref.subroom_id]) {
+            main_room.subrooms[latest_pc_ref.subroom_id].renegotiate_harder = true;
             main_room.subrooms[latest_pc_ref.subroom_id].renegotiate();
           }
         } else if(latest_pc_ref && ['new', 'checking', 'connecting'].indexOf(latest_pc_ref.refState) != -1) {
@@ -734,19 +750,52 @@ remote.webrtc = {
     }
     console.log("RTC: checking all connections");
     var all_connections_ended = true;
+    var needs_refresh = false;
     remote.webrtc.pcs = remote.webrtc.pcs || [];
     remote.webrtc.pcs.forEach(function(pc_ref) {
       if(pc_ref && pc_ref.pc && pc_ref.pc.connectionState != 'closed' && pc_ref.pc.connectionState != 'failed') {
         all_connections_ended = false;
+        if(pc_ref.pc.connectionState == 'connected') {
+          // Sometimes we get in a state where we think we're
+          // connected, but nothing is showing. There is
+          // a deeper issue but this should patch it...
+          var receivers = pc_ref.pc.getReceivers();
+          var senders = pc_ref.pc.getSenders();
+          var video_muted = true;
+          if((room.local_tracks || []).find(function(t) { return t.type == 'video' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted; })) {
+            video_muted = false;
+          }
+          if(!video_muted && !senders.find(function(r) { return r.track && r.track.kind == 'video' && r.track.enabled && !r.track.muted; })) {
+            console.error("Expected to be sending local video but none found");
+            needs_refresh = true;
+          }
+          if(!room.mute_audio && !senders.find(function(r) { return r.track && r.track.kind == 'audio' && r.track.enabled && !r.track.muted; })) {
+            console.error("Expected to be sending local audio but none found");
+            needs_refresh = true;
+          }
+          room.state_for = room.state_for || {};
+          if(room.state_for[pc_ref.user_id] && room.state_for[pc_ref.user_id].video) {
+            if(!receivers.find(function(r) { return r.track && r.track.kind == 'video' && r.track.enabled && !r.track.muted; })) {
+              console.error("Expected to receive remote video but none found");
+              needs_refresh = true;
+            }
+          }
+          if(room.state_for[pc_ref.user_id] && room.state_for[pc_ref.user_id].audio) {
+            if(!receivers.find(function(r) { return r.track && r.track.kind == 'audio' && r.track.enabled && !r.track.muted; })) {
+              console.error("Expected to receive remote audio but none found");
+              needs_refresh = true;
+            }
+          }
+        }
       }
     });
-    if(remote.webrtc.pcs.length > 0 && all_connections_ended) {
+    if(needs_refresh || (remote.webrtc.pcs.length > 0 && all_connections_ended)) {
       console.log("RTC: no active connections, try to reconnect");
       remote.webrtc.reconnect();
     } else if(!room.active) {
       room.set_active(true);
     }
-    remote.webrtc.poll_status.timer = setTimeout(remote.webrtc.poll_status, 10000);
+    remote.webrtc.poll_status.timer = setTimeout(remote.webrtc.poll_status, 5000);
   },
   reconnect: function() {
     if(remote.webrtc.last_room_id && remote.webrtc.rooms[remote.webrtc.last_room_id]) {
