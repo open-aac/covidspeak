@@ -43,6 +43,7 @@ class Account < ApplicationRecord
   end
 
   def track_usage(room)
+    account = self
     time = Time.at(room.settings['started_at'] || room.created_at)
     month_start = time.beginning_of_month
     month_end = time.end_of_month
@@ -50,9 +51,9 @@ class Account < ApplicationRecord
     total_rooms = 0
     force = false
     month_code = month_start.iso8601[0, 10]
-    usage = JSON.parse(RedisAccess.default.get("usage_excluding/#{month_code}/#{self.id}/#{room.id}")) rescue nil
+    usage = JSON.parse(RedisAccess.default.get("usage_excluding/#{month_code}/#{account.id}/#{room.id}")) rescue nil
     if !usage
-      recent_rooms = Room.where(account_id: self.id).where(['created_at > ? AND created_at < ?', month_start - 15.days, month_end + 15.days])
+      recent_rooms = Room.where(account_id: account.id).where(['created_at > ? AND created_at < ?', month_start - 15.days, month_end + 15.days])
       current_month_rooms = recent_rooms.select{|r| r.duration && r.duration > Account.ignore_duration && r.settings['started_at'] && r.settings['started_at'] >= month_start.to_time.to_i && r.settings['started_at'] < month_end.to_time.to_i }
       concurrent_rooms = []
       if month_end > Date.today
@@ -61,27 +62,30 @@ class Account < ApplicationRecord
       total_rooms = current_month_rooms.length
       total_seconds = current_month_rooms.map{|r| r.duration }.sum
       if concurrent_rooms.length == 0
-        RedisAccess.default.setex("usage_excluding/#{month_code}/#{self.id}/#{room.id}", 5.minutes.to_i, {rooms: total_rooms - 1, minutes: (total_seconds - room.duration) / 60.0}.to_json)
+        RedisAccess.default.setex("usage_excluding/#{month_code}/#{account.id}/#{room.id}", 5.minutes.to_i, {rooms: [total_rooms - 1, 0].max, minutes: (total_seconds - room.duration) / 60.0}.to_json)
       end
     else  
       total_seconds = (usage['minutes'] * 60) + room.duration
       total_rooms = usage['rooms'] + 1
     end
     force = true if total_seconds > Account.free_duration
-    self.settings['subscription'] ||= {}  
-    self.settings['subscription']['months'] ||= {}
-    self.settings['subscription']['months'][month_code] = (self.settings['subscription']['months'][month_code] || {}).merge({
-      minutes: (total_seconds / 60.0).round(1),
-      rooms: total_rooms
+    account.settings['subscription'] ||= {}  
+    account.settings['subscription']['months'] ||= {}
+    account.settings['subscription']['months'][month_code] = (account.settings['subscription']['months'][month_code] || {}).merge({
+      'minutes' => (total_seconds / 60.0).round(1),
+      'rooms' => total_rooms
     })
-    if force && self.paid_account?
-      if self.settings['subscription'] && self.settings['subscription_id']
-        account_rooms = self.settings['max_concurrent_rooms'] || 1
+    if force && account.paid_account?
+      if account.settings['subscription'] && account.settings['subscription']['subscription_id']
+        account_rooms = account.settings['max_concurrent_rooms'] || 1
         # TODO: for really excessive usage, charge extra??
         Purchasing.update_meter(account, {quantity: account_rooms})
+        true
+      else
+        false
       end
     else
-      self.save
+      account.save
     end
   end
 

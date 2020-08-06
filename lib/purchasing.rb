@@ -297,18 +297,23 @@ module Purchasing
       return false
     end
     sub_item = sub.items.data.detect{|si| si['price']['id'] == ENV['STRIPE_PRICE_ID'] }
-    if !sub
+    if !sub_item
       account.log_subscription_event({error: 'no matching subscription item found when updating meter'})
       return false
     end
-    usage = sub_item.usage_records.create(opts) rescue nil
+    usage = Stripe::SubscriptionItem.create_usage_record(
+      sub_item.id,
+      opts,
+    ) rescue nil
     if usage
       account.settings['subscription']['last_meter_update'] = opts
       account.settings['subscription']['months'] ||= {}
       account.settings['subscription']['months'][month_start.iso8601] = (account.settings['subscription']['months'][month_start.iso8601] || {}).merge(opts)
       account.save
+      return true
     else
       account.log_subscription_event({error: 'failed to create usage'}) unless usage
+      return false
     end
   end
 
