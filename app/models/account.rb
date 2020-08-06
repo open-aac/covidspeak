@@ -21,7 +21,7 @@ class Account < ApplicationRecord
     last_room = Room.where(account_id: self.id).order('created_at').last
     if last_room
       self.settings['last_room_at'] = last_room.created_at.to_i
-      self.settings['recent_rooms'] = Room.where(account_id: self.id).where(['created_at > ?', 2.weeks.ago]).map{|r| (r.duration || 0) > 3 }.length
+      self.settings['recent_rooms'] = Room.where(account_id: self.id).where(['created_at > ?', 2.weeks.ago]).map{|r| (r.duration || 0) > Account.ignore_duration }.length
       self.save
     end
   end
@@ -31,16 +31,16 @@ class Account < ApplicationRecord
   end
   
   def self.free_duration
-    return 30 # 30 minutes free every month
+    return 30 * 60 # 30 minutes free every month
   end
 
   def self.ignore_duration
-    return 3 # super-short meetings don't count
+    return 3 * 60 # super-short meetings don't count
   end
 
   def track_usage(room)
     month_start = Date.today.beginning_of_month
-    total_minutes = 0
+    total_seconds = 0
     total_rooms = 0
     force = false
     usage = JSON.parse(RedisAccess.default.get("usage_excluding/#{self.id}/#{room.id}")) rescue nil
@@ -49,20 +49,20 @@ class Account < ApplicationRecord
       current_month_rooms = rooms.select{|r| r.duration && r.duration > Account.ignore_duration && r.settings['started_at'] && r.settings['started_at'] > month_start.to_time.to_i }
       concurrent_rooms = rooms.select{|r| r != room && r.duration && r.duration > Account.ignore_duration && r.settings['ended_at'] && r.settings['ended_at'] > 20.minutes.ago.to_i }
       total_rooms = current_month_rooms.length
-      total_minutes = current_month_rooms.map{|r| r.duration }.sum
+      total_seconds = current_month_rooms.map{|r| r.duration }.sum
       if concurrent_rooms.length == 0
-        RedisAccess.default.setex("usage_excluding/#{self.id}/#{room.id}", 5.minutes.to_i, {rooms: total_rooms - 1, minutes: total_minutes - room.duration}.to_json)
+        RedisAccess.default.setex("usage_excluding/#{self.id}/#{room.id}", 5.minutes.to_i, {rooms: total_rooms - 1, minutes: (total_seconds - room.duration) / 60}.to_json)
       end
     else  
-      total_minutes = usage['minutes'] + room.duration
+      total_seconds = (usage['minutes'] * 60) + room.duration
       total_rooms = usage['rooms'] + 1
     end
-    force = true if total_minutes > Account.free_duration
+    force = true if total_seconds > Account.free_duration
     self.settings['subscription'] ||= {}  
     self.settings['subscription']['months'] ||= {}
     month_code = month_start.iso8601
     self.settings['subscription']['months'][month_code] = (self.settings['subscription']['months'][month_code] || {}).merge({
-      minutes: total_minutes,
+      minutes: (total_seconds / 60).round(1),
       rooms: total_rooms
     })
     if force && self.paid_account?

@@ -9,6 +9,7 @@ class Room < ApplicationRecord
     self.settings ||= {}
     self.settings['name'] ||= "Unscheduled Room"
     if self.settings['ended_at'] && self.settings['started_at']
+      # Remember: duration is in seconds
       self.duration = self.settings['ended_at'] - self.settings['started_at'] - (self.settings['gaps'] || []).map{|g| g['duration'] || 0}.sum
     end
     true
