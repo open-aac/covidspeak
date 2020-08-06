@@ -150,7 +150,7 @@ class Api::AccountsController < ApplicationController
       demo: !!account.settings['short_rooms'],
       purchase_summary: (account.settings['subscription'] || {})['purchase_summary'],
       last_meter_update: last_meter,
-      current_month_meter: !!(last_meter && last_meter > Date.today.beginning_of_month.utc.iso8601)
+      current_month_meter: !!(last_meter && last_meter > Date.today.beginning_of_month.utc.iso8601),
       can_start_room: account.can_start_room?,
       archived: account.archived,
       last_room_at: account.settings['last_room_at'],
