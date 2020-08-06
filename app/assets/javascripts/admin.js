@@ -73,6 +73,9 @@ var process_account = function(account) {
     account.last_room_string = date.toDateString().replace(current_year.toString(), '');
 
   }
+  if(account.last_meter_update) {
+    account.last_meter_string = window.moment(account.last_meter_update).format('MMM YYYY');
+  }
   if(account.recent_rooms_approx) {
     account.recent_rooms = "~" + account.recent_rooms_approx;
   }
@@ -167,6 +170,7 @@ var admin = {
         recent_rooms: account.recent_rooms,
         contact_name: account.contact_name,
         contact_email: account.contact_email,
+        last_meter: account.last_meter_string,
         cancel_reason: account.cancel_reason,
         "--cancel_reason_parent": !!account.cancel_reason,
         purchase_state: account.purchase_state,
@@ -177,12 +181,14 @@ var admin = {
         "-max_daily_rooms_per_user": account.max_daily_rooms_per_user,
         "-max_monthly_rooms": account.max_monthly_rooms,
         "-max_monthly_rooms_per_user": account.max_monthly_rooms_per_user,
+        "-last_meter": account.last_meter_update,
         "--max_concurrent_rooms_dt": account.max_concurrent_rooms,
         "--max_concurrent_rooms_per_user_dt": account.max_concurrent_rooms,
         "--max_daily_rooms_dt": account.max_daily_rooms,
         "--max_daily_rooms_per_user_dt": account.max_daily_rooms_per_user,
         "--max_monthly_rooms_dt": account.max_monthly_rooms,
         "--max_monthly_rooms_per_user_dt": account.max_monthly_rooms_per_user,
+        "--last_meter_dt": account.last_meter_update,
       });
       if(content.querySelector('.past_due')) {
         content.querySelector('.past_due').style.display = account.past_due ? 'block' : 'none';
@@ -307,9 +313,23 @@ var admin = {
       document.querySelector("#accounts .status").innerText = "";
       var template = document.querySelector("#accounts .list .account.template");
       data.accounts = data.accounts.sort(function(a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
+      var recent_accounts = 0;
+      var billable_slots = 0;
+      var paid_accounts = 0;
+      var billed_slots = 0;
       data.accounts.forEach(function(account) {
         var elem = template.cloneNode(true);
         process_account(account);
+        if(account.payment_type == 'paid') {
+          paid_accounts++;
+          billable_slots = billable_slots + (account.max_concurrent_rooms || 1);
+        }
+        if(account.recent_activity) {
+          recent_accounts++;
+          if(account.current_month_meter) {
+            billed_slots = billed_slots + (account.max_concurrent_rooms || 1);
+          }
+        }
         extras.populate(elem, {
           name: account.name,
           code: account.code_string,
@@ -340,6 +360,11 @@ var admin = {
         elem.classList.remove('template');
         document.querySelector("#accounts .list").appendChild(elem);
       });
+
+      (document.querySelector('#accounts .recent_accounts') || {}).innerText = recent_accounts || 'None';
+      (document.querySelector('#accounts .paid_accounts') || {}).innerText = paid_accounts || 'None';
+      (document.querySelector('#accounts .billed_rooms') || {}).innerText = billable_slots ? (billed_slots + " / " + billable_slots) : "N/A";
+
       if(data.recent_rooms) {
         document.querySelectorAll('#accounts .rooms .room').forEach(function(room) {
           if(!room.classList.contains('template')) {
