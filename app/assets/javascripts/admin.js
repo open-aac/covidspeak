@@ -188,7 +188,7 @@ var admin = {
         content.querySelector('.past_due').style.display = account.past_due ? 'block' : 'none';
       }
       if(content.querySelector('.join_link')) {
-        content.querySelector('.join_link').setAttribute('href', "/?join=account.join_code");
+        content.querySelector('.join_link').setAttribute('href', "/?join=" + account.code);
       }
       content.querySelectorAll('.rooms .room').forEach(function(room) {
         if(!room.classList.contains('template')) {
