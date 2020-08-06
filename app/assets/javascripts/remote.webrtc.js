@@ -328,7 +328,7 @@ remote.webrtc = {
               if(!main_room.subrooms[subroom_id][pc_ref.id].remote_tracks[rec.track.id]) {
                 var track = rec.track;
                 var stream = new MediaStream();
-                console.log("RTC: MISSED A TRACK! adding now...", track);
+                console.error("RTC: MISSED A TRACK! adding now...", track);
                 stream.addTrack(track);
                 main_room.add_track(track, stream, pc_ref.id);  
               } else {
