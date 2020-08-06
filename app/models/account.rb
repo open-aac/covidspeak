@@ -39,19 +39,25 @@ class Account < ApplicationRecord
   end
 
   def track_usage(room)
-    month_start = Date.today.beginning_of_month
+    time = Time.at(room.settings['started_at'] || room.created_at)
+    month_start = time.beginning_of_month
+    month_end = time.end_of_month
     total_seconds = 0
     total_rooms = 0
     force = false
-    usage = JSON.parse(RedisAccess.default.get("usage_excluding/#{self.id}/#{room.id}")) rescue nil
+    month_code = month_start.iso8601[0, 10]
+    usage = JSON.parse(RedisAccess.default.get("usage_excluding/#{month_code}/#{self.id}/#{room.id}")) rescue nil
     if !usage
-      recent_rooms = Room.where(account_id: self.id).where(['created_at > ?', 45.days.ago])
-      current_month_rooms = rooms.select{|r| r.duration && r.duration > Account.ignore_duration && r.settings['started_at'] && r.settings['started_at'] > month_start.to_time.to_i }
-      concurrent_rooms = rooms.select{|r| r != room && r.duration && r.duration > Account.ignore_duration && r.settings['ended_at'] && r.settings['ended_at'] > 20.minutes.ago.to_i }
+      recent_rooms = Room.where(account_id: self.id).where(['created_at > ? AND created_at < ?', month_start - 15.days, month_end + 15.days])
+      current_month_rooms = recent_rooms.select{|r| r.duration && r.duration > Account.ignore_duration && r.settings['started_at'] && r.settings['started_at'] >= month_start.to_time.to_i && r.settings['started_at'] < month_end.to_time.to_i }
+      concurrent_rooms = []
+      if month_end > Date.today
+        concurrent_rooms = recent_rooms.select{|r| r != room && r.duration && r.duration > Account.ignore_duration && r.settings['ended_at'] && r.settings['ended_at'] > 20.minutes.ago.to_i }
+      end
       total_rooms = current_month_rooms.length
       total_seconds = current_month_rooms.map{|r| r.duration }.sum
       if concurrent_rooms.length == 0
-        RedisAccess.default.setex("usage_excluding/#{self.id}/#{room.id}", 5.minutes.to_i, {rooms: total_rooms - 1, minutes: (total_seconds - room.duration) / 60}.to_json)
+        RedisAccess.default.setex("usage_excluding/#{month_code}/#{self.id}/#{room.id}", 5.minutes.to_i, {rooms: total_rooms - 1, minutes: (total_seconds - room.duration) / 60.0}.to_json)
       end
     else  
       total_seconds = (usage['minutes'] * 60) + room.duration
@@ -60,9 +66,8 @@ class Account < ApplicationRecord
     force = true if total_seconds > Account.free_duration
     self.settings['subscription'] ||= {}  
     self.settings['subscription']['months'] ||= {}
-    month_code = month_start.iso8601
     self.settings['subscription']['months'][month_code] = (self.settings['subscription']['months'][month_code] || {}).merge({
-      minutes: (total_seconds / 60).round(1),
+      minutes: (total_seconds / 60.0).round(1),
       rooms: total_rooms
     })
     if force && self.paid_account?
