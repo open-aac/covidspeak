@@ -222,7 +222,7 @@ var room = {
       document.querySelector('#status_holder').style.display = 'none';
     } else {
       document.querySelector('#status_holder').style.display = 'block';
-      document.querySelector('#status').innerText = str;
+      document.querySelector('#status #status_text').innerText = str;
       if(room.current_room && room.current_room.room_initiator) {
         if(opts && opts.invite && !mirror_type && !teaching_type) {
           document.querySelector('#status_invite').style.display = 'block';
@@ -1193,27 +1193,33 @@ var room = {
   },
   handle_camera_error: function(err, callback) {
     var status = callback || room.status;
+    var browser = "your device's browser";
+    if(input.compat.browser == 'Safari' || input.compat.system == 'iOS' || input.compat.system == 'iPadOS') {
+      browser = "Safari";
+    } else if(input.compat.browser == 'Chrome' || input.compat.system == 'Android') {
+      browser = "Chrome";
+    }
 
     if(err && err.timeout) {
       if(input.compat.webview) {
-        status("Please grant camera access or load in your device's browser", {popout: true, big: true});
+        status("Please grant camera access or load in " + browser, {popout: true, big: true});
       } else {
         status("Please grant access to the camera");
       }
     } else if(err && err.name == 'NotAllowedError') {
       if(input.compat.webview) {
-        status("Camera permission required", {popout: true});
+        status("Camera permission required, try loading in " + browser, {popout: true});
       } else {
-        status("Camera permission not granted, you may need to enable camera access for the browser through your device's settings");
+        status("Camera permission not granted, you may need to enable camera access for the browser through your device's settings", {big: true});
       }
     } else if(err && err.name == 'NotFoundError') {
       if(input.compat.webview) {
-        status("Camera access not available", {popout: true});
+        status("Camera access not available, try loading in " + browser, {popout: true});
       } else {
         status("Can't accesss the camera, your device may not support video calling, or you have it disabled.", {big: true});
       }
     } else if(input.compat.webview) {
-      status("Camera access doesn't work inside non-browser apps.", {popout: true, big: true});
+      status("Camera won't load inside apps. Try copying the link and loading in " + browser, {popout: true, big: true});
     } else {
       status("Can't accesss the camera, your device may not support video calling, or you have it disabled.", {big: true});
     }
@@ -1774,7 +1780,30 @@ var room = {
         modal.close();
       }})
     }
-    modal.open("Invite a Visitor", document.getElementById('invite_modal'), actions);
+    var dom = document.getElementById('invite_modal');
+    dom.onattached = function(dom) {
+      dom.querySelector('#external_invite').addEventListener('submit', function(event) {
+        event.preventDefault();
+        var address = dom.querySelector('#invite_target').value.replace(/\s/g, '');
+        if(address && address.match(/@|\+?\d+/)) {
+          dom.querySelector('#send_invite').innerText = 'Sending...';
+          session.ajax('/api/v1/rooms/' + room.room_id + '/invite', {
+            method: 'POST',
+            data: {target: address}                
+          }).then(function(res) {
+            if(res.invited) {
+              dom.querySelector('#send_invite').innerText = 'Invite Sent!';
+              dom.querySelector('#invite_target').value = "";
+            } else {
+              dom.querySelector('#send_invite').innerText = 'Send Failed';
+            }
+          }, function(err) {
+            dom.querySelector('#send_invite').innerText = 'Send Failed';
+          });  
+        }
+      });
+    };
+    modal.open("Invite a Visitor", dom, actions);
     if(window.QRCode) {
       var qr = new window.QRCode(document.querySelector('.modal #invite_modal .qr_code'), url);
       document.querySelector('.modal #invite_modal .qr_code').setAttribute('title', '');
@@ -2165,6 +2194,7 @@ document.addEventListener('click', function(event) {
   var $invite = $(event.target).closest('#invite_partner');
   var $leave = $(event.target).closest('#leave_room');
   var $continue = $(event.target).closest('#continue_teaching');
+  var $copy = $(event.target).closest('#copy_for_popout');
   var $popout = $(event.target).closest('#popout_view');
   var $popout = $(event.target).closest('#popout_view');
   var personalize = event.target.closest('.personalize');
@@ -2195,6 +2225,13 @@ document.addEventListener('click', function(event) {
     room.toggle_controls();
   } else if($invite.length > 0) {
     room.invite();
+  } else if($copy.length > 0) {
+    var url = location.origin + "/rooms/" + room.room_id + "/join";
+    extras.copy(url).then(function(res) {
+      if(res.copied) {
+        document.querySelector('#status_popout').style.display = 'none';
+      }
+    }, function() { });
   } else if($leave.length > 0) {
     room.leave_room();
   } else if(personalize) {

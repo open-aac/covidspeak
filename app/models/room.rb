@@ -65,16 +65,21 @@ class Room < ApplicationRecord
     type = nil
     type = :email if target.to_s.match(/@/)
     type = :sms if target.to_s.strip.match(/\+?[\d-]+/)
+    return false if (self.settings['remote_invites'] || 0) > 10 && !self.background_room?
     url = "#{host}/rooms/#{self.code}/join"
+    send = false;
     if type == :email
       RoomMailer.deliver_message('room_invite', target, url)
-      return true
+      sent = true
     elsif type == :sms
       Pusher.sms(target, "Room Invite - #{url}")
-      return true
-    else
-      return false
+      sent = true
     end
+    if sent
+      self.settings['remote_invites'] = (self.settings['remote_invites'] || 0) + 1
+      self.save
+    end
+    return sent
   end
 
   def time_left

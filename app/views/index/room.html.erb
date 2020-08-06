@@ -106,19 +106,20 @@
         </div>
       </div>
       <div id="status_holder">
-        <div id='status'>Initializing...
-        </div>
-        <div id='status_invite'>
-          <button id='invite_partner' class='primary'>Invite Partner</button>
-        </div>
-        <div id='status_leave'>
-          <button id='leave_room' class='primary'>Leave Room</button>
-        </div>
-        <div id='status_continue'>
-          <button id='continue_teaching' class='primary'>I'm Ready!</button>
-        </div>
-        <div id='status_popout'>
-          <b>Try opening in your device's browser</b>
+        <div id='status'>
+          <div id='status_text'>Initializing...</div>
+          <div id='status_invite'>
+            <button id='invite_partner' class='primary'>Invite Partner</button>
+          </div>
+          <div id='status_leave'>
+            <button id='leave_room' class='primary'>Leave Room</button>
+          </div>
+          <div id='status_continue'>
+            <button id='continue_teaching' class='primary'>I'm Ready!</button>
+          </div>
+          <div id='status_popout'>
+            <button id='copy_for_popout' class='primary'>Copy Link to Load in Browser</button>
+          </div>
         </div>
       </div>
       <div id="communicator">
@@ -368,6 +369,10 @@
   </p>
   <div class='qr_code'>
   </div>
+  <form style='text-align: center;' id='external_invite'>
+    <input type='text' id='invite_target' placeholder='Email or SMS'/>
+    <button type='submit' class='button' id='send_invite' style='width: 150px;'>Send Invite</button>
+  </form>
   <div class='shown_link' style='display: none;'></div>
 </div>
 <div id="settings_modal" class="content">

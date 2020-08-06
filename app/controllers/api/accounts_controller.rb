@@ -116,6 +116,7 @@ class Api::AccountsController < ApplicationController
       :total_users => (room.settings['active_user_ids'] || []).uniq.length,
       :sub_id => room.settings['account_sub_id'],
       :duration => room.duration || 0,
+      :invites => (room.settings['remote_invites'] || 0),
       :started => room.settings['started_at'] || room.created_at.to_i,
       :ended => room.settings['ended_at']
     }
