@@ -214,7 +214,7 @@ module Purchasing
       end
     end
     while opts['join_code'].length < 10 || Account.find_by(code: opts['join_code'])
-      opts['join_code'] += rand(99)
+      opts['join_code'] += rand(99).to_s
     end
     account = Account.new
     account.code = opts['join_code'].to_s
