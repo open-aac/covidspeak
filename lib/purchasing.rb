@@ -230,10 +230,10 @@ module Purchasing
     account.settings['max_concurrent_rooms'] = [1, opts['quantity'].to_i].max
     account.save!
     customer_meta = customer['metadata'] || {}
-    if customer_meta['covidchat_account_id'] != account.id || customer_meta['platform_source']
+    if customer_meta['covidchat_account_id'] != account.external_id || customer_meta['platform_source']
       customer = Stripe::Customer.retrieve({id: customer['id']})
       customer.metadata ||= {}
-      customer.metadata['covidchat_account_id'] = account.id
+      customer.metadata['covidchat_account_id'] = account.external_id
       customer.save
     end
     account.log_subscription_event({:log => 'confirming subscription', :id => subscription['id']})
@@ -524,7 +524,7 @@ module Purchasing
     end
     
     if customer
-      if !customer.metadata || customer.metadata['covidchat_account_id'] != account.id.to_s
+      if !customer.metadata || customer.metadata['covidchat_account_id'] != account.external_id
         account.log_subscription_event({:log => 'customer metadata mismatch, cancel not possible', :metadata_account_id => customer.metadata['covidchat_account_id'], :current_account_id => account.id})
         return false
       end

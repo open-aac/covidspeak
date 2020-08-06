@@ -16,6 +16,10 @@ class Account < ApplicationRecord
     true
   end
 
+  def external_id
+    self.id ? "cv_1_#{self.id}" : nil
+  end
+
   def update_stats
     self.generate_defaults
     last_room = Room.where(account_id: self.id).order('created_at').last
@@ -366,7 +370,11 @@ class Account < ApplicationRecord
   end
 
   def self.confirm_subscription(opts)
-    account = Account.find(opts[:account_id] || opts['account_id'])
+    account_id = opts[:account_id] || opts['account_id']
+    if account_id && account_id.match(/^cv_/)
+      account_id = (account_id || '').sub(/^cv_\d+_/, '')
+    end
+    account = Account.find(account_id)
     return false unless account.paid_account?
     if opts[:state] == 'active'
       account.settings['subscription'] ||= {}
