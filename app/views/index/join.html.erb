@@ -14,10 +14,10 @@
   </div>
   <div class='preview' id='preview_box'>
     <div class='status'>
-      <div id='message'>
+      <div id='message' class='message'>
       </div>
-      <div id='popout' style='display: none;'>
-        <b>Try opening in your device's browser</b>
+      <div id='popout' style='display: none; margin-top: 10px;'>
+        <button id='copy_for_popout' class='primary'>Copy Link to Load in Browser</button>
       </div>
     </div>
   </div>
@@ -158,6 +158,13 @@ document.addEventListener('click', function(event) {
   } else if(event.target.id == 'popout_browser') {
     room.cleanup();
     window.open(location.href, '_system');
+  } else if(event.target.closest('#copy_for_popout')) {
+    var url = location.origin + "/rooms/" + room_id + "/join";
+    extras.copy(url).then(function(res) {
+      if(res.copied) {
+        document.querySelector('#middle .preview .status #popout').style.display = 'none';
+      }
+    }, function() { });
   } else if(event.target.id == 'learn_first_link') {
     var go = function() {
       if(go.going) { return; }
@@ -216,6 +223,11 @@ var room_pending = function() {
 function getMedia() {
   var status = function(message, options) {
     if(document.querySelector('#middle .preview .status #message')) {
+      if(message == 'ready') {
+        document.querySelector('#middle .preview .status').classList.remove('with_message');      
+      } else {
+        document.querySelector('#middle .preview .status').classList.add('with_message');
+      }
       if(options && options.big) {
         document.querySelector('#middle .preview .status').classList.add('big');
       } else {
@@ -240,6 +252,7 @@ function getMedia() {
   if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     room.load_settings();
     input.request_media(room.input_settings).then(function(stream) {
+      document.querySelector('#middle .preview .status').classList.remove('waiting');
       handled = true;
       room.other_tracks = room.other_tracks || [];
       stream.getTracks().forEach(function(track) {

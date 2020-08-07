@@ -1295,7 +1295,7 @@ strong {
 
 }
 #middle .preview .status {
-  &.waiting {
+  &.waiting,&.with_message {
     height: 100%; 
     padding-top: 20px; 
     border: 1px solid #888; 
@@ -1498,13 +1498,27 @@ strong {
     .billing_type {
       float: left;
       padding-right: 5px;
-      margin-left: -10px;
+      margin-left: -17px;
+      margin-right: 5px;
+      margin-top: -8px;
+      margin-bottom: -10px;
+      border-radius: 20px;
+      width: 35px;
+      height: 35px;
       img {
         width: 20px;
       }
     }
-    &.recent .name {
-      color: #3594e6;
+    &.recent {
+      .name {
+        color: #3594e6;
+      }
+      &.billed .billing_type {
+        background: #3594e6;
+        img {
+          filter: invert(1);
+        }
+      }
     }
     .target {
       display: block;
