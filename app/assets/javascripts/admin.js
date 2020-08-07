@@ -170,7 +170,6 @@ var admin = {
         recent_rooms: account.recent_rooms,
         contact_name: account.contact_name,
         contact_email: account.contact_email,
-        last_meter: account.last_meter_string,
         cancel_reason: account.cancel_reason,
         "--cancel_reason_parent": !!account.cancel_reason,
         purchase_state: account.purchase_state,
@@ -181,14 +180,14 @@ var admin = {
         "-max_daily_rooms_per_user": account.max_daily_rooms_per_user,
         "-max_monthly_rooms": account.max_monthly_rooms,
         "-max_monthly_rooms_per_user": account.max_monthly_rooms_per_user,
-        "-last_meter": account.last_meter_update,
+        "-last_meter": account.last_meter_string,
         "--max_concurrent_rooms_dt": account.max_concurrent_rooms,
         "--max_concurrent_rooms_per_user_dt": account.max_concurrent_rooms,
         "--max_daily_rooms_dt": account.max_daily_rooms,
         "--max_daily_rooms_per_user_dt": account.max_daily_rooms_per_user,
         "--max_monthly_rooms_dt": account.max_monthly_rooms,
         "--max_monthly_rooms_per_user_dt": account.max_monthly_rooms_per_user,
-        "--last_meter_dt": account.last_meter_update,
+        "--last_meter_dt": account.last_meter_string,
       });
       if(content.querySelector('.past_due')) {
         content.querySelector('.past_due').style.display = account.past_due ? 'block' : 'none';
