@@ -423,6 +423,9 @@ strong {
         top: 50%; 
         box-shadow: 5px 5px 10px #000; 
         border-radius: 10px;
+        &#bottom_popover {
+          margin-top: -20px;
+        }
         .popover_carat {
           &::after {
             content: "";
@@ -920,7 +923,7 @@ strong {
   }
 }
 .extras {
-  width: 428px;
+  width: 532px;
   .button {
     height: 80px;
     width: 100px;
@@ -1875,8 +1878,19 @@ strong {
           display: none;
         }
       }
+      #bottom_popover {
+        margin-top: -70px;
+        .popover_carat {
+          &::after {
+            top: calc(50% + 30px);
+          }
+          &::before {
+            top: calc(50% + 30px);
+          }
+        }
+      }
       .extras {
-        width: 217px;
+        width: 322px;
       }
       .grids,.reactions {
         max-width: calc(100vw - 60px);
@@ -1936,7 +1950,7 @@ strong {
         height: 80px;
       }
       .extras {
-        width: 428px;
+        width: 532px;
       }
       .reactions img {
         height: 60px;

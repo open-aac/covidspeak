@@ -39,6 +39,9 @@ var session = {
       name: name,
       email: email
     };
+    if(room.current_room && room.current_room.id) {
+      data.room_id = room.current_room.id;
+    }
     return session.ajax('/api/v1/support', {
       type: 'POST',
       data: data

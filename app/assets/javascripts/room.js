@@ -2415,6 +2415,8 @@ document.addEventListener('click', function(event) {
       remote.reconnect();
     } else if(action == 'invite') {
       room.invite();
+    } else if(action == 'help') {
+      help_modal(true);
     } else if(action == 'settings') {
       var actions = [];
       room.settings = room.settings || {};
