@@ -10,7 +10,6 @@
           var subj = dom.querySelector('#form .subject').value;
           var name = dom.querySelector('#form .name').value;
           var email = dom.querySelector('#form .email').value;
-          debugger
           if(email && msg) {
             dom.querySelector('#form .submit').innerText = "Sending Message...";
             session.support_message(msg, subj, name, email).then(function(res) {
