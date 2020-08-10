@@ -347,6 +347,9 @@ var admin = {
         }
         if(account.recent_activity) {
           elem.classList.add('recent');
+          if(account.current_month_meter) {
+            elem.classList.add('billed');
+          }
         }
         elem.addEventListener('click', function(event) {
           if(event.target.closest('.code')) {
