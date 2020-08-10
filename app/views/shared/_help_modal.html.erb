@@ -1,0 +1,33 @@
+<div id='help_modal'>
+  <div id='buttons' style='margin: 20px; text-align: center;'>
+    <p style='margin-bottom: 20px;'>
+      Hi! We're glad you're giving Co-VidSpeak a shot! We want
+      to help make your experience as simple as possible.
+      If you're new you can check out our intro tools and
+      interactive training, or look at our support FAQs. You
+      can also send us a message with any questions
+      or issues you've found.
+    </p>
+
+    <button class='button' id='intro' style='width: 30%; height: 70px; vertical-align: middle;'><img src='/icons/book.svg' style='height: 30px; vertical-align: middle; opacity: 0.7;'/> Intro</button>
+    <button class='button' id='faq' style='width: 30%; height: 70px; vertical-align: middle;'><img src='/icons/question-circle.svg' style='height: 30px; vertical-align: middle; opacity: 0.7;'/> FAQ</button>
+    <button class='button' id='ticket' style='width: 30%; height: 70px; vertical-align: middle;'><img src='/icons/envelope.svg' style='height: 30px; vertical-align: middle; opacity: 0.7;'/> Contact Us</button>
+  </div>
+  <form id="form" style='display: none; margin: 20px;'>
+    <p style='margin-bottom: 20px;'>
+      Thanks for using Co-VidSpeak. If you are having an issue, have 
+      a question, or are looking for help with purchasing, please
+      feel free to send us a message using the form below
+      and we will get back to you promptly!
+    </p>
+    <input type='text' class='name' placeholder="Your Name" style='width: 45%;'/>
+    <input type='text' class='email' placeholder="Your Email" style='width: 45%;'/>
+    <div style='margin-top: 5px;'>
+      <input type='text' class='subject' placeholder="Subject" style='width: calc(90% + 5px);'/>
+    </div>
+    <div style='margin-top: 5px;'>
+      <textarea class='message' placeholder="Please explain your question or issue" style='width: calc(90% + 5px); height: 100px;'></textarea>
+    </div>
+    <button class='button primary submit' type='submit'>Send Message</button>
+  <form>
+</div>

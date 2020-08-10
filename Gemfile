@@ -34,6 +34,7 @@ gem 'go_secure'
 gem 'stripe'
 gem 'mail-ses'
 gem 'aws-sdk-sns'
+gem 'typhoeus'
 
 # Use ActiveStorage variant
 # gem 'mini_magick', '~> 4.8'

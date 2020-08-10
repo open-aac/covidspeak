@@ -20,7 +20,9 @@
       <header>
         <h1><a href="/"><img src="/logo.svg" /> <span style='color: #888; font-style: italic'>Co</span>-<span style='font-weight: bold;'>VidSpeak</span></a></h1>
         <% if @show_intro %>
-          <h2 class='header_link'><a href="/intro">New to Co-Vidspeak?</a></h2>
+          <h2 id='help' class='header_link'><a href="/intro">New to Co-Vidspeak?</a></h2>
+        <% else %>
+          <h2 id='help' class='header_link'><a href="#"><img src="/icons/question-circle-fill.svg" style='width: 30px; opacity: 0.5; padding-right: 5px;'/></a></h2>
         <% end %>
       </header>
       <div id="contents">
@@ -28,12 +30,14 @@
       </div>
       <footer class="footer">
         <a href="/">Home</a> <span style='color: #aaa;'>|</span>
+        <a href="/pricing">Pricing</a> <span style='color: #aaa;'>|</span>
         <a href="/about">About</a> <span style='color: #aaa;'>|</span>
         <a href="/terms">Terms</a> <span style='color: #aaa;'>|</span>
         <a href="/privacy">Privacy</a> <span style='color: #aaa;'>|</span>
         <a href="https://github.com/open-aac/covidspeak">Developers</a>
       </footer>
     </div>
+    <%= render 'shared/help_modal' %>
     <%= more_scripts %>
   </body>
 </html>

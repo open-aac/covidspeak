@@ -29,6 +29,21 @@ var session = {
       session.subscriptions[opts.room_id] = subscription;  
     });
   },
+  support_message: function(message, subject, name, email) {
+    var data = {
+      system: input.compat.system,
+      browser: input.compat.browser,
+      mobile: !!input.compat.mobile,
+      message: message,
+      subject: subject,
+      name: name,
+      email: email
+    };
+    return session.ajax('/api/v1/support', {
+      type: 'POST',
+      data: data
+    });
+  },
   send_to_room(room_id, message) {
     session.subscriptions = session.subscriptions || {};
     if(session.subscriptions[room_id]) {

@@ -1,3 +1,4 @@
+require 'typhoeus'
 require 'aws-sdk-sns'
 
 module Pusher
@@ -31,6 +32,40 @@ module Pusher
     })
     message_id = res.message_id
     [message_id]
+  end
+
+  def self.support_message(message, opts)
+    # opts { join_code, room_id, user_agent, name, email, subject}
+    body = "<i>Source App: Co-VidSpeak</i><br/>";
+    body += "Name: #{opts['name']}<br/><br/>" if opts['name']
+    body += (message || 'no message') + "<br/><br/><span style='font-style: italic;'>"
+    if opts['join_code']
+      body += opts['join_code'] + '<br/>'
+    end
+    if opts['room_id']
+      body += "room: #{opts['room_id']}<br/>"
+    end
+    body += (opts['user_agent'] ? "browser: #{opts['user_agent']}" : 'no user agent found') + "</span>"
+    basic_auth = "#{ENV['ZENDESK_USER']}/token:#{ENV['ZENDESK_TOKEN']}"
+    endpoint = "https://#{ENV['ZENDESK_DOMAIN']}/api/v2/tickets.json"
+    json = {
+      'ticket' => {
+        'requester' => {
+          'name' => opts['name'] || opts['email'],
+          'email' => opts['email']
+        },
+        'subject' => (opts['subject'].blank? ? "Ticket #{Date.today.iso8601}" : opts['subject']),
+        'comment' => {
+          'html_body' => body
+        }
+      }
+    }
+    res = Typhoeus.post(endpoint, {body: json.to_json, userpwd: basic_auth, headers: {'Content-Type' => 'application/json'}})
+    if res.code == 201
+      true
+    else
+      false
+    end
   end
 
   def self.config

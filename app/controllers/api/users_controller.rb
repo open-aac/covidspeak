@@ -43,4 +43,17 @@ class Api::UsersController < ApplicationController
     feedback = UserFeedback.process(params)
     render json: {ref_id: feedback && feedback.ref_id}
   end
+
+  def support
+    opts = {}
+    opts['subject'] = params['subject']
+    opts['email'] = params['email']
+    opts['user_agent'] = request.headers['User-Agent']
+    opts['name'] = "#{params['name'] || params['email']} #{params['mobile'] ? 'mobile.' : ''}#{params['system']}.#{params['browser']}"
+    # TODO: admin process to look up join code by room_id
+    opts['room_id'] = params['room_id']
+    # opts { join_code, room_id, user_agent, name, email, subject}
+    res = Pusher.support_message(params['message'], opts)
+    render json: {success: res}
+  end
 end
