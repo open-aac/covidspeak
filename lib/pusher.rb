@@ -37,7 +37,7 @@ module Pusher
   def self.support_message(message, opts)
     # opts { join_code, room_id, user_agent, name, email, subject}
     body = "<i>Source App: Co-VidSpeak</i><br/>";
-    body += "Name: #{opts['name']}<br/><br/>" if opts['name']
+    body += "Name: #{opts['name']} #{opts['config'] || ''}<br/><br/>" if opts['name']
     body += (message || 'no message') + "<br/><br/><span style='font-style: italic;'>"
     if opts['join_code']
       body += opts['join_code'] + '<br/>'

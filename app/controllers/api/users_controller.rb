@@ -49,7 +49,9 @@ class Api::UsersController < ApplicationController
     opts['subject'] = params['subject']
     opts['email'] = params['email']
     opts['user_agent'] = request.headers['User-Agent']
-    opts['name'] = "#{params['name'] || params['email']} #{params['mobile'] ? 'mobile.' : ''}#{params['system']}.#{params['browser']}"
+    opts['name'] = params['name'] || params['email']
+    mobile = params['mobile'] == 'true'
+    opts['config'] = "#{mobile ? 'mobile.' : ''}#{params['system']}.#{params['browser']}"
     # TODO: admin process to look up join code by room_id
     opts['room_id'] = params['room_id']
     # opts { join_code, room_id, user_agent, name, email, subject}
