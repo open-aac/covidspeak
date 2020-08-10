@@ -374,7 +374,7 @@ class Account < ApplicationRecord
   end
 
   def self.confirm_subscription(opts)
-    account_id = opts[:account_id] || opts['account_id']
+    account_id = (opts[:account_id] || opts['account_id']).to_s
     if account_id && account_id.match(/^cv_/)
       account_id = (account_id || '').sub(/^cv_\d+_/, '')
     end

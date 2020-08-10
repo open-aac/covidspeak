@@ -129,6 +129,7 @@ module Purchasing
       # line_items: [{price: price_id, quantity: opts[:quantity]}]
     })
     opts['source'] = 'purchase'
+    opts['initiator'] = 'new_purchase'
     RedisAccess.default.setex("purchase_settings/#{session.id}", 36.hours.to_i, opts.to_json)
     session.id
   end
@@ -155,7 +156,18 @@ module Purchasing
         payment_method: method['id'],
         metadata: {platform_source: 'covidspeak'}
       })
-      subscription = customer.subscriptions.data.detect{|s| s.items.data.any?{|i| i['price']['id'] == price_id } && ['active', 'unpaid', 'past_due'].include?(s['status']) }
+      if !method['customer'] != customer['id']
+        method = Stripe::PaymentMethod.retrieve(method['id'])
+        method.attach({customer: customer['id']})
+      end
+      subscription = nil
+      if opts['source'] == 'update'
+        # Only on update will we change an existing subscription,
+        # otherwise we would create a new one. For this app
+        # it's possible for a single customer to be running
+        # multiple active subscriptions
+        subscription = customer.subscriptions.data.detect{|s| s.items.data.any?{|i| i['price']['id'] == price_id } && ['active', 'unpaid', 'past_due'].include?(s['status']) }
+      end
       # attach the subscription
       subscription ||= Stripe::Subscription.create({
         customer: customer['id'],
@@ -168,7 +180,7 @@ module Purchasing
     end
     add_purchase_summary(opts, method)
     
-    if method && (subscription['default_payment_method'] || {})['id'] != method['id']
+    if method && subscription['default_payment_method'] != method['id']
       # assert default payment method on the subscription
       # this should be a noop on purchase, but on update
       # it will change billing settings correctly
@@ -268,6 +280,7 @@ module Purchasing
       success_url: opts[:success_url],
       cancel_url: opts[:cancel_url]
     })
+    opts['initiator'] = 'update_or_set_billing'
     opts['source'] = opts[:subscription_id] ? 'update' : 'purchase'
     RedisAccess.default.setex("purchase_settings/#{session.id}", 36.hours.to_i, opts.to_json)
     session.id
