@@ -19,6 +19,9 @@
     funded in a way that it can continue to make a difference
     going forward.
   </p>
+  <div style='margin: 40px 0; text-align: center;'>
+      <button class='button' id='join_room' style='width: 80%;'>Start a Demo Room</button>
+  </div>
   <p>
     Once you have access to a Join Code you can
     start a communication room, and then copy a link
@@ -31,3 +34,8 @@
   </p>
   <iframe style='width: 100%; height: 300px; margin: 0 auto;' src="https://www.youtube-nocookie.com/embed/xKEIuP0qTk4" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 </div>
+<script>
+  document.querySelector('#join_room').addEventListener('click', function() {
+      location.href = "/?join=demo";
+  });
+</script>

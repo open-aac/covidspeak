@@ -140,6 +140,23 @@ var reactions = [
   {text: "rolling eyes", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f644.svg"},
   {text: "shrug", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f937-200d-2640-fe0f.svg"},
 ];
+var more_reactions = [
+  {text: "smile", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f642.svg"},
+  {text: "laugh", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f604.svg"},
+  {text: "tongue", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f61d.svg"},
+  {text: "surprised", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f62e.svg"},
+  {text: "crying", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f62d.svg"},
+  {text: "broken heart", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f494.svg"},
+  {text: "fries", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f35f.svg"},
+  {text: "shamrock", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/2618.svg"},
+  {text: "100", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f4af.svg"},
+  {text: "poop", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f4a9.svg"},
+  {text: "cool", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f60e.svg"},
+  {text: "thinking", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f914.svg"},
+  {text: "fist", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/270a-1f3fd.svg"},
+  {text: "mail", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f4ec.svg"},
+  {text: "raise hand", url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f64b-1f3fe.svg"},
+];
 
 var room = {
   size_video: function(reset) {
@@ -663,11 +680,16 @@ var room = {
       room.send_update();
     }, 5000);
   },
+  more_reactions: function() {
+    room.reactions_list = (room.reactions_list == more_reactions) ? reactions : more_reactions;
+    room.populate_reactions();
+  },
   populate_reactions: function() {
     var container = document.getElementsByClassName('reactions')[0];
+    room.reactions_list = room.reactions_list || reactions;
     if(container) {
       container.innerHTML = "";
-      reactions.forEach(function(reaction) {
+      room.reactions_list.forEach(function(reaction) {
         var img = document.createElement("img");
         img.src = reaction.url;
         img.alt = reaction.text;
@@ -2540,6 +2562,9 @@ document.addEventListener('click', function(event) {
         // container.parentNode.style.display = 'none';
         do_hide = false;
         room.send_image(event.target.src, event.target.alt);
+      } else if(event.target.closest('.more_reactions')) {
+        do_hide = false;
+        room.more_reactions();
       } else {
         container.parentNode.style.display = 'none';
       }

@@ -30,6 +30,7 @@ var modal = {
       title_elem.appendChild(a);
       modal_content.appendChild(title_elem);
       var content = dom.cloneNode(true);
+      content.style.display = 'block';
       dom.cloned_content = content;
       modal_content.appendChild(content);
       actions = actions || [];
