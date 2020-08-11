@@ -20,7 +20,7 @@
       }).then(function(res) {
         admin_code = res.admin_code;
         if(res.source == 'purchase') {
-          document.querySelector('#purchase_status').innerText = "Subscription confirmed! Thank you for purchasing Co-VidSpeak! Remember: you will only be billed at the end of months with 30 or more minutes of activity";
+          document.querySelector('#purchase_status').innerText = "Subscription confirmed! Thank you for purchasing Co-VidSpeak! You should receive an email shortly with details on how to access your room. Remember: you will only be billed at the end of months with thirty or more minutes of activity";
           document.querySelector('#confirmed').style.display = 'block';
         } else if(res.source == 'update') {
           document.querySelector('#purchase_status').innerText = "Billing details updated!";
