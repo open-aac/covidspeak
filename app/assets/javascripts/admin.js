@@ -63,6 +63,7 @@ var process_account = function(account) {
   }
   account.code_string = code;
   account.target = target;
+  account.created_string = window.moment(account.created_at).format('D MMM, YYYY');
   if(account.last_room_at) {
     var date = new Date(account.last_room_at * 1000);
     var recent_cutoff = window.moment().add(-30, 'day')._d;

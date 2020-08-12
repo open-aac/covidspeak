@@ -44,6 +44,7 @@ module Purchasing
                 customer_id: object['customer'],
                 source_id: 'stripe',
                 source: 'customer.subscription.updated',
+                system_cancel: true,
                 cancel_reason: reason
               })
             end
@@ -189,6 +190,7 @@ module Purchasing
       subscription.save
     end
     account = Account.find_by(id: opts['account_id']) if opts['account_id']
+    account ||= Account.find_by(id: subscription['metadata']['covidchat_account_id']) if subscription['metadata'] && subscription['metadata']['covidchat_account_id']
     account ||= Account.find_by(code: opts['join_code']) if opts['join_code']
     if account
       account.settings['subscription'] ||= {}
@@ -222,6 +224,11 @@ module Purchasing
           source: 'web.purchase.updated',
           purchase_summary: opts['purchase_summary']          
         })
+        if (subscription['metadata'] || {})['covidchat_account_id'] != account.external_id
+          subscription.metadata ||= {}
+          subscription.metadata['covidchat_account_id'] = account.external_id
+          subscription.save
+        end
         return account
       end
     end
@@ -242,11 +249,15 @@ module Purchasing
     account.settings['max_concurrent_rooms'] = [1, opts['quantity'].to_i].max
     account.save!
     customer_meta = customer['metadata'] || {}
-    if customer_meta['covidchat_account_id'] != account.external_id || customer_meta['platform_source']
-      customer = Stripe::Customer.retrieve({id: customer['id']})
+    if (customer_meta['covidchat_account_id'] != account.external_id) || customer_meta['platform_source']
       customer.metadata ||= {}
       customer.metadata['covidchat_account_id'] = account.external_id
       customer.save
+    end
+    if (subscription['metadata'] || {})['covidchat_account_id'] != account.external_id
+      subscription.metadata ||= {}
+      subscription.metadata['covidchat_account_id'] = account.external_id
+      subscription.save
     end
     account.log_subscription_event({:log => 'confirming subscription', :id => subscription['id']})
     Account.confirm_subscription({

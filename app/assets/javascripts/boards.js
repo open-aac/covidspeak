@@ -40,10 +40,10 @@ var obfs = [
     {id: 1, label: "head"},
     {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
     {id: 3, label: "higher"},
-    {id: 4, label: "yes"},
-    {id: 5, label: "no"},
+    {id: 4, label: "chest"},
+    {id: 5, label: "arms"},
     {id: 6, label: "torso"},
-    {id: 7, label: "limbs"},
+    {id: 7, label: "legs"},
     {id: 8, label: "lower"}
   ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
   {id: 'requests', name: 'requests', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f5e3.svg", buttons: [
@@ -76,15 +76,15 @@ var obfs = [
     {id: 7, label: "I'm Tired of This"},
     {id: 8, label: "What Happens Next?"}
   ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
-  {id: 'nav', name: 'multi-level', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f4d8.svg", buttons: [
-    {id: 1, label: "requests", load_board: {id: 'requests'}},
+  {id: 'choices', name: 'choices', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f448.svg", buttons: [
+    {id: 1, label: "Choice 1", background_color: "#ffb3b3"},
     {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
-    {id: 3, label: "comments", load_board: {id: 'comments'}},
-    {id: 4, label: "yes"},
-    {id: 5, label: "no"},
-    {id: 6, label: "feelings", load_board: {id: 'feelings'}},
-    {id: 7, label: "body", load_board: {id: 'body'}},
-    {id: 8, label: "quick", load_board: {id: 'quick'}}
+    {id: 3, label: "I don't care"},
+    {id: 4, label: "Choice 2", background_color: "#f9ffb3"},
+    {id: 5, label: "Can you help me choose?"},
+    {id: 6, label: "Choice 3", background_color: "#b3d9ff"},
+    {id: 7, label: "I don't know"},
+    {id: 8, label: "Tell me more"}
   ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
   {id: 'keyboard', name: 'keyboard', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/2328.svg", buttons: [
     {id: 1, label: "abcde", load_board: {id: 'keyboard2'}, image_id: 'i1', ext_covidspeak_image_only: true},
@@ -103,6 +103,126 @@ var obfs = [
     {id: 'i6', url: "/keyboard/fghij.png", ext_covidspeak_alt_url: "/keyboard/alt-fghij.png"},
     {id: 'i7', url: "/keyboard/klmno.png", ext_covidspeak_alt_url: "/keyboard/alt-klmno.png"},
     {id: 'i8', url: "/keyboard/pqrst.png", ext_covidspeak_alt_url: "/keyboard/alt-pqrst.png"}
+  ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
+  {id: 'pain', name: 'pain scale', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f623.svg", buttons: [
+    {id: 1, label: "No Pain", background_color: "#b3ffc7"},
+    {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
+    {id: 3, label: "Worst Pain Possible", background_color: "#ffb3b3"},
+    {id: 4, label: "Mild Pain", background_color: "#deffb3"},
+    {id: 5, label: "Very Severe Pain", background_color: "#ffc5b3"},
+    {id: 6, label: "Moderate Pain", background_color: "#fffbb3"},
+    {id: 7, label: "Body", load_board: {id: 'body'}},
+    {id: 8, label: "Severe Pain", background_color: "#ffd6b3"}
+  ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
+  {id: 'nav', name: 'multi-level', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f332.svg", buttons: [
+    {id: 1, label: "requests", load_board: {id: 'requests'}},
+    {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
+    {id: 3, label: "comments", load_board: {id: 'comments'}},
+    {id: 4, label: "yes"},
+    {id: 5, label: "no"},
+    {id: 6, label: "feelings", load_board: {id: 'feelings'}},
+    {id: 7, label: "body", load_board: {id: 'body'}},
+    {id: 8, label: "quick", load_board: {id: 'quick'}}
+  ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
+  {id: 'answers', name: 'answers', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f64b-1f3fc.svg", buttons: [
+    {id: 1, label: "Thank You"},
+    {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
+    {id: 3, label: "Please"},
+    {id: 4, label: "Yes"},
+    {id: 5, label: "No"},
+    {id: 6, label: "Please ask a yes/no question"},
+    {id: 7, label: "I'm not sure"},
+    {id: 8, label: "I don't know"}
+  ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
+  {id: 'needs', name: 'needs', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f940.svg", buttons: [
+    {id: 1, label: "I need a drink"},
+    {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
+    {id: 3, label: "I am tired"},
+    {id: 4, label: "I am hungry"},
+    {id: 5, label: "I am hot"},
+    {id: 6, label: "I am finished"},
+    {id: 7, label: "I need medicine"},
+    {id: 8, label: "I am cold"}
+  ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
+  {id: 'room', name: 'room', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f6cf.svg", buttons: [
+    {id: 1, label: "Please change the lights"},
+    {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
+    {id: 3, label: "Please change the channel"},
+    {id: 4, label: "More"},
+    {id: 5, label: "Less"},
+    {id: 6, label: "Please adjust the curtains"},
+    {id: 7, label: "Please adjust my bed"},
+    {id: 8, label: "Please adjust the volume"}
+  ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
+  {id: 'break', name: 'break', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f634.svg", buttons: [
+    {id: 1, label: "No visitors, please"},
+    {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
+    {id: 3, label: "Please be quiet"},
+    {id: 4, label: "I am tired"},
+    {id: 5, label: "Please stop"},
+    {id: 6, label: "Please turn down the lights"},
+    {id: 7, label: "I need some quiet"},
+    {id: 8, label: "Can you come back later"}
+  ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
+  {id: 'comfort', name: 'comfort', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f3e5.svg", buttons: [
+    {id: 1, label: "I need to be suctioned"},
+    {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
+    {id: 3, label: "Please reposition me"},
+    {id: 4, label: "I am having trouble breathing"},
+    {id: 5, label: "I would like a bath or shower"},
+    {id: 6, label: "Please check my equipment"},
+    {id: 7, label: "I am in pain or need medicine"},
+    {id: 8, label: "I need to use the restroom"}
+  ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
+  {id: 'doctor', name: 'doctor', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f468-1f3ff-200d-2695-fe0f.svg", buttons: [
+    {id: 1, label: "Nice to see you"},
+    {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
+    {id: 3, label: "Goodbye"},
+    {id: 4, label: "Please explain that more"},
+    {id: 5, label: "That makes sense"},
+    {id: 6, label: "I am worried"},
+    {id: 7, label: "I do not agree"},
+    {id: 8, label: "What happens next?"}
+  ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
+  {id: 'reading', name: 'reading', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f4d6.svg", buttons: [
+    {id: 1, label: "This is boring"},
+    {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
+    {id: 3, label: "That's funny"},
+    {id: 4, label: "Go Back"},
+    {id: 5, label: "Next Page"},
+    {id: 6, label: "I like that"},
+    {id: 7, label: "Again"},
+    {id: 8, label: "What's next?"}
+  ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
+  {id: 'categorization', name: 'categorization', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f4ca.svg", buttons: [
+    {id: 1, label: "I'm not sure"},
+    {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
+    {id: 3, label: "Let me think"},
+    {id: 4, label: "Category 1", background_color: "#b3ffc5"},
+    {id: 5, label: "Category 2", background_color: "#fbffb3"},
+    {id: 6, label: "Can you help me?"},
+    {id: 7, label: "Both"},
+    {id: 8, label: "Oops!"}
+  ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
+  {id: 'ordering', name: 'ordering', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f500.svg", buttons: [
+    {id: 1, label: "I'm not sure"},
+    {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
+    {id: 3, label: "Where does it go?"},
+    {id: 4, label: "Before"},
+    {id: 5, label: "After"},
+    {id: 6, label: "Can you help me?"},
+    {id: 7, label: "In the middle"},
+    {id: 8, label: "Oops!"}
+  ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
+  {id: 'multiple_choice', name: 'multiple_choice', image_url: "https://d18vdu4p71yql0.cloudfront.net/libraries/twemoji/1f520.svg", buttons: [
+    {id: 1, label: "Answer 1", background_color: "#ffb3b3"},
+    {id: 2, label: "Start Over", ext_covidspeak_load_root: 'root'},
+    {id: 3, label: "That was easy"},
+    {id: 4, label: "Answer 2", background_color: "#f9ffb3"},
+    {id: 5, label: "I'm not sure"},
+    {id: 6, label: "Answer 3", background_color: "#b3d9ff"},
+    {id: 7, label: "Can you help me?"},
+    {id: 8, label: "That was hard"}
   ], grid: {rows: 3, columns: 3, order: [[1, 2, 3], [4, null, 5], [6, 7, 8]], format: "open-board-0.1"}},
   {id: 'keyboard2', name: 'keyboard2', ext_covidspeak_skip: true, buttons: [
     {id: 1, label: "+a", ext_covidspeak_load_root: 'root'},
@@ -195,6 +315,25 @@ var parse_obf = function(obf) {
       button.load_id = 'root';
     } else if(obf_button.ext_covidspeak_load_root) {
       button.load_id = 'root';
+    }
+    if(obf_button.background_color) {
+      var bg = obf_button.background_color;
+      if(bg.match(/^#/)) {
+        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(bg);
+        if(result) {
+          var rgb = {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+          };
+          if(rgb.r + rgb.b + rgb.g < 525) {
+            bg = "rgba(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ", 0.3)";
+          } else {
+            bg = "rgb(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ")";
+          }
+        }
+      }
+      button.background = bg;
     }
     if(obf_button.image_id) {
       obf.images.forEach(function(obf_image) {

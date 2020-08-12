@@ -762,7 +762,7 @@ var room = {
           } else if(event.target.closest('.delete')) {
             boards.remove_url(grid.data_url);
           } else if(!event.target.closest('.links')) {
-            room.assert_grid(grid.buttons, grid.data_url || grid.id, grid.locale);
+            room.assert_grid(grid.buttons, grid.data_url || grid.id, grid.locale, true);
             modal.close();
           }
           if(content && content.parentNode) {
@@ -1488,6 +1488,13 @@ var room = {
       } else {
         cell.classList.remove('big_text');
       }
+      if(button.background) {
+        cell.style.background = button.background;
+        cell.setAttribute('data-background', button.background)
+      } else {
+        cell.style.background = '';
+        cell.setAttribute('data-background', '');
+      }
       text.innerText = button_text;
       cell.style.display = '';
       cell.style.visibility = 'visible';
@@ -1872,9 +1879,13 @@ var room = {
           room.speak_button(button);
         }
 
+        button.cell.style.background = '';
         button.cell.classList.add('highlight');
         setTimeout(function() {
           button.cell.classList.remove('highlight');
+          if(button.cell.getAttribute('data-background')) {
+            button.cell.style.background = button.cell.getAttribute('data-background');
+          }
         }, 5000);
       }
       room.buttons.forEach(function(button) {
@@ -2058,11 +2069,12 @@ var room = {
       id: btn.id,
       text: btn.text,
       load_id: btn.load_id,
+      background: btn.background,
       image_url: btn.image_url,
       image_only: btn.image_only
     };
     if(symbols['en'] && symbols['en'][btn.text.toLowerCase()] && symbols['en'][btn.text.toLowerCase()][room.settings.symbol_library]) {
-      res.image_url = symbols['en'][btn.text.toLowerCase()][room.settings.symbol_library];
+      res.image_url = res.image_url || symbols['en'][btn.text.toLowerCase()][room.settings.symbol_library];
     }
     if(comp) {
       res.same = comp.id == btn.id && comp.text == btn.text && comp.image_url == btn.image_url && comp.load_id == btn.load_id;
@@ -2320,6 +2332,7 @@ document.addEventListener('click', function(event) {
       ]);
     } else if(action == 'customize') {
       var size = (room.buttons || {}).length || 8;
+      var lookups = room.filled_grid(room.buttons, true);
       var content = null;
       modal.open('Customize Buttons', document.getElementById('customize_modal'), [
         {action: 'accept', label: "Update Buttons", callback: function() {
@@ -2341,38 +2354,58 @@ document.addEventListener('click', function(event) {
           var grid = [];
           if(size == 8) {
             grid = [
-              {id: 1, text: ref['l1']},
-              {id: 2, text: ref['m1']},
-              {id: 3, text: ref['r1']},
-              {id: 4, text: ref['l2']},
-              {id: 5, text: ref['r2']},
-              {id: 6, text: ref['l3']},
-              {id: 7, text: ref['m2']},
-              {id: 8, text: ref['r3']}
+              {id: 1, text: ref['l1'], background: (lookups[0] || {}).background},
+              {id: 2, text: ref['m1'], background: (lookups[3] || {}).background, picless: true},
+              {id: 3, text: ref['r1'], background: (lookups[5] || {}).background},
+              {id: 4, text: ref['l2'], background: (lookups[1] || {}).background},
+              {id: 5, text: ref['r2'], background: (lookups[6] || {}).background},
+              {id: 6, text: ref['l3'], background: (lookups[2] || {}).background},
+              {id: 7, text: ref['m2'], background: (lookups[4] || {}).background},
+              {id: 8, text: ref['r3'], background: (lookups[7] || {}).background}
             ];
           } else if(size == 6) {
             grid = [
-              {id: 1, text: ref['l1']},
-              {id: 2, text: ref['m1']},
-              {id: 3, text: ref['r1']},
-              {id: 4, text: ref['l2']},
-              {id: 5, text: ref['m2']},
-              {id: 6, text: ref['r2']}
+              {id: 1, text: ref['l1'], background: (lookups[0] || {}).background},
+              {id: 2, text: ref['m1'], background: (lookups[3] || {}).background, picless: true},
+              {id: 3, text: ref['r1'], background: (lookups[5] || {}).background},
+              {id: 4, text: ref['l2'], background: (lookups[1] || {}).background},
+              {id: 5, text: ref['m2'], background: (lookups[4] || {}).background},
+              {id: 6, text: ref['r2'], background: (lookups[6] || {}).background}
             ];
           } else if(size == 4) {
             grid = [
-              {id: 1, text: ref['l2']},
-              {id: 2, text: ref['m1']},
-              {id: 3, text: ref['r2']},
-              {id: 4, text: ref['m2']}
+              {id: 1, text: ref['l2'], background: (lookups[1] || {}).background},
+              {id: 2, text: ref['m1'], background: (lookups[3] || {}).background, picless: true},
+              {id: 3, text: ref['r2'], background: (lookups[6] || {}).background},
+              {id: 4, text: ref['m2'], background: (lookups[4] || {}).background}
             ];
           }
+          var blank_buttons = [];
           grid.forEach(function(i) {
             if(image_urls[i.text]) {
               i.image_url = image_urls[i.text];
+            } else if(i.text && !i.picless && !i.text.match(/^\+/)) {
+              blank_buttons.push(i);
             }
           });
           var locale = navigator.language.split(/-|_/)[0].toLowerCase();
+          if(blank_buttons.length > 0) {
+            var url = "https://www.opensymbols.org/api/v1/symbols/search?q=";
+            var finished_button = function() {
+              finished_button.count = (finished_button.count || 0) + 1;
+              if(finished_button.count >= blank_buttons.length) {
+                room.assert_grid(grid, 'custom_' + (new Date()).getTime + "_" + Math.random(), locale, true);s
+              }
+            };
+            blank_buttons.forEach(function(button) {
+              session.ajax(url + encodeURIComponent(button.text + " favor:twemoji"), {type: 'GET'}).then(function(res) {
+                if(res && res[0]) {
+                  button.image_url = res[0].image_url
+                }
+                finished_button();
+              }, function(err) { finished_button(); });  
+            });
+          }
           room.assert_grid(grid, 'custom_' + (new Date()).getTime + "_" + Math.random(), locale, true);
           modal.close();
         }},
@@ -2415,7 +2448,6 @@ document.addEventListener('click', function(event) {
       content.querySelector("button.size[data-size='" + size + "']").click();
       var buttons = content.querySelectorAll('.layout .layout_button:not(.preview)');
 
-      var lookups = room.filled_grid(room.buttons, true);
       buttons.forEach(function(btn, idx) {
         var input = btn.querySelector('input');
         if(input && lookups[idx]) {

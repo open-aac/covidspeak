@@ -408,7 +408,8 @@ class Account < ApplicationRecord
       account.settings['subscription']['past_subscriptions'] ||= []
       account.settings['subscription']['past_subscriptions'] << {sub_id: account.settings['subscription']['subscription_id'], cus_id: account.settings['subscription']['customer_id'], reason: opts[:state]}
       if opts[:cancel_reason]
-        account.settings['subscription']['cancel_reason'] = opts[:cancel_reason]
+        account.settings['subscription']['cancel_reason'] = nil if !opts[:system_cancel]
+        account.settings['subscription']['cancel_reason'] ||= opts[:cancel_reason]
       end
       if account.settings['subscription']['subscription_id']
         SubscriptionMailer.deliver_message('subscription_canceled', account)
