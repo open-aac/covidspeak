@@ -1,5 +1,4 @@
 var remote = remote || {};
-
 remote.webrtc = {
   rooms: {},
   start_processsing: function(track, callback) {
@@ -373,6 +372,7 @@ remote.webrtc = {
     var pc_ref = {
       refState: 'new',
       id: Math.round(Math.random() * 9999) + ""  + (new Date()).getTime(),
+      started: (new Date()).getTime(),
       user_id: remote_user_id,
       subroom_id: subroom_id,
       room_id: room_id,
@@ -786,6 +786,9 @@ remote.webrtc = {
               needs_refresh = true;
             }
           }
+        } else if(pc_ref.pc.connectionState == 'new' || pc_ref.pc.connectionState == 'connecting' && pc_ref.started < (new Date()).getTime() - (5 * 60 * 1000)) {
+          // If after 5 minutes a pc never succeeds in connecting, close it
+          pc_ref.pc.close();
         }
       }
     });
