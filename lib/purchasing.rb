@@ -16,32 +16,32 @@ module Purchasing
     event_result = nil
     if object
       if event['type'] == 'customer.subscription.created' && (object['metadata'] || {})['platform_source'] == 'covidspeak'
-        customer = Stripe::Customer.retrieve(object['customer'])
-        valid = customer && customer['metadata'] && customer['metadata']['covidchat_account_id']
+        subscription = Stripe::Subscription.retrieve(object['id'])
+        valid = subscription && subscription['metadata'] && subscription['metadata']['covidchat_account_id']
         if valid
           valid = Account.confirm_subscription({
             state: 'active',
-            account_id: customer['metadata']['covidchat_account_id'],
-            subscription_id: object['id'],
-            customer_id: object['customer'],
+            account_id: subscription['metadata']['covidchat_account_id'],
+            subscription_id: subscription['id'],
+            customer_id: subscription['customer'],
             source_id: 'stripe',
             source: 'customer.subscription.created'
           })
         end
         data = {:subscribe => true, :valid => !!valid}
       elsif event['type'] == 'customer.subscription.updated' && (object['metadata'] || {})['platform_source'] == 'covidspeak'
-        customer = Stripe::Customer.retrieve(object['customer'])
-        valid = customer && customer['metadata'] && customer['metadata']['covidchat_account_id']
-        if object['status'] == 'unpaid' || object['status'] == 'canceled'
+        subscription = Stripe::Subscription.retrieve(object['id'])
+        valid = subscription && subscription['metadata'] && subscription['metadata']['covidchat_account_id']
+        if subscription['status'] == 'unpaid' || subscription['status'] == 'canceled'
           if previous && previous['status'] && previous['status'] != 'unpaid' && previous['status'] != 'canceled'
             if valid
-              reason = 'Monthly payment unpaid' if object['status'] == 'unpaid'
-              reason = 'Canceled by purchasing system' if object['status'] == 'canceled'
+              reason = 'Monthly payment unpaid' if subscription['status'] == 'unpaid'
+              reason = 'Canceled by purchasing system' if subscription['status'] == 'canceled'
               valid = Account.confirm_subscription({
                 action: 'canceled',
-                account_id: customer['metadata']['covidchat_account_id'],
-                subscription_id: object['id'],
-                customer_id: object['customer'],
+                account_id: subscription['metadata']['covidchat_account_id'],
+                subscription_id: subscription['id'],
+                customer_id: subscription['customer'],
                 source_id: 'stripe',
                 source: 'customer.subscription.updated',
                 system_cancel: true,
@@ -50,10 +50,10 @@ module Purchasing
             end
             data = {:unsubscribe => true, :valid => !!valid}
           end
-        elsif object['status'] == 'past_due'
+        elsif subscription['status'] == 'past_due'
           if previous && previous['status'] && previous['status'] != 'past_due'
             if valid
-              account = Account.find_by(id: customer['metadata']['covidchat_account_id'])
+              account = Account.find_by(id: subscription['metadata']['covidchat_account_id'])
               if account
                 account.settings['past_due'] = true
                 accuont.save
@@ -61,13 +61,13 @@ module Purchasing
               end
             end
           end
-        elsif object['status'] == 'active'
+        elsif subscription['status'] == 'active'
           if valid
             valid = Account.confirm_subscription({
               state: 'active',
-              account_id: customer['metadata']['covidchat_account_id'],
-              subscription_id: object['id'],
-              customer_id: object['customer'],
+              account_id: subscription['metadata']['covidchat_account_id'],
+              subscription_id: subscription['id'],
+              customer_id: subscription['customer'],
               source_id: 'stripe',
               source: 'customer.subscription.updated'
             })
@@ -75,14 +75,14 @@ module Purchasing
           data = {:subscribe => true, :valid => !!valid}
         end
       elsif event['type'] == 'customer.subscription.deleted' && (object['metadata'] || {})['platform_source'] == 'covidspeak'
-        customer = Stripe::Customer.retrieve(object['customer'])
-        valid = customer && customer['metadata'] && customer['metadata']['covidchat_account_id']
+        subscription = Stripe::Subscription.retrieve(object['id'])
+        valid = subscription && subscription['metadata'] && subscription['metadata']['covidchat_account_id']
         if valid
           valid = Account.confirm_subscription({
             state: 'deleted',
-            account_id: customer['metadata']['covidchat_account_id'],
-            subscription_id: object['id'],
-            customer_id: object['customer'],
+            account_id: subscription['metadata']['covidchat_account_id'],
+            subscription_id: subscription['id'],
+            customer_id: subscription['customer'],
             source_id: 'stripe',
             source: 'customer.subscription.deleted'
           })
@@ -131,11 +131,17 @@ module Purchasing
     })
     opts['source'] = 'purchase'
     opts['initiator'] = 'new_purchase'
+    opts['nonce'] = GoSecure.nonce('account_unique_nonce')
     RedisAccess.default.setex("purchase_settings/#{session.id}", 36.hours.to_i, opts.to_json)
     session.id
   end
 
   def self.confirm_purchase(session_id)
+    # NOTE: there is a race condition, where if this
+    # code is called twice at the same time, it will
+    # create two paid accounts, both tied to the same
+    # subscription, but someone could abuse that to
+    # spread their meetings across the accounts
     Stripe.api_key = ENV['STRIPE_SECRET_KEY']
     Stripe.api_version = '2020-03-02'
     price_id = ENV['STRIPE_PRICE_ID']
@@ -224,6 +230,8 @@ module Purchasing
           source: 'web.purchase.updated',
           purchase_summary: opts['purchase_summary']          
         })
+        opts['account_id'] = account.id
+        RedisAccess.default.setex("purchase_settings/#{session_id}", 36.hours.to_i, opts.to_json)
         if (subscription['metadata'] || {})['covidchat_account_id'] != account.external_id
           subscription.metadata ||= {}
           subscription.metadata['covidchat_account_id'] = account.external_id
@@ -248,16 +256,18 @@ module Purchasing
     account.copy_server_from(config_server)
     account.settings['max_concurrent_rooms'] = [1, opts['quantity'].to_i].max
     account.save!
+    opts['account_id'] = account.id
+    RedisAccess.default.setex("purchase_settings/#{session_id}", 36.hours.to_i, opts.to_json)
     customer_meta = customer['metadata'] || {}
-    if (customer_meta['covidchat_account_id'] != account.external_id) || customer_meta['platform_source']
-      customer.metadata ||= {}
-      customer.metadata['covidchat_account_id'] = account.external_id
-      customer.save
-    end
     if (subscription['metadata'] || {})['covidchat_account_id'] != account.external_id
       subscription.metadata ||= {}
       subscription.metadata['covidchat_account_id'] = account.external_id
       subscription.save
+    end
+    if (customer_meta['covidchat_account_id'] != account.external_id) || customer_meta['platform_source']
+      customer.metadata ||= {}
+      customer.metadata['covidchat_account_id'] = account.external_id
+      customer.save
     end
     account.log_subscription_event({:log => 'confirming subscription', :id => subscription['id']})
     Account.confirm_subscription({
@@ -293,6 +303,7 @@ module Purchasing
     })
     opts['initiator'] = 'update_or_set_billing'
     opts['source'] = opts[:subscription_id] ? 'update' : 'purchase'
+    opts['nonce'] = GoSecure.nonce('account_unique_nonce')
     RedisAccess.default.setex("purchase_settings/#{session.id}", 36.hours.to_i, opts.to_json)
     session.id
   end
@@ -316,8 +327,9 @@ module Purchasing
       account.log_subscription_event({error: 'no subscription found when updating meter'})
       return false
     end
-    if sub['customer'] != account.settings['subscription']['customer_id']
-      account.log_subscription_event({error: 'no customer found when updating meter'})
+    if sub['metadata']['covidchat_account_id'] != account.external_id
+      account.log_subscription_event({error: 'subscription tied to a different account'})
+      account.settings['disabled'] = true
       return false
     end
     sub_item = sub.items.data.detect{|si| si['price']['id'] == ENV['STRIPE_PRICE_ID'] }
@@ -339,203 +351,6 @@ module Purchasing
       account.log_subscription_event({error: 'failed to create usage'}) unless usage
       return false
     end
-  end
-
-  
-  def self.reconcile(with_side_effects=false)
-    Stripe.api_key = ENV['STRIPE_SECRET_KEY']
-    Stripe.api_version = '2020-03-02'
-    customers = Stripe::Customer.list(:limit => 10)
-    customer_active_ids = []
-    total = 0
-    cancel_months = {}
-    cancels = {}
-    output "retrieving expired subscriptions..."
-    Stripe::Subscription.list(:limit => 20, :status => 'canceled').auto_paging_each do |sub|
-      cancels[sub['customer']] ||= []
-      cancels[sub['customer']] << sub
-    end
-    output "retrieving charges..."
-    list = Stripe::Charge.list(:limit => 20)
-    big_charges = []
-    tallies = {}
-    while(list && list.data && list.data[0] && list.data[0].created > 3.months.ago.to_i)
-      list.data.each do |charge|
-        if charge.captured && !charge.refunded
-          date = Time.at(charge.created).iso8601[0, 7]
-          tallies[date] = (tallies[date] || 0) + (charge.amount / 100)
-          if charge.amount > 90
-            big_charges << charge
-          end
-        end
-      end
-      list = list.next_page
-      output "..."
-    end
-    tally_months = {}
-    big_charges.each do |charge|
-      time = Time.at(charge.created)
-      date = time.iso8601[0, 7]
-      if charge.amount > 225
-        tally_months[date] = (tally_months[date] || 0) + (charge.amount / 100 / 150).floor
-      else
-        tally_months[date] = (tally_months[date] || 0) + 1
-      end
-    end.length
-    problems = []
-    user_active_ids = []
-    years = {}
-    customers.auto_paging_each do |customer|
-      total += 1
-      cus_id = customer['id']
-      email = customer['email']
-      output "checking #{cus_id} #{email}"
-      if !customer
-        output "\tcustomer not found"
-        next
-      end
-      user_id = customer['metadata'] && customer['metadata']['user_id']
-      user = user_id && User.find_by_global_id(user_id)
-      if !user && cancels[customer['id']].blank?
-        problems << "#{customer['id']} no user found"
-        output "\tuser not found"
-        next
-      end
-
-      customer_subs = customer['subscriptions'].to_a
-      user_active = user && user.recurring_subscription?
-      user_active_ids << user.global_id if user_active
-      customer_active = false
-      
-      if customer_subs.length > 1
-        output "\ttoo many subscriptions"
-        problems << "#{user.global_id} #{user.user_name} too many subscriptions"
-      elsif user && user.long_term_purchase?
-        subs = cancels[cus_id] || []
-        sub = subs[0]
-        str = "\tconverted to a long-term purchase"
-
-        if sub && sub['canceled_at']
-          canceled = Time.at(sub['canceled_at'])
-          str += " on #{canceled.iso8601}"
-        end
-        if sub && sub['created']
-          created = Time.at(customer['created'])
-          str += ", subscribed #{created.iso8601}"
-        end
-        output str
-        if customer_subs.length > 0
-          sub = customer_subs[0]
-          if sub && (sub['status'] == 'active' || sub['status'] == 'trialing')
-            output "\tconverted to long-term purchase, but still has a lingering subscription"
-            problems << "#{user.global_id} #{user.user_name} converted to long-term purchase, but still has a lingering subscription"
-          end
-        end
-      elsif customer_subs.length == 0 
-        # if no active subscription, this is an old customer record
-        check_cancels = false
-        # if customer id matches, then we are properly aligned
-        if user && user.settings['subscription'] && user.settings['subscription']['customer_id'] == cus_id
-          check_cancels = true
-          if user_active
-            output "\tno subscription found, but expected (FREELOADER)" 
-            problems << "#{user.global_id} #{user.user_name} no subscription found, but expected (FREELOADER)"
-          end
-          if user_active && with_side_effects
-            User.schedule(:subscription_event, {
-              'unsubscribe' => true,
-              'user_id' => user.global_id,
-              'customer_id' => cus_id,
-              'subscription_id' => object['id'],
-              'cancel_others_on_update' => true,
-              'source' => 'customer.reconciliation'
-            })
-          else
-            if user_active
-              output "\tuser active without a subscription (huh?)" 
-              problems << "#{user.global_id} #{user.user_name} user active without a subscription (huh?)"
-            end
-
-          end
-        else
-          # if customer id doesn't match on subscription hash then we don't really care,
-          # since there are no subscriptions for this customer, we just shouldn't
-          # track this as a cancellation
-          if user_active
-          else
-            check_cancels = true
-          end
-        end
-        if check_cancels
-          # Will only get here if there are no active subscriptions in purchasing system
-          subs = cancels[cus_id] || []
-          sub = subs[0]
-          if sub
-            canceled = Time.at(sub['canceled_at'])
-            created = Time.at(customer['created'])
-            # If canceled in the last 6 months, track it for reporting
-            if canceled > 6.months.ago
-              if user_active
-                problems << "#{user.global_id} marked as canceled, but looks like still active"
-              end 
-              output "\tcanceled #{canceled.iso8601}, subscribed #{created.iso8601}, active #{user_active}" if canceled > 3.months.ago
-              cancel_months[(canceled.year * 100) + canceled.month] ||= []
-              cancel_months[(canceled.year * 100) + canceled.month] << (canceled - created) / 1.month.to_i
-            end
-          end
-        end
-      else
-        sub = customer_subs[0]
-        if sub && sub['start']
-          time = Time.at(sub['start']) rescue nil
-          if time
-            yr = 0
-            if time < 3.years.ago
-              yr = 3
-            elsif time < 2.years.ago
-              yr = 2
-            elsif time < 1.years.ago
-              yr = 1
-            elsif time < 4.months.ago
-              yr = 0.3
-            end
-            years[yr] = (years[yr] || 0) + 1
-          end
-        end
-        if user && user.settings['subscription'] && user.settings['subscription']['customer_id'] == cus_id
-          customer_active = sub['status'] == 'active'
-          customer_active_ids << user.global_id if customer_active
-          if user_active != customer_active
-            output "\tcustomer is #{sub['status']} but user is #{user_active ? 'subscribed' : 'expired'}" 
-            problems << "#{user.global_id} #{user.user_name} customer is #{sub['status']} but user is #{user_active ? 'subscribed' : 'expired'}"
-          end
-        else
-          # if customer id doesn't match on subscription hash:
-          # - if the subscription is active, we have a problem
-          # - otherwise we can ignore this customer record
-          if user_active
-            if sub['status'] == 'active' || sub['status'] == 'trialing'
-              output "\tcustomer is #{sub['status']} but user is tied to a different customer record #{user.settings['subscription']['customer_id']}" 
-              problems << "#{user.global_id} #{user.user_name} but user is tied to a different customer record #{user.settings['subscription']['customer_id']}"
-            end
-          end
-        end
-      end
-    end
-    if problems.length > 0
-      output "PROBLEMS:\n#{problems.join("\n")}\n"
-    end
-    output "PURCHASES: #{tallies.to_json}"
-    output "LICENSES (approx): #{tally_months.to_json}"
-    output "YEARS: #{years.to_json}"
-    output "TOTALS: checked #{total}, paying customers (not trialing, not duplicates) #{customer_active_ids.uniq.length}, subscription users #{user_active_ids.uniq.length}"
-    cancel_months.each{|k, a| 
-      res = []
-      res << (cancel_months[k].sum / cancel_months[k].length.to_f).round(1) 
-      res << (cancel_months[k].length)
-      cancel_months[k] = res
-    }
-    output "CANCELS: #{cancel_months.to_a.sort_by(&:first).reverse.to_json}"
   end
 
   def self.output(str)
