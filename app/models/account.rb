@@ -382,17 +382,23 @@ class Account < ApplicationRecord
     return false unless account.paid_account?
     if opts[:state] == 'active'
       account.settings['subscription'] ||= {}
-      if account.settings['subscription']['subscription_id'] && saccountelf.settings['subscription']['subscription_id'] != opts[:subscription_id]
+      if account.settings['subscription']['subscription_id'] && account.settings['subscription']['subscription_id'] != opts[:subscription_id]
         account.settings['subscription']['past_subscriptions'] ||= []
         account.settings['subscription']['past_subscriptions'] << {sub_id: account.settings['subscription']['subscription_id'], cus_id: account.settings['subscription']['customer_id'], reason: 'replaced'}
         account.settings['subscription']['purchase_summary'] = nil
       end
       if !account.settings['subscription']['subscription_id']
-        SubscriptionMailer.deliver_message('new_subscription', account)
-        SubscriptionMailer.deliver_message('subscription_confirmed', account)
+        if !RedisAccess.default.get("notified/subsscribe/#{account.id}")
+          RedisAccess.default.setex("notified/subsscribe/#{account.id}", 5.minutes.to_i, 'done')
+          SubscriptionMailer.deliver_message('new_subscription', account)
+          SubscriptionMailer.deliver_message('subscription_confirmed', account)
+        end
       elsif (account.settings['subscription']['last_update_notification'] || 0) < (Time.now.to_i - (5 * 60))
-        account.settings['subscription']['last_update_notification'] = Time.now.to_i
-        SubscriptionMailer.deliver_message('subscription_updated', account)
+        if !RedisAccess.default.get("notified/subsscribe/#{account.id}")
+          RedisAccess.default.setex("notified/subsscribe/#{account.id}", 5.minutes.to_i, 'done')
+          account.settings['subscription']['last_update_notification'] = Time.now.to_i
+          SubscriptionMailer.deliver_message('subscription_updated', account)
+        end
       end
 
       account.settings['subscription']['subscription_id'] = opts[:subscription_id]
@@ -412,8 +418,11 @@ class Account < ApplicationRecord
         account.settings['subscription']['cancel_reason'] ||= opts[:cancel_reason]
       end
       if account.settings['subscription']['subscription_id']
-        SubscriptionMailer.deliver_message('subscription_canceled', account)
-        SubscriptionMailer.deliver_message('unsubscribe_reason', account)
+        if !RedisAccess.default.get("notified/unsubscribe/#{account.id}")
+          RedisAccess.default.setex("notified/unsubscribe/#{account.id}", 5.minutes.to_i, 'done')
+          SubscriptionMailer.deliver_message('subscription_canceled', account)
+          SubscriptionMailer.deliver_message('unsubscribe_reason', account)
+        end
       end
 
       account.settings['subscription']['subscription_id'] = nil
