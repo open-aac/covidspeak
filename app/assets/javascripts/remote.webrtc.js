@@ -118,13 +118,9 @@ remote.webrtc = {
                   main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id] = main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id] || {};
                   main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id].track = track;
                   // When the non-initiator switches their video feed, it needs more assertion to renegotiate
+                  pc_ref.prevent_reconnect_until = 0;
                   main_room.subrooms[subroom_id].renegotiate_harder = true;
                   if(!types[track.kind] && blank_sender) {
-                    // NOTE: This will result in a lost track
-                    // if renegotiation doesn't happen. The original
-                    // video track won't be on the connection when this
-                    // replaced track is removed. Hence, it's important
-                    // to make sure renegotiation happens.
                     blank_sender.replaceTrack(track).then(function() {
                       setTimeout(function() {
                         main_room.subrooms[subroom_id].renegotiate();
@@ -296,6 +292,7 @@ remote.webrtc = {
             }
             if(pc && sender) {
               // When the non-initiator switches their video feed, it needs more assertion to renegotiate
+              pc_ref.prevent_reconnect_until = 0;
               main_room.subrooms[subroom_id].renegotiate_harder = true;
               setTimeout(function() {
                 pc.removeTrack(sender);
@@ -340,13 +337,17 @@ remote.webrtc = {
     }
   },
   pc_ref: function(type, id) {
-    return (remote.webrtc.pcs || []).filter(function(ref) { 
+    var res = (remote.webrtc.pcs || []).filter(function(ref) { 
       if(type == 'sub') {
         return ref.subroom_id == id;
       } else {
         return ref.id == type || ref.id == id;
       }
     }).pop();
+    if(res && res.pc) {
+      res.refState = res.pc.connectionState;
+    }
+    return res;
   },
   initialize: function(remote_user_id, room_id) {
     var main_room = remote.webrtc.rooms[room_id];
@@ -410,7 +411,7 @@ remote.webrtc = {
         console.log("RTC: already negotiating");
         return; 
       }
-      console.log("RTC: negotiating...")
+      console.log("RTC: negotiating...");
       main_room.subrooms[subroom_id].negotiating = true;
       main_room.subrooms[subroom_id].renegotiatied = true;
       setTimeout(function() {
@@ -433,7 +434,7 @@ remote.webrtc = {
         return; 
       }
       main_room.subrooms[subroom_id].renegotiate_harder = false;
-      if(pc_ref && pc_ref.refState == 'connected') {
+      if(pc_ref && ['connected', 'closed'].indexOf(pc_ref.refState) != -1) {
         // We can set up a brand new connection which
         // will prevent the old session from pausing while
         // we negotiate
@@ -442,6 +443,7 @@ remote.webrtc = {
       }
       rtcpc.createOffer({  offerToReceiveAudio: 1, offerToReceiveVideo: 1}).then(function(desc) {
         // if(rtcpc.signalingState != "stable") { console.error("RTC: initializing when NOT STABLE", rtcpc.signalingState); return; }
+        var state = rtcpc.signalingState;
         rtcpc.setLocalDescription(desc).then(function() {
           console.log("RTC: offer sent", remote_user_id);
           main_room.send({
@@ -450,11 +452,12 @@ remote.webrtc = {
             type: 'offer', 
             offer: desc
           });
-          // TODO: re-send if things don't progress
         }, function(err) {
+          console.error("RTC: connection description error", err, state);
           remote.connection_error(main_room.ref, main_room.users[remote_user_id]);
         });
       }, function(err) {
+        console.error("RTC: offer error", err, state);
         remote.connection_error(main_room.ref, main_room.users[remote_user_id]);
       });
     };
@@ -572,6 +575,7 @@ remote.webrtc = {
       console.log("RTC: connected", pc_ref.id, pc_ref.user_id);
       if(pc_ref.already_connected) { return; }
       pc_ref.already_connected = true;
+      pc_ref.prevent_reconnect_until = 0;
       (main_room.subrooms[pc_ref.subroom_id].to_close || []).forEach(function(ref) { if(ref) { ref.close(); } });
       main_room.subrooms[pc_ref.subroom_id].to_close = null;
       // we should be live!
@@ -591,6 +595,7 @@ remote.webrtc = {
         // If we still haven't managed a healthy connection, try again
         if(latest_pc_ref && latest_pc_ref.refState != 'connected') {
           if(main_room.subrooms[latest_pc_ref.subroom_id]) {
+            latest_pc_ref.prevent_reconnect_until = 0;
             main_room.subrooms[latest_pc_ref.subroom_id].renegotiate_harder = true;
             main_room.subrooms[latest_pc_ref.subroom_id].renegotiate();
           }
@@ -766,11 +771,11 @@ remote.webrtc = {
             video_muted = false;
           }
           if(!video_muted && !senders.find(function(r) { return r.track && r.track.kind == 'video' && r.track.enabled && !r.track.muted; })) {
-            console.error("Expected to be sending local video but none found");
+            console.error("Expected to be sending local video but none attached to the stream");
             needs_refresh = true;
           }
           if(!room.mute_audio && !senders.find(function(r) { return r.track && r.track.kind == 'audio' && r.track.enabled && !r.track.muted; })) {
-            console.error("Expected to be sending local audio but none found");
+            console.error("Expected to be sending local audio but none attached to the stream");
             needs_refresh = true;
           }
           room.state_for = room.state_for || {};
@@ -830,8 +835,14 @@ remote.webrtc = {
         var room_owner = subroom_id.split(/::/)[1];
         var pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
         var pc = pc_ref && pc_ref.pc;
+        if(pc) {
+          pc_ref.refState = pc.connectionState;
+        }
         if(!force && main_room.already && pc_ref && pc_ref.refState == 'connected') { console.log("RTC: SKIPPING reconnection because already active"); return; }
         if(pc_ref && ['new'].indexOf(pc_ref.refState) != -1) { console.log("RTC: SKIPPING CONNECTION because already in progress"); return; }
+        if(pc_ref && pc_ref.refState ==  'closed') {
+          pc_ref.prevent_reconnect_until = 0;
+        }
         var already_id = (new Date()).getTime();
         main_room.already = already_id;
         setTimeout(function() {
@@ -905,6 +916,9 @@ remote.webrtc = {
           }
           var subroom_id = main_room.subroom_id(msg.author_id, true);
           var pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
+          if(pc_ref && pc_ref.connectionState == 'connected') {
+            pc_ref.prevent_reconnect_until = 0;
+          }
           var pc = pc_ref && pc_ref.pc
           if(msg.type == 'ping') {
             var room_owner = subroom_id.split(/::/)[1];
@@ -976,14 +990,18 @@ remote.webrtc = {
               });
             } else if(msg.type == 'candidate' && pc) {
               console.log("RTC: candidate received", msg.candidate);
-              pc.addIceCandidate(msg.candidate || '').then(function() {
-                console.log("RTC: candidate added");
-                // something happens automagically??
-              }, function(err) {
-                if(msg.candidate != null) {
-                  console.error("RTC: candidate error", err, msg);
-                }
-              });
+              if(pc.connectionState == 'closed') {
+                // do nothing
+              } else {
+                pc.addIceCandidate(msg.candidate || '').then(function() {
+                  console.log("RTC: candidate added");
+                  // something happens automagically??
+                }, function(err) {
+                  if(msg.candidate != null) {
+                    console.error("RTC: candidate error", err, msg);
+                  }
+                });  
+              }
             }
           }
         }
