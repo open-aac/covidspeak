@@ -31,7 +31,7 @@
         <a class='delete' href='#'><img src='/icons/trash.svg'/></a>
       </div>
     </div>
-    <form id='add_room' style='margin-top: 50px; width: 500px; margin-right: auto;'>
+    <form id='add_room' style='margin: 50px auto; width: 500px; margin-right: auto; border: 1px solid #ddd; padding: 20px; border-radius: 5px;'>
       <h2>Schedule a Room</h2>
       <input type='text' style='width: 100%;' placeholder='Room Name' id='room_name'/>
       <p style='color: #800; margin-top: 3px; margin-bottom: 5px; font-size: 15px;'><strong>REMEMBER:</strong> Do NOT include any personally-identifiable information in room names! Co-VidSpeak is not a private information authority.</p>
@@ -53,6 +53,16 @@
       <p class='error'></p>
     </form>
   </div>  
+</div>
+<div id="delete_modal" class="content" style='display: none;'>
+  <p>
+    Are you sure you want to delete this room? This cannot be undone.
+  </p>
+  <div style='margin: 20px auto; max-width: 400px; border: 1px solid #ddd; border-radius: 5px; padding: 20px;'>
+    <img src='/logo.svg' style='width: 30px; margin-right: 10px; float: left;'>
+    <div class='name' style='font-size: 20px;'></div>
+    <div style='color: #888;' class='date'></div>
+  </div>
 </div>
 <script>
   // code for re-joining
@@ -115,7 +125,11 @@
             } else if(room.partner_status == 'pending_waiting_room') {
               status = "partner waited for room activation but couldn't join";
             } else {
-              status = "partner never connected";
+              if(room.started_at) {
+                status = "partner never connected";
+              } else {
+                status = "not started";
+              }
             }
         
             if(room.ended_at && room.partner_status == 'connected') {
@@ -124,6 +138,29 @@
               time_string = time_string + " (" + status + ")";
             }
             elem.querySelector('.start').innerText = time_string;
+            elem.querySelector('.delete').addEventListener('click', function(event) {
+              event.preventDefault();
+              var dom = document.querySelector('#delete_modal');
+              dom.onattached = function(dom) {
+                dom.querySelector('.name').innerText = room.name;
+                dom.querySelector('.date').innerText = time_string;
+              };
+              modal.open("Confirm Room Deletion?", dom, [
+                {label: "Delete Room", callback: function(elem) {
+                  elem.innerText = "Deleting Room...";
+                  session.ajax('/api/v1/accounts/' + account_id + '/rooms/' + room.code, {
+                    type: 'DELETE'
+                  }).then(function(res) {
+                    modal.close();
+                    load_rooms();
+                  }, function(err) {
+                    elem.innerText = "Error Deleting Room";
+                  });
+                }},
+                {label: "Cancel", action: "close"}
+                        
+              ]);
+            })
             document.querySelector('#rooms').appendChild(elem);
           })
         }, function(err) {
@@ -147,6 +184,7 @@
           }
         }).then(function(res) {
           document.querySelector('#schedule_button').innerText = "Schedule Room";
+          localStorage.back_room = JSON.stringify({room_code: res.room.code, account_id: account_id});
           location.href = "/rooms/pending/" + res.room.code;
         }, function(err) {
           document.querySelector('#schedule_button').innerText = "Error Scheduling Room";

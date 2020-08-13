@@ -252,7 +252,7 @@ class Api::RoomsController < ApplicationController
     if !account
       return api_error(400, {error: 'invalid schedule_id'})
     end
-    pending_room = account.pending_rooms.find_by(code: params['code'])
+    pending_room = account.pending_rooms.find_by(code: params['room_code'])
     return api_error(400, {error: 'room not found'}) unless pending_room
     pending_room.destroy
     render json: {room: room_json(pending_room)}

@@ -1,4 +1,5 @@
 <% if @room %>
+  <a href="#" id='back_to_schedule' style='display: none; margin-bottom: 20px;'>&lt; Back to Schedule</a>
   <h1><%= @room.settings['name'] || "Room Settings" %></h1>
   <div class='room'>
     <div class='dates'>
@@ -22,6 +23,16 @@
 <script>
   (function() {
     var code = "<%= @room.code %>";
+    try {
+      var back = JSON.parse(localStorage.back_room);
+      if(back.room_code == code && back.account_id) {
+        var elem = document.querySelector('#back_to_schedule');
+        if(elem) {
+          elem.href = "/schedule/" + back.account_id;
+          elem.style.display = 'inline-block';
+        }
+      }
+    } catch(e) { }
     var bundle_id = null;
     var attendee_code = "<%= @room.attendee_code %>";
     var as_comm = <%= (!!@room.settings['as_communicator']).to_json %>;

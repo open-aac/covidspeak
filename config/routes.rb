@@ -48,6 +48,7 @@ Rails.application.routes.draw do
       post 'purchasing_events' => 'accounts#purchasing_event', on: :collection
       get 'rooms' => 'rooms#list_schedule'
       post 'rooms' => 'rooms#schedule'
+      delete 'rooms/:room_code' => 'rooms#unschedule'
     end
   end
 end

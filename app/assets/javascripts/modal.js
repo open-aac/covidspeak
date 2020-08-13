@@ -105,7 +105,7 @@ document.addEventListener('click', function(event) {
       if(!action) {
         modal.close(true);
       } else if(action.callback) {
-        action.callback();
+        action.callback(event.target.closest('.modal_button'));
       } else {
         modal.close();
       }
