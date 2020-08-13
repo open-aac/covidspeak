@@ -8,7 +8,7 @@
     <% if !@bundle.settings['author'].blank? %>
       Author: <%= @bundle.settings['author'] %><br/>
     <% end %>
-    <% if @bundle.uses > 0 %>
+    <% if (@bundle.uses || 0) > 0 %>
       Uses: <%= @bundle.uses %>
     <% end %>
     <% if !@bundle.settings['description'].blank? %>
@@ -225,6 +225,14 @@
             ready();
           }
         }
+      });
+      document.querySelector('#copy_bundle').addEventListener('click', function(event) {
+        event.preventDefault();
+        extras.copy(location.origin + "/bundles/" + bundle_id).then(function(res) {
+          document.querySelector('#copy_bundle').innerText = "Link Copied!";
+        }, function(err) {
+          document.querySelector('#copy_bundle').innerText = "Error Copying Link";
+        });
       });
       document.querySelector('#set_bundle').addEventListener('click', function(event) {
         event.preventDefault();

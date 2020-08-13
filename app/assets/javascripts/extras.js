@@ -58,7 +58,7 @@ var extras = {
           alert("Copy failed unexpectedly");
         }
         window.getSelection().removeAllRanges();   
-      }, 800);
+      }, 500);
     });
   }
 };
