@@ -39,6 +39,7 @@ Rails.application.routes.draw do
     post 'tokens/admin_code' => 'tokens#email_admin_code'
     get 'tokens/admin_code/:check_id' => 'tokens#check_admin_code'
     post 'bundles' => 'users#bundle'
+    post 'bundles/:id' => 'users#bundle_used'
     get 'tokens/check' => 'tokens#check_token'
     get 'feedback' => 'accounts#feedback'
     

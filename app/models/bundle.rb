@@ -7,6 +7,8 @@ class Bundle < ApplicationRecord
   def generate_defaults
     self.settings ||= {}
     self.settings['name'] ||= "Unnamed Bundle"
+    self.uses ||= 0
+    self.approved ||= false
     self.verifier ||= GoSecure.nonce('bundle_verifier')[0, 10]
     true
   end

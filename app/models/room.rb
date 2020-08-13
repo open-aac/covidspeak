@@ -169,15 +169,23 @@ class Room < ApplicationRecord
       self.settings['user_configs'][user_id_hash]['minutes_heard'] = opts['minutes_heard'].to_i
       self.settings['user_configs'][user_id_hash]['timestamp'] ||= Time.now.to_i
       if opts['ip']
-        begin
-          addr = IPAddr.new(opts['ip'])
-          hashed_addr = GoSecure.sha512(addr.mask(16).to_s, "partial_ip_#{self.settings['room_nonce']}")[0, 5]
-          self.settings['user_configs'][user_id_hash]['ip_hash'] ||= hashed_addr
-        rescue => e
-        end
+        hashed_addr = Room.masked_ip(opts['ip'], self.settings['room_nonce']) rescue nil
+        self.settings['user_configs'][user_id_hash]['ip_hash'] ||= hashed_addr if hashed_addr
+      elsif opts['hashed_ip']
+        self.settings['user_configs'][user_id_hash]['ip_hash'] ||= opts['hashed_ip']
       end
     end
   end
+
+  def self.masked_ip(ip, nonce)
+    begin
+      addr = IPAddr.new(ip)
+      hashed_addr = GoSecure.sha512(addr.mask(16).to_s, "partial_ip_#{nonce}")[0, 5]
+      return hashed_addr
+    rescue => e
+      return nil
+    end
+end
 
   def in_use(user_id, opts={})
     self.settings ||= {}

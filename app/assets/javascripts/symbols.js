@@ -2,7 +2,6 @@ var symbols = {};
 (function() {
   var lessonpix = {
     'hi': "https://lessonpix.com/drawings/858816/150x150/858816.png",
-    'goodbye': "https://lessonpix.com/drawings/44246/150x150/44246.png",
     'yes': "https://lessonpix.com/drawings/13097/150x150/13097.png",
     'no': "https://lessonpix.com/drawings/13178/150x150/13178.png",
     'how are things?': "https://lessonpix.com/drawings/9560/150x150/9560.png",

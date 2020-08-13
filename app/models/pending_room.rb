@@ -36,6 +36,9 @@ class PendingRoom < ApplicationRecord
       res.settings['name'] = self.settings['name']
       res.settings['pending_room_id'] = self.id
       res.save
+      if self.settings['partner_params']
+        res.user_accessed(self.settings['partner_params']['pending_id'], self.settings['partner_params'])
+      end
     end
     {identity: identity, room: res}
   end

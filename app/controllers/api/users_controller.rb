@@ -39,6 +39,14 @@ class Api::UsersController < ApplicationController
     render json: {bundle: {id: bundle.code}}
   end
 
+  def bundle_used
+    bundle = Bundle.find_by_code(params['id'])
+    return api_error(400, {error: 'no bundle found'}) unless bundle
+    bundle.uses = (bundle.uses || 0) + 1
+    bundle.save
+    render json: {bundle: {id: bundle.code}}
+  end
+
   def feedback
     feedback = UserFeedback.process(params)
     render json: {ref_id: feedback && feedback.ref_id}
@@ -50,7 +58,7 @@ class Api::UsersController < ApplicationController
     opts['email'] = params['email']
     opts['user_agent'] = request.headers['User-Agent']
     opts['name'] = params['name'] || params['email']
-    mobile = params['mobile'] == 'true'
+    mobile = params['mobile'] == true || params['mobile'] == 'true'
     opts['config'] = "#{mobile ? 'mobile.' : ''}#{params['system']}.#{params['browser']}"
     # TODO: admin process to look up join code by room_id
     opts['room_id'] = params['room_id']

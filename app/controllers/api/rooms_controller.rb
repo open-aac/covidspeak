@@ -232,6 +232,14 @@ class Api::RoomsController < ApplicationController
       return api_error(400, {error: "no room found"}) unless pending_room
       if !pending_room.settings['room_id']
         if !pending_room.settings['partner_checked']
+          if params['pending_id']
+            pending_room.settings['partner_params'] = {
+              'pending_id' => params['pending_id'],
+              'mobile' => params['mobile'] == true || params['mobile'] == 'true',
+              'browser' => params['browser'],
+              'system' => params['system'],
+            }
+          end
           pending_room.settings['partner_checked'] = true
           pending_room.save
         end

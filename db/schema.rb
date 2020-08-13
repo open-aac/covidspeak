@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_07_14_185901) do
+ActiveRecord::Schema.define(version: 2020_08_13_171712) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -31,6 +31,9 @@ ActiveRecord::Schema.define(version: 2020_07_14_185901) do
     t.string "verifier"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "uses"
+    t.boolean "approved"
+    t.index ["approved"], name: "index_bundles_on_approved"
   end
 
   create_table "pending_rooms", force: :cascade do |t|

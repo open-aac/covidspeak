@@ -8,6 +8,9 @@
     <% if !@bundle.settings['author'].blank? %>
       Author: <%= @bundle.settings['author'] %><br/>
     <% end %>
+    <% if @bundle.uses > 0 %>
+      Uses: <%= @bundle.uses %>
+    <% end %>
     <% if !@bundle.settings['description'].blank? %>
       <p style='margin-bottom: 20px;'><%= @bundle.settings['description'] %></p>
     <% end %>
@@ -70,6 +73,7 @@
 <% if @bundle %>
   <script>
     (function() {
+      var bundle_id = "<%= @bundle.code %>";
       if(!room.settings) {
         room.load_settings();
       }
@@ -223,8 +227,12 @@
       });
       document.querySelector('#set_bundle').addEventListener('click', function(event) {
         event.preventDefault();
-        boards.persist(list.reverse());
+        list.reverse()
+        boards.persist(list);
         document.querySelector('#set_bundle').innerText = "Layouts Updated for this Device!";
+        session.ajax('/api/v1/bundles/' + bundle_id, {type: 'POST'}).then(function() {
+
+        }, function(err) { });
       });
     })();
   </script>
