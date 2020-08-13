@@ -22,7 +22,12 @@
     </div>
   </div>
   <div id='goback' style='margin-top: 20px;'>
-    <button id='back' style='width: 100%;'>Back to Main Page</button>
+    <% if params['demo'] %>
+      <button id='buy_now' class='button primary' style='width: 45%; height: 80px; vertical-align: middle;'>Learn How to Purchase Co-VidSpeak</button>
+      <button id='back' class='button' style='width: 45%; height: 80px; vertical-align: middle;'>Back to Main Page</button>
+    <% else %>
+      <button id='back' class='button' style='width: 100%;'>Back to Main Page</button>
+    <% end %>
   </div>
 </div>
 
@@ -100,6 +105,11 @@
     event.preventDefault();
     location.href = '/';
   });
+  document.querySelector('#buy_now').addEventListener('click', function(event) {
+    event.preventDefault();
+    location.href = '/pricing';
+  });
+  buy_now
   if(localStorage.room_id) {
     document.querySelector('#goback').style.display = 'block';
   }

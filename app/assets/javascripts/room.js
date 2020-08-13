@@ -978,6 +978,7 @@ var room = {
           modal.open("Welcome to Co-VidSpeak!", document.querySelector('#demo_modal'));
         }
 
+        room.demo_room = res.room && res.room.demo;
         room.current_user_id = res.user_id;
         remote.backend = res.room.type;
         var local_tried = false;
@@ -2084,7 +2085,11 @@ var room = {
   leave_room: function() {
     setTimeout(function() {
       room.grid_settings_override = null;
-      location.href = localStorage.teach_return_url || "/thanks";
+      var thanks_url = "/thanks";
+      if(room.demo_room && room.current_room && room.current_room.room_initiator) { 
+        thanks_url = thanks_url + "?demo=1";
+      }
+      location.href = localStorage.teach_return_url || thanks_url;
     }, 300);
   },
   leave_room_soon: function(demo) {
