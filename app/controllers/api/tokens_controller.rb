@@ -15,6 +15,7 @@ class Api::TokensController < ApplicationController
     if !account && params['code'].match(/@/)
       accounts = Accounts.where(email_hash: Account.generate_email_hash(params['code']))
     end
+    accounts = accounts.select{|a| !a.settings['disabled'] }
     return api_error(400, {error: 'invalid code'}) unless accounts.length > 0
     account = accounts[0]
     check_id = [account.id, GoSecure.nonce('admin_code_checker')].join('_')

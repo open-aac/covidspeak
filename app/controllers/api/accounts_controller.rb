@@ -60,7 +60,7 @@ class Api::AccountsController < ApplicationController
   def join_code
     # TODO: throttle
     account = Account.find_by_code(params['join_code'])
-    if account && !account.settings['short_rooms']
+    if account && !account.settings['short_rooms'] && !account.settings['disabled']
       render json: {account: {schedule_id: account.schedule_id}}
     else
       api_error(400, {error: 'invalid join code'})

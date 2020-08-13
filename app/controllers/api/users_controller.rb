@@ -10,7 +10,7 @@ class Api::UsersController < ApplicationController
       root_user = true
       # TODO: throttle
       account = Account.find_by_code(params['join_code'])
-      if account
+      if account && !account.settings['disabled']
         identity = Account.generate_user
       end
     end
