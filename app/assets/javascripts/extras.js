@@ -27,15 +27,15 @@ var extras = {
   },
   copy: function(url) {
     return new Promise(function(res, rej) {
+      var link = document.querySelector('#copy_link');  
+      if(!link) {
+        link = document.createElement('a');
+        link.style.position = 'absolute';
+        link.style.left = '-2000px';
+        link.id = 'copy_link';
+        document.body.appendChild(link);
+      }
       setTimeout(function() {
-        var link = document.querySelector('#copy_link');  
-        if(!link) {
-          link = document.createElement('a');
-          link.style.position = 'absolute';
-          link.style.left = '-2000px';
-          link.id = 'copy_link';
-          document.body.appendChild(link);
-        }
         link.href = url;
         link.innerText = url;
         var range = document.createRange();  
@@ -57,7 +57,7 @@ var extras = {
           alert("Copy failed unexpectedly");
         }
         window.getSelection().removeAllRanges();   
-      }, 300);
+      }, 800);
     });
   }
 };
