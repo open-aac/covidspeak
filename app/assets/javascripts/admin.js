@@ -1,6 +1,6 @@
 var tz_offset = (new Date()).getTimezoneOffset() * 60 * 1000
 var process_room = function(room) {
-  var started = (new Date(room.started * 1000 - tz_offset)).toISOString().substring(5, 16).replace(/T/, ' ');
+  var started = window.moment(room.started * 1000).format('D MMM h:mma')
 
   var duration = room.duration + "s";
   if(room.duration == 0) {
