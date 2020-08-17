@@ -62,7 +62,7 @@ class Account < ApplicationRecord
       total_rooms = current_month_rooms.length
       total_seconds = current_month_rooms.map{|r| r.duration }.sum
       if concurrent_rooms.length == 0
-        RedisAccess.default.setex("usage_excluding/#{month_code}/#{account.id}/#{room.id}", 5.minutes.to_i, {rooms: [total_rooms - 1, 0].max, minutes: (total_seconds - room.duration) / 60.0}.to_json)
+        RedisAccess.default.setex("usage_excluding/#{month_code}/#{account.id}/#{room.id}", 5.minutes.to_i, {rooms: [total_rooms - 1, 0].max, minutes: (total_seconds - (room.duration || 0)) / 60.0}.to_json)
       end
     else  
       total_seconds = (usage['minutes'] * 60) + room.duration
@@ -75,6 +75,7 @@ class Account < ApplicationRecord
       'minutes' => (total_seconds / 60.0).round(1),
       'rooms' => total_rooms
     })
+    account.save
     if force && account.paid_account?
       if account.settings['subscription'] && account.settings['subscription']['subscription_id']
         account_rooms = account.settings['max_concurrent_rooms'] || 1
@@ -85,7 +86,7 @@ class Account < ApplicationRecord
         false
       end
     else
-      account.save
+      true
     end
   end
 
