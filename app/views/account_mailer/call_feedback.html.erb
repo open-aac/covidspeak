@@ -2,6 +2,7 @@ Feedback from a Recent Call:<br/><br/>
 Created: <%= @feedback.created_at %><br/>
 Stars: <%= @feedback.settings['stars'] %><br/>
 Setup: <%= @feedback.settings['mobile'] ? 'mobile.' : '' %><%= @feedback.settings['system'] %>.<%= @feedback.settings['browser'] %><br/>
+Message: <%= @feedback.settings['feedback'] %><br/>
 
 <br/><br/>Thanks!<br/>
 <%= email_signature %>

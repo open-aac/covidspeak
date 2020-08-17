@@ -979,6 +979,8 @@ var room = {
         }
 
         room.demo_room = res.room && res.room.demo;
+        room.paid_room = !room.demo_room && !mirror_type && !teaching_type;
+
         room.current_user_id = res.user_id;
         remote.backend = res.room.type;
         var local_tried = false;

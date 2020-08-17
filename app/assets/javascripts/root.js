@@ -25,7 +25,17 @@ var help_modal = null;
           });  
         }
       });
+      var skip_pay_link = room && room.paid_room && room.current_room && room.current_room.room_initiator;
+      skip_pay_link = skip_pay_link || (location.pathname.match(/^\/(schedule|accounts)/));
+      if(skip_pay_link) { 
+        dom.querySelector('#purchase_app_link_holder').style.display = 'none';
+      }
       
+      dom.querySelector('#purchase_app_link').addEventListener('click', function(event) {
+        event.preventDefault();
+        modal.close();
+        window.open('https://app.covidspeak.org/pricing.html', '_blank');
+      });
       dom.querySelector('#ticket').addEventListener('click', function(event) {
         event.preventDefault();
         dom.querySelector('#buttons').style.display = 'none';

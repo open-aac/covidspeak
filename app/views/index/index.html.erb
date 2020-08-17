@@ -89,7 +89,12 @@ if(location.search) {
 }
 document.querySelector('#join_code_help').addEventListener('click', function(event) {
   event.preventDefault();
-  modal.open("What is a Join Code?", document.querySelector('#join_code_modal'));
+  modal.open("What is a Join Code?", document.querySelector('#join_code_modal'), [
+    {label: 'See Pricing', callback: function() {
+      location.href = '/pricing';
+    }},
+    {label: 'Close', action: 'close'}
+  ]);
 })
 document.querySelector('#rejoin').addEventListener('click', function(event) {
   event.preventDefault();
