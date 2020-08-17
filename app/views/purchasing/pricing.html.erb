@@ -56,7 +56,7 @@
       document.querySelector('#buy').style.display = 'block';
     });
     var start_purchase = function() {
-      var quantity = parseInt(document.querySelector('#rooms'), 10);
+      var quantity = parseInt(document.querySelector('#rooms').value, 10);
       if(isNaN(quantity) || quantity < 1) { quantity = 1; }
 
       var name = document.querySelector('#name').value;
