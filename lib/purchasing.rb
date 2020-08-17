@@ -141,11 +141,10 @@ module Purchasing
     # code is called twice at the same time, it will
     # create two paid accounts, both tied to the same
     # subscription, but someone could abuse that to
-    # spread their meetings across the accounts
+    # spread their meetings across the accounts.
     Stripe.api_key = ENV['STRIPE_SECRET_KEY']
     Stripe.api_version = '2020-03-02'
     price_id = ENV['STRIPE_PRICE_ID']
-    opts = JSON.parse(RedisAccess.default.get("purchase_settings/#{session_id}")) rescue {}
     session = Stripe::Checkout::Session.retrieve({id: session_id, expand: ['customer.invoice_settings.default_payment_method', 'subscription.default_payment_method', 'setup_intent.payment_method']})
     return false unless session
     subscription = session['subscription']
@@ -153,11 +152,12 @@ module Purchasing
     method = (session['setup_intent'] || {})['payment_method']
     method ||= ((session['customer'] || {})['invoice_settings'] || {})['default_payment_method']
     method ||= (session['subscription'] || {})['default_payment']
+    opts = JSON.parse(RedisAccess.default.get("purchase_settings/#{session_id}")) rescue {}
     if !customer || !subscription
       return false unless method
       # find customer (list all by email) or create customer
       # attach a new subscription with default_payment_method = method['id']
-      customer = Stripe::Customer.list({email: opts['contact_email'], limit: 1}).data[0]
+      customer = Stripe::Customer.list({email: opts['contact_email'], limit: 1, expand: ['data.subscriptions']}).data[0]
       customer ||= Stripe::Customer.create({
         email: opts['contact_email'],
         payment_method: method['id'],
@@ -174,6 +174,11 @@ module Purchasing
         # it's possible for a single customer to be running
         # multiple active subscriptions
         subscription = customer.subscriptions.data.detect{|s| s.items.data.any?{|i| i['price']['id'] == price_id } && ['active', 'unpaid', 'past_due'].include?(s['status']) }
+      else
+        # Don't create multiple subscriptions for the same
+        # purchase sequence, since the browser and webhooks
+        # will both trigger the purchase processs
+        subscription = customer.subscriptions.data.detect{|s| s.items.data.any?{|i| i['price']['id'] == price_id } && s.metadata['covidchat_nonce'] == opts['nonce'] }
       end
       # attach the subscription
       subscription ||= Stripe::Subscription.create({
@@ -182,8 +187,8 @@ module Purchasing
           {price: price_id},
         ],
         default_payment_method: method['id'],
-        metadata: { platform_source: 'covidspeak' }
-      })
+        metadata: { platform_source: 'covidspeak', covidchat_nonce: opts['nonce'] }
+      }, {idempotency_key: "#{session_id}-#{opts['nonce']}"})
     end
     add_purchase_summary(opts, method)
     
@@ -195,6 +200,7 @@ module Purchasing
       subscription.default_payment_method = method['id']
       subscription.save
     end
+    opts = JSON.parse(RedisAccess.default.get("purchase_settings/#{session_id}")) rescue {}
     account = Account.find_by(id: opts['account_id']) if opts['account_id']
     account ||= Account.find_by(id: subscription['metadata']['covidchat_account_id']) if subscription['metadata'] && subscription['metadata']['covidchat_account_id']
     account ||= Account.find_by(code: opts['join_code']) if opts['join_code']
@@ -206,13 +212,15 @@ module Purchasing
         account.settings['subscription']['subscription_id'] = nil
       end
       if account.settings['subscription']['subscription_id'] && account.settings['subscription']['subscription_id'] != subscription['id']
-        # On mismatch, just create a new account with a longer
-        # join code so you don't lose the purchase process
+        # On mismatch, just fall back to creating a new 
+        # account with a longer join code so you don't lose 
+        # the purchase process
         account.log_subscription_event({:log => 'mismatched subscription', :current_id => account.settings['subscription']['subscription_id'], :asserted_id => session['subscription']})
         opts['join_code'] += rand(99)
         while Account.find_by(code: opts['join_code']) do
           opts['join_code'] += rand(99)
         end
+        RedisAccess.default.setex("purchase_settings/#{session_id}", 36.hours.to_i, opts.to_json)
         account = nil
       else
         do_email = account.settings['subscription']['purchase_summary'] != opts['purchase_summary']
@@ -243,6 +251,7 @@ module Purchasing
     while opts['join_code'].length < 10 || Account.find_by(code: opts['join_code'])
       opts['join_code'] += rand(99).to_s
     end
+    RedisAccess.default.setex("purchase_settings/#{session_id}", 36.hours.to_i, opts.to_json)
     account = Account.new
     account.code = opts['join_code'].to_s
     account.settings ||= {}
