@@ -1829,6 +1829,15 @@ strong {
         display: none;
       }
     }
+    &.lonely {
+      opacity: 0.5;
+      white-space: nowrap;
+      overflow: hidden;
+      .start {
+        display: inline;
+        font-size: 12px;
+      }      
+    }
   }
 }
 @media (max-width: 1000px) {

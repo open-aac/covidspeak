@@ -191,7 +191,7 @@ class Api::RoomsController < ApplicationController
     @recent_rooms = account.rooms.where(['created_at > ?', 2.days.ago])
     @pending_rooms = account.pending_rooms.where(activated: false).select{|r| r.settings['start_at'] && r.settings['start_at'] > 6.hours.ago.iso8601}
     list = @pending_rooms + @recent_rooms
-    render json: {rooms: list.map{|r| room_json(r) }.sort_by{|r| r[:started_at] || r[:start_at]} }
+    render json: {rooms: list.map{|r| room_json(r) }.sort_by{|r| [r[:started_at] ? 1 : 0, r[:started_at] || r[:start_at]]} }
   end
 
   def invite

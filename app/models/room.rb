@@ -7,7 +7,7 @@ class Room < ApplicationRecord
 
   def generate_defaults
     self.settings ||= {}
-    self.settings['name'] ||= "Unscheduled Room"
+    self.settings['name'] ||= "Instant Room"
     if self.settings['ended_at'] && self.settings['started_at']
       # Remember: duration is in seconds
       self.duration = self.settings['ended_at'] - self.settings['started_at'] - (self.settings['gaps'] || []).map{|g| g['duration'] || 0}.sum

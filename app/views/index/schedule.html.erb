@@ -135,6 +135,9 @@
             if(room.ended_at && room.partner_status == 'connected') {
               time_string = time_string + " (" + (Math.round(room.duration / 60 * 10) / 10) + "m)";
             } else if(status) {
+              if(room.started_at) {
+                elem.classList.add('lonely');
+              }
               time_string = time_string + " (" + status + ")";
             }
             elem.querySelector('.start').innerText = time_string;
