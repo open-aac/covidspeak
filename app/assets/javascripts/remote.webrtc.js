@@ -406,7 +406,7 @@ remote.webrtc = {
     });
     main_room.subrooms[subroom_id][pc_ref.id].data = local_data;
 
-    main_room.subrooms[subroom_id].renegotiate = function() {
+    main_room.subrooms[subroom_id].renegotiate = function(purpose) {
       if(main_room.subrooms[subroom_id].negotiating) { 
         console.log("RTC: already negotiating");
         return; 
@@ -444,6 +444,7 @@ remote.webrtc = {
       rtcpc.createOffer({  offerToReceiveAudio: 1, offerToReceiveVideo: 1}).then(function(desc) {
         // if(rtcpc.signalingState != "stable") { console.error("RTC: initializing when NOT STABLE", rtcpc.signalingState); return; }
         var state = rtcpc.signalingState;
+        rtcpc.original_desc = desc;
         rtcpc.setLocalDescription(desc).then(function() {
           console.log("RTC: offer sent", remote_user_id);
           main_room.send({
@@ -454,7 +455,13 @@ remote.webrtc = {
           });
         }, function(err) {
           console.error("RTC: connection description error", err, state);
-          remote.connection_error(main_room.ref, main_room.users[remote_user_id]);
+          if(purpose != 'no_connection') {
+            // If you're not connected anywhere, then trouble
+            // reconnecting is a last-ditch effort, and this
+            // error will unnecessarily imply connection
+            // is imminent.
+            remote.connection_error(main_room.ref, main_room.users[remote_user_id]);
+          }
         });
       }, function(err) {
         console.error("RTC: offer error", err, state);
@@ -803,14 +810,15 @@ remote.webrtc = {
     } else if(!room.active) {
       room.set_active(true);
     }
-    remote.webrtc.poll_status.timer = setTimeout(remote.webrtc.poll_status, 5000);
+    remote.webrtc.poll_status.timer = setTimeout(remote.webrtc.poll_status, 3000);
   },
   reconnect: function() {
     if(remote.webrtc.last_room_id && remote.webrtc.rooms[remote.webrtc.last_room_id]) {
       var main_room = remote.webrtc.rooms[remote.webrtc.last_room_id];
       main_room.subroom_ids.forEach(function(subroom_id) {
         if(main_room.subrooms[subroom_id]) {
-          main_room.subrooms[subroom_id].renegotiate();
+          main_room.subrooms[subroom_id].disconnected = true;
+          main_room.subrooms[subroom_id].renegotiate('no_connection');
         }
       });  
     }
