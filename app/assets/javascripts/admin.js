@@ -21,6 +21,7 @@ var process_room = function(room) {
     } else if(room.partner_status == 'pending_waiting_room') {
       duration = "pending waiting room only";
     } else {
+      room.unused = true;
       duration = "never connected";
     }
   } else if(room.duration > 3600) {
@@ -250,6 +251,9 @@ var admin = {
               div.appendChild(sub);
             }
           });
+          if(room.unused) {
+            elem.classList.add('unused');
+          }
           extras.populate(elem, {
             started: room.started_string,
             duration: room.duration_string,
@@ -392,6 +396,9 @@ var admin = {
             duration: room.duration_string,
             "-sub_id": room.sub_id ? ("(" + room.sub_id + ")") : ""
           });
+          if(room.unused) {
+            elem.classList.add('unused');
+          }
           document.querySelector('#accounts .rooms').appendChild(elem);
         });
       }
