@@ -104,7 +104,7 @@ class Account < ApplicationRecord
       }
       date = date.next_month
     end
-    res
+    res.reverse
   end
 
   def admin_code(ts=nil)
