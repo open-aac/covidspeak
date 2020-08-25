@@ -683,6 +683,11 @@ strong {
         box-shadow: 0 0 5px #000;
         min-width: 20px;
         max-width: 30%;
+        transition: max-width 1s;
+        z-index: 2;
+        &.small_preview {
+          max-width: 18%;
+        }
         &.muted {
           &::after {
             content: "";
@@ -810,6 +815,10 @@ strong {
           }
         }
       }
+      .secondary_preview {
+        box-shadow: 0 0 5px #000;
+        border-radius: 5px;
+      }
       #text {
         .prompt {
           position: absolute;
@@ -817,6 +826,7 @@ strong {
           left: 10px;
           height: 50px;
           width: 50px;
+          z-index: 2;
           background: #fff;
           cursor: pointer;
           border-radius: 5px;

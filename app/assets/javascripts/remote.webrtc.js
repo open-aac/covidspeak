@@ -63,6 +63,7 @@ remote.webrtc = {
         remote.webrtc.all_local_tracks = [].concat(remote.webrtc.local_tracks);
         var result = [];
         remote.webrtc.local_tracks.forEach(function(track) {
+          track.initial_track = true;
           result.push(remote.webrtc.track_ref(track, stream, 0));
         });
         res(result);
@@ -185,19 +186,30 @@ remote.webrtc = {
       if(track && main_room) {
         var track_ref = remote.webrtc.track_ref(track, null, 0);
         var finished = 0, errors = [];
+        var ended_tracks = [];
         var check_done = function(error) {
           finished++;
           if(error) {
             errors.push(error);
           }
           if(finished >= main_room.subroom_ids.length) {
+            remote.webrtc.local_tracks = remote.webrtc.local_tracks || [];
+            // When all subrooms are updated or errored,
+            // remove the ended tracks from the list
+            var nearest = remote.webrtc.local_tracks.length;
+            ended_tracks.forEach(function(t) {
+              var idx = remote.webrtc.local_tracks.indexOf(t);
+              if(idx != -1) {
+                nearest = Math.min(nearest, idx);
+              }
+            })
+            remote.webrtc.local_tracks = remote.webrtc.local_tracks.filter(function(t) { return ended_tracks.indexOf(t) == -1; });
+
             if(errors.length > 0) {
               rej(errors.length > 1 ? errors : errors[0]);
             } else {
-              var ending_tracks = remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.kind == track.kind; });
-              ending_tracks.forEach(function(t) { t.enabled = false; t.stop(); });
-              remote.webrtc.local_tracks = (remote.webrtc.local_tracks || []).filter(function(t) { return t.kind != track.kind; });
-              remote.webrtc.local_tracks.push(track);
+              // Add the new track if there were no errors
+              remote.webrtc.local_tracks.splice(nearest, 0, track);
               remote.webrtc.all_local_tracks.push(track);
               console.log("RTC: successfully replaced track!");
               res({added: track_ref});
@@ -231,8 +243,12 @@ remote.webrtc = {
               main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id] = main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id] || {};
               main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id].track = track;
               main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id].sender = sender;
+              if(old_track.initial_track) {
+                track.initial_track = true;
+              }
               old_track.enabled = false;
               old_track.stop();
+              ended_tracks.push(old_track);
               check_done();
             }, function(err) {
               check_done(err);
@@ -369,7 +385,13 @@ remote.webrtc = {
     config.iceTransportPolicy = 'all';
     config.iceCandidatePoolSize = 2;
 
-    pc = new RTCPeerConnection(config);
+    try {
+      pc = new RTCPeerConnection(config);
+    } catch(e) {
+      console.error(e);
+      remote.connection_error(main_room.ref, main_room.users[remote_user_id], 'failed');
+      return
+    }
     var pc_ref = {
       refState: 'new',
       id: Math.round(Math.random() * 9999) + ""  + (new Date()).getTime(),
@@ -441,6 +463,10 @@ remote.webrtc = {
         console.log("RTC: starting new connection due to renegotiate request");
         rtcpc = remote.webrtc.initialize(remote_user_id, main_room.ref.id);
       }
+      if(rtcpc.getTransceivers().length == 2) {
+        rtcpc.extra_video = rtcpc.addTransceiver('video');
+        rtcpc.extra_audio = rtcpc.addTransceiver('audio');
+      }
       rtcpc.createOffer({  offerToReceiveAudio: 1, offerToReceiveVideo: 1}).then(function(desc) {
         // if(rtcpc.signalingState != "stable") { console.error("RTC: initializing when NOT STABLE", rtcpc.signalingState); return; }
         var state = rtcpc.signalingState;
@@ -460,11 +486,12 @@ remote.webrtc = {
             // reconnecting is a last-ditch effort, and this
             // error will unnecessarily imply connection
             // is imminent.
-            remote.connection_error(main_room.ref, main_room.users[remote_user_id]);
+            // TODO: add logic to prevent this error when not actually connected
+            // remote.connection_error(main_room.ref, main_room.users[remote_user_id]);
           }
         });
       }, function(err) {
-        console.error("RTC: offer error", err, state);
+        console.error("RTC: offer error", err, rtcpc.signalingState);
         remote.connection_error(main_room.ref, main_room.users[remote_user_id]);
       });
     };
@@ -489,6 +516,9 @@ remote.webrtc = {
       console.log("RTC: remote track added", track, pc_ref);
       var add_track = function(track) {
         try {
+          // For now, we will ignore muted tracks as our
+          // multi-transceiver approach seems to cause
+          // them to arrive sometimes
           var track_ref = remote.webrtc.track_ref(track, null, main_room.subrooms[subroom_id].id_index);
           if(stream && main_room.users[remote_user_id] && stream != main_room.users[remote_user_id].remote_stream) {
             main_room.users[remote_user_id].remote_stream = stream;
@@ -501,9 +531,6 @@ remote.webrtc = {
             main_room.subrooms[subroom_id][pc_ref.id].remote_tracks[track.id] = {ref: track_ref, track: track, pc: pc_ref.pc};
           });  
         } catch(e) {
-          if(location.hostname == 'localhost') {
-            alert("track didn't get added! check for the error!");
-          }
           console.error("CAUGHT TRACK ADDING ERROR", e);
         };
       };
@@ -539,7 +566,9 @@ remote.webrtc = {
     }
     pc.addEventListener('track', function(event) {
       var rtcpc = (event.target && event.target.id) ? event.target : pc;
-      main_room.add_track(event.track, (event.streams || [])[0], rtcpc.id || pc.id || pc_id);
+      if((event.streams || []).length > 0) {
+        main_room.add_track(event.track, (event.streams || [])[0], rtcpc.id || pc.id || pc_id);
+      }
     });
     // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/signalingState
     pc.addEventListener('icecandidate', function(e) {
@@ -583,6 +612,7 @@ remote.webrtc = {
       if(pc_ref.already_connected) { return; }
       pc_ref.already_connected = true;
       pc_ref.prevent_reconnect_until = 0;
+      remote.webrtc.failed_retries = 0;
       (main_room.subrooms[pc_ref.subroom_id].to_close || []).forEach(function(ref) { if(ref) { ref.close(); } });
       main_room.subrooms[pc_ref.subroom_id].to_close = null;
       // we should be live!
@@ -662,6 +692,7 @@ remote.webrtc = {
     });
     console.log("RTC: adding initial local tracks", room.share_tracks, remote.webrtc.local_tracks);
     // Safari only allows streaming one video track, it seems, so add the later ones first
+    // NOTE: this isn't true, if you add more transceivers in advance
     var tracks_to_send = [];
     var already_added = false;
     remote.webrtc.local_tracks.forEach(function(track) {
@@ -672,6 +703,8 @@ remote.webrtc = {
           if(room.priority_tracks.indexOf(track) != -1) {
             tracks_to_send.push(track);
             already_added = true;  
+          } else if(track.initial_track && track.enabled && track.readyState != 'ended') {
+            tracks_to_send.push(track);
           }
         } else if(!already_added) {
           tracks_to_send.push(track);
@@ -688,6 +721,7 @@ remote.webrtc = {
         tracks_to_send.push(track);
       }
     })
+    console.log("RTC: adding " + tracks_to_send.length + " local tracks", tracks_to_send);
     tracks_to_send.forEach(function(track) {
       console.log("RTC: adding local track", track);
       var sender = pc.addTrack(track, pc_ref.local_stream);
@@ -764,8 +798,37 @@ remote.webrtc = {
     var all_connections_ended = true;
     var needs_refresh = false;
     remote.webrtc.pcs = remote.webrtc.pcs || [];
+    var now = (new Date()).getTime();
+    // Old PCs need to be garbage collected or Chrome gets sad
+    room.pcs = (room.pcs || []).filter(function(pc) {
+      return !pc.ended || pc.ended > now - (30 * 1000);
+    });
+    // TODO: does this maybe mess things up royally?
+    remote.webrtc.pcs = remote.webrtc.pcs.filter(function(pc_ref) {
+      // Keep all non-old-and-ended PCs for troubleshooting and recovery
+      return !(pc_ref && pc_ref.pc && pc_ref.pc.ended < now - (5 * 60 * 1000));
+    });
+    if(remote.webrtc.pcs.length > 0) {
+      remote.webrtc.has_connected = true;
+    }
+    (remote.webrtc.all_local_tracks || []).forEach(function(t) {
+      if(t.readyState != 'live' || !t.enabled) {
+        t.ended = t.ended || now;
+      }
+    });
+    remote.webrtc.all_local_tracks = remote.webrtc.all_local_tracks.filter(function(t) {
+      // Keep all non-old-and-ended tracks for troubleshooting
+      return !(t && t.ended && t.ended < now - (60 * 1000));
+    })
+    remote.webrtc.all_local_tracks = [].concat(remote.webrtc.local_tracks);
+
+
     remote.webrtc.pcs.forEach(function(pc_ref) {
+      if(pc_ref && pc_ref.pc && ['closed', 'failed', 'disconnected'].indexOf(pc_ref.pc.connectionState) != -1) {
+        pc_ref.pc.ended = pc_ref.pc.ended || now;
+      }
       if(pc_ref && pc_ref.pc && pc_ref.pc.connectionState != 'closed' && pc_ref.pc.connectionState != 'failed') {
+        // TODO: check data track to make sure it's still open
         all_connections_ended = false;
         if(pc_ref.pc.connectionState == 'connected') {
           // Sometimes we get in a state where we think we're
@@ -774,40 +837,71 @@ remote.webrtc = {
           var receivers = pc_ref.pc.getReceivers();
           var senders = pc_ref.pc.getSenders();
           var video_muted = true;
+          var track_ids = (room.local_tracks || []).map(function(t) { return t.id; }).join('+');
+          remote.webrtc.local_issue_ids = remote.webrtc.local_issue_ids || {};
           if((room.local_tracks || []).find(function(t) { return t.type == 'video' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted; })) {
             video_muted = false;
           }
           if(!video_muted && !senders.find(function(r) { return r.track && r.track.kind == 'video' && r.track.enabled && !r.track.muted; })) {
             console.error("Expected to be sending local video but none attached to the stream");
-            needs_refresh = true;
+            if(!remote.webrtc.local_issue_ids[track_ids]) {
+              needs_refresh = true;
+              remote.webrtc.local_issue_ids[track_ids] = true;
+            }
           }
           if(!room.mute_audio && !senders.find(function(r) { return r.track && r.track.kind == 'audio' && r.track.enabled && !r.track.muted; })) {
             console.error("Expected to be sending local audio but none attached to the stream");
-            needs_refresh = true;
+            if(!remote.webrtc.local_issue_ids[track_ids]) {
+              needs_refresh = true;
+              remote.webrtc.local_issue_ids[track_ids] = true;
+            }  
           }
+
           room.state_for = room.state_for || {};
+          remote.webrtc.remote_issue_ids = remote.webrtc.remote_issue_ids || {};
           if(room.state_for[pc_ref.user_id] && room.state_for[pc_ref.user_id].video) {
             if(!receivers.find(function(r) { return r.track && r.track.kind == 'video' && r.track.enabled && !r.track.muted; })) {
               console.error("Expected to receive remote video but none found");
-              needs_refresh = true;
+              if(!remote.webrtc.remote_issue_ids[room.state_for.track_ids]) {
+                needs_refresh = true;
+                remote.webrtc.remote_issue_ids[room.state_for.track_ids] = true;
+              }
             }
           }
           if(room.state_for[pc_ref.user_id] && room.state_for[pc_ref.user_id].audio) {
             if(!receivers.find(function(r) { return r.track && r.track.kind == 'audio' && r.track.enabled && !r.track.muted; })) {
               console.error("Expected to receive remote audio but none found");
-              needs_refresh = true;
+              if(!remote.webrtc.remote_issue_ids[room.state_for.track_ids]) {
+                needs_refresh = true;
+                remote.webrtc.remote_issue_ids[room.state_for.track_ids] = true;
+              }
             }
           }
-        } else if(pc_ref.pc.connectionState == 'new' || pc_ref.pc.connectionState == 'connecting' && pc_ref.started < (new Date()).getTime() - (5 * 60 * 1000)) {
-          // If after 5 minutes a pc never succeeds in connecting, close it
+          if(!needs_refresh && pc_ref.started < (new Date()).getTime() - (30 * 1000)) {
+            // If we have sustained a connection for at
+            // least 30 second and it's not missing
+            // anything, clear issue_ids;
+            remote.webrtc.local_issue_ids = {};
+            remote.webrtc.remote_issue_ids = {};
+          }
+        } else if(pc_ref.pc.connectionState == 'new' || pc_ref.pc.connectionState == 'connecting' && pc_ref.started < (new Date()).getTime() - (2 * 60 * 1000)) {
+          // If after 2 minutes a pc never succeeds in connecting, close it
           pc_ref.pc.close();
         }
       }
     });
-    if(needs_refresh || (remote.webrtc.pcs.length > 0 && all_connections_ended)) {
+    if(!all_connections_ended && !needs_refresh) {
+      // If we succeeded in getting an active connection
+    }
+    if(needs_refresh || (remote.webrtc.has_connected && all_connections_ended)) {
       console.log("RTC: no active connections, try to reconnect");
-      remote.webrtc.reconnect();
-    } else if(!room.active) {
+      remote.webrtc.failed_retries = (remote.webrtc.failed_retries || 0) + 1;
+      if(remote.webrtc.failed_retries < 3) {
+        remote.webrtc.reconnect();
+      } else {
+        console.log("RTC: too many failed reconnects, not trying again");
+      }
+    } else if(!room.active && remote.webrtc.pcs.length > 0 && !all_connections_ended) {
       room.set_active(true);
     }
     remote.webrtc.poll_status.timer = setTimeout(remote.webrtc.poll_status, 3000);

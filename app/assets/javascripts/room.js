@@ -28,7 +28,12 @@ remote.addEventListener('track_added', function(data) {
   var track = data.track;
   room.all_remote_tracks = room.all_remote_tracks || [];
   room.all_remote_tracks.push({type: track.type, id: track.id, user_id: data.user_id, mediaStreamTrack: track.mediaStreamTrack});
-  if(track.generate_dom) {
+  // Muted tracks are being caused by our multi-transceiver
+  // approach, and can probably safely be ignored
+  if(track && track.mediaStreamTrack && track.mediaStreamTrack.muted) {
+    console.error("RTC: muted media track arrived", track);
+  }
+  if(track.generate_dom && track.mediaStreamTrack && !track.mediaStreamTrack.muted) {
     console.log("adding remote track", track);
     if(track.type == 'video' || (track.type == 'audio' && track.version_id)) { //} || track.type == 'audio') {
       // Right now we allow multiple audio tracks, so you
@@ -42,15 +47,28 @@ remote.addEventListener('track_added', function(data) {
           }
         }
       } else {
-        priors = elems;
+        var new_priors = [];
+        for(var idx = 0; idx < elems.length; idx++) {
+          new_priors.push(elems[idx]);
+        }
+        priors = new_priors;
       }
+
+      room.user_tracks = room.user_tracks || {};
+      if(track.type == 'video') {
+        // Keep the last 2 videos so you can show both
+        // if needed when screen sharing
+        room.user_tracks[data.user_id] = (room.user_tracks[data.user_id] || []).concat([track]).slice(-2);
+      }
+      var to_remove = [];
       for(var idx = 0; idx < priors.length; idx++) {
         if(priors[idx].getAttribute('data-user-id') == data.user_id) {
-          priors[idx].parentNode.removeChild(priors[idx]);
+          to_remove.push(priors[idx]);
         } else {
           priors[idx].style.display = 'none';
         }
       }
+      to_remove.forEach(function(elem) { elem.parentNode.removeChild(elem); });
     }
     var dom = track.generate_dom();
     dom.classList.add('track-' + track.id);
@@ -73,12 +91,19 @@ remote.addEventListener('track_removed', function(data) {
     found = true;
   }
   if(track.type == 'video') {
-    var priors = document.getElementById('partner').getElementsByClassName("room-" + track.type);
+    var priors = document.querySelectorAll('#partner .room-' + track.type);
+    var to_remove = [];
     for(var idx = 0; idx < priors.length; idx++) {
       if(priors[idx].getAttribute('data-user-id') == data.user_id) {
-        priors[idx].parentNode.removeChild(priors[idx]);
+        to_remove.push(priors[idx]);
       }
     }
+    to_remove.forEach(function(elem) {
+      if(elem.classList.contains('secondary_preview')) {
+        console.error("REMOVED SECONDARY WHEN TRACK REMOVED");
+      }
+      elem.parentNode.removeChild(elem);
+    });
     if(data.newest_other) {
       add_dom(data.newest_other.generate_dom(), data.track, data.user);
     }
@@ -115,7 +140,11 @@ remote.addEventListener('user_removed', function(data) {
 });
 remote.addEventListener('connection_error', function(data) {
   if(!room.active) {
-    room.status('Having Some Trouble...', {invite: true});
+    if(data.state == 'failed') {
+      room.status('Room Failed to Load, Please Reload or Restart Your Browser');
+    } else {
+      room.status('Having Some Trouble...', {invite: true});      
+    }
   }
 });
 remote.addEventListener('message', function(data) {
@@ -487,7 +516,7 @@ var room = {
       communicator.classList.remove('preview');
       communicator.classList.remove('playable');
       communicator.classList.remove('paused');
-      var vid = room.local_tracks.find(function(t) { return t.type == 'video' && t.mediaStreamTrack.enabled; });
+      var vid = room.local_tracks.find(function(t) { return t.type == 'video' && t.mediaStreamTrack.enabled && t.mediaStreamTrack.readyState != 'ended'; });
       if(vid && vid.generate_dom) {
         communicator.appendChild(vid.generate_dom());
       } else {
@@ -501,6 +530,9 @@ var room = {
       }
     }
     room.send_update();
+    setTimeout(function() {
+      room.send_update();
+    }, 1000);
   },
   toggle_video: function(rewind) {
     var video = room.share_tracks && room.share_tracks.video;
@@ -642,12 +674,18 @@ var room = {
       message.audio_muted = true;
     }
     message.tts = !!room.settings.tts;
-    if((room.local_tracks || []).find(function(t) { return t.type == 'audio' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted; })) {
+    if((room.local_tracks || []).find(function(t) { return t.type == 'audio' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted && t.mediaStreamTrack.readyState != 'ended'; })) {
       message.audio = true;
     }
-    if((room.local_tracks || []).find(function(t) { return t.type == 'video' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted; })) {
+    if((room.local_tracks || []).find(function(t) { return t.type == 'video' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted && t.mediaStreamTrack.readyState != 'ended'; })) {
       message.video = true;
     }
+    if(room.share_tracks && room.share_tracks.length) {
+      message.sharing = true;
+    }
+    message.track_ids = (room.local_tracks || []).map(function(t) { return t.id; }).join('+');
+
+
     if(room.asserted_buttons) {
       room.asserted_buttons.buttons = room.asserted_buttons.buttons.map(function(b) { return room.simple_button(b)});
       message.asserted_buttons = room.asserted_buttons;
@@ -1334,7 +1372,7 @@ var room = {
     ['audio', 'video'].forEach(function(type) {
       var type_device_id = room['temp_' + type + '_device_id'] || room.settings[type + '_device_id']
       var last_preview_track = room['last_preview_' + type + '_track'];
-      if(type_device_id != current_ids[type] || !current_tracks[type].enabled) {
+      if(type_device_id != current_ids[type] || !current_tracks[type].enabled || current_tracks[type].readyState != 'live') {
         if(type_device_id == 'none') {
           if(current_tracks[type] && current_tracks[type].mediaStreamTrack) {
             current_tracks[type].mediaStreamTrack.enabled = false;
@@ -1923,8 +1961,92 @@ var room = {
             remote.refresh_remote_tracks(room.current_room.id, type);
           }
         });
+        room.sharers = room.sharers || {};
+
+        if(data.message.sharing) {
+          // Check for two video feeds, if there
+          // are two and there isn't a secondary_preview,
+          // go ahead and set it up.
+          var elems = document.querySelectorAll('.grid .preview .secondary_preview');
+          var user_previews = [];
+          for(var idx = 0; idx < elems.length; idx++) {
+            if(elems[idx].getAttribute('data-user-id') == data.user_id) {
+              user_previews.push(elems[idx]);
+            }
+          }
+          if(user_previews.length == 0) {
+            // Set up the second video feed
+            if(((room.user_tracks || {})[data.user_id] || []).length > 1) {
+              var valids = room.user_tracks[data.user_id].filter(function(t) { return t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted && t.mediaStreamTrack.readyState != 'ended'});
+              if(valids.length > 1) {
+                // Shrink the self preview while sharing
+                document.querySelector('#communicator').classList.add('small_preview');
+                var prior_video = valids[0];
+                if(prior_video.generate_dom) {
+                  var elem = prior_video.generate_dom();
+                  elem.style.position = 'absolute';
+                  elem.style.top = '5px';
+                  elem.style.left = '5px';
+                  elem.style.margin = '0';
+                  elem.style.minWidth = '20px';
+                  elem.style.maxWidth = '25%';
+                  elem.style.width = '';
+                  elem.style.height = '';
+                  elem.classList.add('secondary_preview');
+                  elem.setAttribute('data-track-id', prior_video.id);
+                  elem.setAttribute('data-user-id', data.user_id);
+          
+                  document.querySelector('.grid .mid .preview').appendChild(elem);
+                }
+              }
+            }
+          }
+
+          room.sharers[data.user_id] = true;
+        } else {
+          // Remove any secondary_previews
+          room.sharers[data.user_id] = false;
+          var to_remove = [];
+          var elems = document.querySelectorAll('.grid .preview .secondary_preview');
+          var to_remove = [];
+          for(var idx = 0; idx < elems.length; idx++) {
+            if(elems[idx].getAttribute('data-user-id') == data.user_id) {
+              to_remove.push(elems[idx]);
+            }
+          }
+          to_remove.forEach(function(e) { e.parentNode.removeChild(e); });
+          // If we removed any secondary previews,
+          // we will probably need to replace the main feed
+          if(((room.user_tracks || {})[data.user_id] || []).length > 0) {
+            // TODO: We need to remove the old video feeds here
+            // for this user.
+            var valids = room.user_tracks[data.user_id].filter(function(t) { return t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted && t.mediaStreamTrack != 'ended'});
+            
+            if(valids.length > 0) {
+              var track = valids[valids.length - 1];
+              if(!document.querySelector('#partner video.track-' + track.id)) {
+                var dom = track.generate_dom();
+                dom.classList.add('track-' + track.id);
+                dom.setAttribute('data-version-id', track.version_id);
+                add_dom(dom, track, data.user);  
+              }
+            }
+          }
+  
+          // If nobody is sharing anymore, restore self preview
+          var actives = room.active_users || {};
+          var none_sharing = true;
+          for(var id in actives) {
+            if(actives[id] && room.sharers[id]) {
+              none_sharing = false;
+            }
+          }
+          document.querySelector('#communicator').classList.remove('small_preview');
+        }
         room.state_for = room.state_for || {};
         room.state_for[data.user_id] = {
+          track_ids: data.message.track_ids,
+          sharing: data.message.sharing,
           audio: data.message.audio,
           video: data.message.video
         };
@@ -2033,7 +2155,7 @@ var room = {
     if(user && (room.active_users || {})[user.id]) {
       delete room.active_users[user.id];
       input.play_sound('/sounds/exit.mp3');
-      var elems = document.getElementById('partner').querySelectorAll('audio,video');
+      var elems = document.querySelectorAll('#partner audio, #partner video, .grid .preview .secondary_preview');
       var to_remove = [];
       for(var idx = 0; idx < elems.length; idx++) {
         if(elems[idx].getAttribute('data-user-id') == user.id) {
@@ -2043,6 +2165,9 @@ var room = {
       setTimeout(function() {
         if(!(room.active_users || {})[user.id]) {
           to_remove.forEach(function(e) {
+            if(e.classList.contains('secondary_preview')) {
+              console.error("REMOVED SECONDARY WHEN USER LEFT");
+            }
             if(e.parentNode) {
               e.parentNode.removeChild(e);
             }

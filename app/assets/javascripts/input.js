@@ -52,7 +52,8 @@ var input = {
 
     var new_list = [];
     audio_analysers.forEach(function(ana) {
-      if(!ana.audio_element.parentNode || ana.stream.active == false) {
+      var audio_track = ana.stream && ana.stream.getAudioTracks[0];
+      if(!ana.audio_element.parentNode || (audio_track && audio_track.readyState != 'live')) {
         console.log("OLD TRACK, STOPPING ANALYSIS");
         ana.release();
       } else {

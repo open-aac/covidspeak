@@ -215,10 +215,11 @@ Object.assign(remote, {
       });
     }
   },
-  connection_error: function(room, user) {
+  connection_error: function(room, user, state) {
     remote.notify('connection_error', {
       room: room,
       user: user,
+      state: state,
       user_id: user.id,
       room_id: room.id
     });
@@ -226,11 +227,20 @@ Object.assign(remote, {
   track_added: function(room, user, track) {
     track.added_at = (new Date()).getTime();
     remote.rooms[room.id].users[user.id].tracks = remote.rooms[room.id].users[user.id].tracks || {};
+    var user = remote.rooms[room.id].users[user.id].user;
+    if(track.type == 'video') {
+      for(var track_id in remote.rooms[room.id].users[user.id].tracks) {
+        var t = remote.rooms[room.id].users[user.id].tracks[track_id];
+        if(t.type == 'video' && t.mediaStreamTrack && t.mediaStreamTrack.readyState == 'live' && !t.mediaStreamTrack.muted && t.mediaStreamTrack.enabled) {
+          track.possibly_secondary = true;
+        }
+      }
+    }
     remote.rooms[room.id].users[user.id].tracks[track.id] = track;
     // Trigger for each track that is added for a remote user
     remote.notify('track_added', {
       track: track,
-      user: remote.rooms[room.id].users[user.id].user,
+      user: user,
       room: remote.rooms[room.id].room,
       room_id: room.id,
       user_id: user.id
