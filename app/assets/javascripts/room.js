@@ -675,9 +675,17 @@ var room = {
     }
     message.tts = !!room.settings.tts;
     if((room.local_tracks || []).find(function(t) { return t.type == 'audio' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted && t.mediaStreamTrack.readyState != 'ended'; })) {
+      // Specify is camera is active vs any old video feed
+      if(room.local_tracks.find(function(t) { return t.type == 'audio' && t.live_content && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted && t.mediaStreamTrack.readyState != 'ended'; })) {
+        message.microphone = true;
+      }
       message.audio = true;
     }
     if((room.local_tracks || []).find(function(t) { return t.type == 'video' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted && t.mediaStreamTrack.readyState != 'ended'; })) {
+      // Specify is camera is active vs any old video feed
+      if(room.local_tracks.find(function(t) { return t.type == 'video' && t.live_content && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted && t.mediaStreamTrack.readyState != 'ended'; })) {
+        message.camera = true;
+      }
       message.video = true;
     }
     if(room.share_tracks && room.share_tracks.length) {
@@ -1025,6 +1033,7 @@ var room = {
         remote.start_local_tracks(room.input_settings).then(function(tracks) {
           local_tried = true;
           for(var idx = 0; idx < tracks.length; idx++) {
+            tracks[idx].live_content = true;
             if(tracks[idx].type == 'video') {
               document.getElementById('communicator').innerHTML = "";
               document.getElementById('communicator').appendChild(tracks[idx].generate_dom());
@@ -1394,6 +1403,7 @@ var room = {
               room.local_tracks = (room.local_tracks || []).filter(function(t) { return t.type != track.type && (!t.mediaStreamTrack || priority_ids.indexOf(t.mediaStreamTrack.id) == -1); });
               console.error("had to resort to fallback for removing replaced " + type + " tracks");
             }
+            track.live_content = true;
             // We add to the front of the list so shares don't get interrupted
             room.local_tracks.unshift(track);
             room.update_preview();
@@ -1974,7 +1984,17 @@ var room = {
               user_previews.push(elems[idx]);
             }
           }
-          if(user_previews.length == 0) {
+          if(!data.message.camera) {
+            // If sharing but no camera, remove secondary preview
+            var user_previews = document.querySelectorAll('.grid .mid .preview .secondary_preview.user-' + data.user_id);
+            var to_remove = [];
+            for(var idx = 0; idx < user_previews.length; idx++) {
+              if(user_previews[idx].getAttribute('data-user-id') == data.user_id) {
+                to_remove.push(user_previews[idx]);
+              }
+            }
+            to_remove.forEach(function(e) { e.parentNode.removeChild(e); });
+          } else if(user_previews.length == 0) {
             // Set up the second video feed
             if(((room.user_tracks || {})[data.user_id] || []).length > 1) {
               var valids = room.user_tracks[data.user_id].filter(function(t) { return t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted && t.mediaStreamTrack.readyState != 'ended'});
@@ -1993,6 +2013,7 @@ var room = {
                   elem.style.width = '';
                   elem.style.height = '';
                   elem.classList.add('secondary_preview');
+                  elem.classList.add('user-' + data.user_id);
                   elem.setAttribute('data-track-id', prior_video.id);
                   elem.setAttribute('data-user-id', data.user_id);
           

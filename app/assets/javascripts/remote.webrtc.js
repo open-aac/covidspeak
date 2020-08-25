@@ -463,7 +463,7 @@ remote.webrtc = {
         console.log("RTC: starting new connection due to renegotiate request");
         rtcpc = remote.webrtc.initialize(remote_user_id, main_room.ref.id);
       }
-      if(rtcpc.getTransceivers().length == 2) {
+      while(rtcpc.getTransceivers().length < 4) {
         rtcpc.extra_video = rtcpc.addTransceiver('video');
         rtcpc.extra_audio = rtcpc.addTransceiver('audio');
       }
