@@ -274,7 +274,9 @@ Object.assign(remote, {
     var json = message;
     var user = remote.rooms[room.id].users[user.id].user;
     try {
-      json = JSON.parse(json);
+      if(typeof(str) == 'string') { 
+        json = JSON.parse(json);
+      }
       if(json.timestamp && remote.rooms[room.id] && remote.rooms[room.id].users[user.id]) {
         var now = (new Date()).getTime();
         user.ts_offset = (json.timestamp - now);

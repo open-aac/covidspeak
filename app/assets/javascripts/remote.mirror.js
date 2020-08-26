@@ -52,16 +52,8 @@ remote.mirror = {
         remote.mirror.local_tracks = stream.getTracks();
         var result = [];
         remote.mirror.local_tracks.forEach(function(track) {
-          var track_ref = {
-            type: track.kind,
-            mediaStreamTrack: track,
-            id: "0-" + track.id,
-            device_id: track.getSettings().deviceId,
-            added: (new Date()).getTime(),
-          };
-          if(track.kind == 'audio' || track.kind == 'video') {
-            track_ref.generate_dom = remote.mirror.dom_generator(track, stream);
-          }
+          var track_ref = remote.mirror.track_ref(track, true, stream);
+          track.initial_track = true;
           result.push(track_ref);
         });
         res(result);
@@ -85,15 +77,7 @@ remote.mirror = {
         if(tracks.length > 0) {
           var list = [];
           tracks.forEach(function(track) {
-            var track_ref = {
-              id: "0-" + track.id,
-              mediaStreamTrack: track,
-              device_id: track.getSettings().deviceId,
-              type: track.kind
-            };
-            if(track.kind == 'audio' || track.kind == 'video') {
-              track_ref.generate_dom = remote.mirror.dom_generator(track);
-            }
+            var track_ref = remote.mirror.track_ref(track, true);
             list.push(track_ref);
             var new_track = false;
             if(remote.mirror.local_tracks.indexOf(track) == -1) {
@@ -103,12 +87,7 @@ remote.mirror = {
             track.enabled = true;
             if(new_track) {
               setTimeout(function() {
-                var track_ref = {
-                  id: 'remote-' + track.id,
-                  mediaStreamTrack: track,
-                  device_id: track.getSettings().deviceId,
-                  type: track.kind
-                };
+                var track_ref = remote.mirror.track_ref(track, false);
                 remote.mirror.start_processsing(track, true, function(generator) {
                   track_ref.generate_dom = generator;
                   remote.track_added(main_room.ref, main_room.remote_user_ref, track_ref);
@@ -163,6 +142,25 @@ remote.mirror = {
   reconnect: function() {
     // noop
   },
+  track_ref: function(track, local, stream) {
+    if(!track) { return null; }
+    if(local) {
+      track.local_added = track.local_added || (new Date()).getTime();
+    } else {
+      track.remote_added = track.remote_added || (new Date()).getTime();
+    }
+    var res = {
+      id: (local ? '0-' : 'reverse-') + track.id,
+      mediaStreamTrack: track,
+      device_id: track.getSettings().deviceId,
+      type: track.kind,
+      added: (local ? track.local_added : track.remote_added),
+    };
+    if(track.kind == 'audio' || track.kind == 'video') {
+      res.generate_dom = remote.mirror.dom_generator(track, stream);
+    }
+    return res;
+  },
   connect_to_remote: function(access, room_key) {
     return new Promise(function(res, rej) {
       var main_room = remote.mirror.rooms[room_key] || {};
@@ -181,13 +179,7 @@ remote.mirror = {
         };
         remote.user_added(main_room.ref, main_room.remote_user_ref);
         remote.mirror.local_tracks.forEach(function(track) {
-          var track_ref = {
-            id: 'reverse-' + track.id,
-            mediaStreamTrack: track,
-            device_id: track.getSettings().deviceId,
-            type: track.kind,
-            added: (new Date()).getTime(),
-          }
+          var track_ref = remote.mirror.track_ref(track, false);
           remote.mirror.start_processsing(track, true, function(generator) {
             track_ref.generate_dom = generator;
             remote.track_added(main_room.ref, main_room.remote_user_ref, track_ref);
@@ -198,19 +190,41 @@ remote.mirror = {
     });
   },
   send_message: function(room_id, message) {
+    // If 'update', add in the mids mapping
+    // for camera, microphone, share_video, share_audio
     try {
       var json = JSON.parse(message);
       if(json && json.action == 'update') {
-        return new Promise(function(res, rej) {
-          res({sent: message});
-        });
+        json.tracks = {};
+        // TODO: these need to be track_ref objects
+        if(json.camera) {
+          json.tracks.camera = remote.mirror.track_ref(remote.mirror.local_tracks.find(function(t) { return t.kind == 'video' && t.live_content && t.enabled && t.readyState == 'live'}));
+        }
+        if(json.microphone) {
+          json.tracks.microphone = remote.mirror.track_ref(remote.mirror.local_tracks.find(function(t) { return t.kind == 'audio' && t.live_content && t.enabled && t.readyState == 'live'}));
+        }
+        if(json.sharing) {
+          json.tracks.share_video = remote.mirror.track_ref(remote.mirror.local_tracks.find(function(t) { return t.kind == 'video' && t.share_content && t.enabled && t.readyState == 'live'}));
+          json.tracks.share_audio = remote.mirror.track_ref(remote.mirror.local_tracks.find(function(t) { return t.kind == 'audio' && t.share_content && t.enabled && t.readyState == 'live'}));
+        }
+        var orig = message;
+        message = json;
+        // return new Promise(function(res, rej) {
+        //   res({sent: orig});
+        // });
       }
     } catch(e) { }
     var main_room = remote.mirror.rooms[room_id];
     return new Promise(function(res, rej) {
       if(main_room.remote_user_ref) {
         setTimeout(function() {
-          remote.message_received(main_room.ref, main_room.remote_user_ref, {id: 'remote-data'}, message);
+          if(json && json.action == 'update') {
+            remote.message_received(main_room.ref, main_room.remote_user_ref, {id: 'remote-data'}, json);
+          } else {
+            remote.message_received(main_room.ref, main_room.remote_user_ref, {id: 'remote-data'}, message);
+          }
+          // If 'update', use the mid mappings to add in
+          // camera_track, microphone_track, share_video_track and share_audio_track
         }, 100);
         res({sent: message});  
       } else {

@@ -500,6 +500,35 @@ remote.webrtc = {
       // remote data channel added
       var remote_data = event.channel;
       remote_data.addEventListener('message', function(e) {
+        // If 'update', use the mid mappings to add in
+        // camera_track, microphone_track, share_video_track and share_audio_track
+        try {
+          var json = JSON.parse(e.data);
+          if(json && json.action == 'update') {
+            var mid_map = {};
+            pc.getTransceivers().forEach(function(trans, trans_idx) {
+              var mid = (trans.mid || trans_idx).toString();
+              if(trans.receiver && trans.receiver.track && trans.receiver.track.readyState != 'ended') {
+                mid_map[mid] = trans.receiver.track;
+              }
+            });
+            json.tracks = {};
+            if(json.camera && json.camera_mid && mid_map[json.camera_mid]) {
+              json.tracks.camera = remote.webrtc.track_ref(mid_map[json.camera_mid], null, main_room.subrooms[subroom_id].id_index);
+            }
+            if(json.microphone && json.microphone_mid) {
+              json.tracks.microphone = remote.webrtc.track_ref(mid_map[json.microphone_mid], null, main_room.subrooms[subroom_id].id_index);
+            }
+            if(json.sharing && json.share_video_mid) {
+              json.tracks.share_video = remote.webrtc.track_ref(mid_map[json.share_video_mid], null, main_room.subrooms[subroom_id].id_index);
+            }
+            if(json.sharing && json.share_audio_mid) {
+              json.tracks.share_audio = remote.webrtc.track_ref(mid_map[json.share_audio_mid], null, main_room.subrooms[subroom_id].id_index);
+            }
+            remote.message_received(main_room.ref, main_room.users[remote_user_id], {id: "0-" + local_data.id}, json);
+            return;
+          }
+        } catch(e) { }
         remote.message_received(main_room.ref, main_room.users[remote_user_id], {id: "0-" + local_data.id}, e.data);
       });
     });
@@ -1119,6 +1148,44 @@ remote.webrtc = {
       if(main_room) {
         main_room.subroom_ids.forEach(function(subroom_id) {
           var rtcpc = main_room.subrooms[subroom_id].rtcpc;
+          if(message.match(/update/)) {
+            var json = null;
+            try {
+              json = JSON.parse(message);
+            } catch(e) { }
+            if(json && json.action == 'update') {
+              var track_mids = {};
+              rtcpc.getTransceivers().forEach(function(trans, trans_idx) {
+                var mid = (trans.mid || trans_idx).toString();
+                if(trans.sender && trans.sender.track && trans.sender.track.readyState != 'ended') {
+                  track_mids[trans.sender.track.id] = mid;
+                }
+              });
+              if(json.camera) {
+                var track = remote.webrtc.local_tracks.find(function(t) { return t.kind == 'video' && t.live_content && t.enabled && !t.muted && t.readyState != 'ended'});
+                if(track && track_mids[track.id]) {
+                  json.camera_mid = track_mids[track.id];
+                }
+              }
+              if(json.microphone) {
+                var track = remote.webrtc.local_tracks.find(function(t) { return t.kind == 'audio' && t.live_content && t.enabled && !t.muted && t.readyState != 'ended'});
+                if(track && track_mids[track.id]) {
+                  json.microphone_mid = track_mids[track.id];
+                }      
+              }
+              if(json.sharing) {
+                var track = remote.webrtc.local_tracks.find(function(t) { return t.kind == 'video' && t.share_content && t.enabled && !t.muted && t.readyState != 'ended'});
+                if(track && track_mids[track.id]) {
+                  json.share_video_mid = track_mids[track.id];
+                }      
+                var track = remote.webrtc.local_tracks.find(function(t) { return t.kind == 'audio' && t.share_content && t.enabled && !t.muted && t.readyState != 'ended'});
+                if(track && track_mids[track.id]) {
+                  json.share_audio_mid = track_mids[track.id];
+                }            
+              }
+              message = JSON.stringify(json);
+            }
+          }
           var subroom = main_room.subrooms[subroom_id][rtcpc.id];
           if(subroom && subroom.data && subroom.data.readyState == 'open') {
             var str = message;

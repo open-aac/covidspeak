@@ -1,6 +1,4 @@
-// TODO: auto-close room after 12 hours
-// TODO: If room_id starts with x and is lost, this is probably
-// not a valid room...
+// TODO: If you share, then disable camera and re-enabled, you'll lose the share
 var mirror_type = location.href.match(/mirror/);
 var teaching_type = location.href.match(/teach/);
 var add_dom = function(elem, track, user) {
@@ -33,48 +31,16 @@ remote.addEventListener('track_added', function(data) {
   if(track && track.mediaStreamTrack && track.mediaStreamTrack.muted) {
     console.error("RTC: muted media track arrived", track);
   }
-  if(track.generate_dom && track.mediaStreamTrack && !track.mediaStreamTrack.muted) {
+  if(track.generate_dom && track.mediaStreamTrack && track.mediaStreamTrack.readyState != 'ended') {
     console.log("adding remote track", track);
-    if(track.type == 'video' || (track.type == 'audio' && track.version_id)) { //} || track.type == 'audio') {
-      // Right now we allow multiple audio tracks, so you
-      // can talk to someone while showing them a video
-      var elems = document.getElementById('partner').getElementsByClassName("room-" + track.type);
-      var priors = [];
-      if(track.version_id) {
-        for(var idx = 0; idx < elems.length; idx++) {
-          if(elems[idx].getAttribute('data-version-id') != track.verison_id) {
-            priors.push(elems[idx]);
-          }
-        }
-      } else {
-        var new_priors = [];
-        for(var idx = 0; idx < elems.length; idx++) {
-          new_priors.push(elems[idx]);
-        }
-        priors = new_priors;
-      }
-
-      room.user_tracks = room.user_tracks || {};
-      if(track.type == 'video') {
-        // Keep the last 2 videos so you can show both
-        // if needed when screen sharing
-        room.user_tracks[data.user_id] = (room.user_tracks[data.user_id] || []).concat([track]).slice(-2);
-      }
-      var to_remove = [];
-      for(var idx = 0; idx < priors.length; idx++) {
-        if(priors[idx].getAttribute('data-user-id') == data.user_id) {
-          to_remove.push(priors[idx]);
-        } else {
-          priors[idx].style.display = 'none';
-        }
-      }
-      to_remove.forEach(function(elem) { elem.parentNode.removeChild(elem); });
+    room.assert_media(track, data.user, true);
+    room.user_tracks = room.user_tracks || {};
+    if(track.type == 'video') {
+      // Keep the last 5 videos so you can show both
+      // if needed when screen sharing
+      room.user_tracks[data.user_id] = (room.user_tracks[data.user_id] || []).concat([track]).slice(-5);
     }
-    var dom = track.generate_dom();
-    dom.classList.add('track-' + track.id);
-    dom.setAttribute('data-version-id', track.version_id);
-    add_dom(dom, data.track, data.user);  
-  } else {
+} else {
     console.log("remote track added with no DOM", track);
   }
 });
@@ -91,13 +57,9 @@ remote.addEventListener('track_removed', function(data) {
     found = true;
   }
   if(track.type == 'video') {
-    var priors = document.querySelectorAll('#partner .room-' + track.type);
-    var to_remove = [];
-    for(var idx = 0; idx < priors.length; idx++) {
-      if(priors[idx].getAttribute('data-user-id') == data.user_id) {
-        to_remove.push(priors[idx]);
-      }
-    }
+    var to_remove = room.query_list('#partner .room-' + track.type, document, function(elem) {
+      return elem.getAttribute('data-user-id') == data.user_id;
+    });
     to_remove.forEach(function(elem) {
       if(elem.classList.contains('secondary_preview')) {
         console.error("REMOVED SECONDARY WHEN TRACK REMOVED");
@@ -105,7 +67,7 @@ remote.addEventListener('track_removed', function(data) {
       elem.parentNode.removeChild(elem);
     });
     if(data.newest_other) {
-      add_dom(data.newest_other.generate_dom(), data.track, data.user);
+      room.assert_media(data.newest_other, data.user, true);
     }
   }
 });
@@ -350,6 +312,8 @@ var room = {
         document.querySelector('#communicator').classList.add('muted');
       } else {
         audio_tracks.forEach(function(t) { 
+          t.live_content = true;
+          t.mediaStreamTrack.live_content = true;
           remote.add_local_tracks(room.current_room.id, t);
           t.mediaStreamTrack.enabled = true; 
         });
@@ -387,12 +351,17 @@ var room = {
         displaySurface: 'monitor'
       }).then(function(stream) {
         room.priority_tracks = stream.getTracks();
+        stream.getTracks().forEach(function(t) { t.share_content = true; });
         remote.add_local_tracks(room.current_room.id, stream).then(function(tracks) {
+          tracks.forEach(function(t) { t.share_content = true; });
           var track = tracks.find(function(t) { return t.type == 'video'; });
-          if(track.generate_dom) {
-            var elem = track.generate_dom();
-            room.update_preview(elem);
+          if(track) {
+            if(track.generate_dom) {
+              var elem = track.generate_dom();
+              room.update_preview(elem);
+            }  
           }
+          tracks.forEach(function(t) { t.live_content = false; t.mediaStreamTrack.live_content = false; });
           room.share_tracks = tracks;
           room.local_tracks.push(track);
         });
@@ -471,12 +440,16 @@ var room = {
             initialized = true;
             document.body.appendChild(div);
             var stream = canvas.captureStream();
+            stream.getTracks().forEach(function(t) { t.share_content = true; });
             room.priority_tracks = stream.getTracks();
             console.log("FILE: adding local track...");
             remote.add_local_tracks(room.current_room.id, stream).then(function(tracks) {
+              tracks.forEach(function(t) { t.share_content = true; });
               var track = tracks.find(function(t) { return t.type == 'video'; });
               track.canvas = canvas;
               track.share_pic = find_pic;
+              track.live_content = false;
+              track.mediaStreamTrack.live_content = false;
               if(track.generate_dom) {
                 var elem = track.generate_dom();
                 room.update_preview(elem);
@@ -580,11 +553,15 @@ var room = {
               } else if(video_elem.mozCaptureStream) {
                 stream = video_elem.mozCaptureStream();
               }
+              stream.getTracks().forEach(function(t) { t.share_content = truee; });
               room.priority_tracks = stream.getTracks();
               remote.add_local_tracks(room.current_room.id, stream).then(function(tracks) {
+                tracks.forEach(function(t) { t.share_content = true; });
                 var track = tracks.find(function(t) { return t.type == 'video'; });
                 track.container = div;
                 track.share_vid = find_vid;
+                track.live_content = false;
+                track.mediaStreamTrack.live_content = false;
                 if(track.generate_dom) {
                   var elem = track.generate_dom();
                   room.update_preview(elem, true);
@@ -1034,6 +1011,7 @@ var room = {
           local_tried = true;
           for(var idx = 0; idx < tracks.length; idx++) {
             tracks[idx].live_content = true;
+            tracks[idx].mediaStreamTrack.live_content = true;
             if(tracks[idx].type == 'video') {
               document.getElementById('communicator').innerHTML = "";
               document.getElementById('communicator').appendChild(tracks[idx].generate_dom());
@@ -1404,6 +1382,7 @@ var room = {
               console.error("had to resort to fallback for removing replaced " + type + " tracks");
             }
             track.live_content = true;
+            track.mediaStreamTrack.live_content = true;
             // We add to the front of the list so shares don't get interrupted
             room.local_tracks.unshift(track);
             room.update_preview();
@@ -1920,6 +1899,59 @@ var room = {
       }, 500);
     }
   },
+  query_list: function(query, start_dom, check) {
+    var res = [];
+    var list = (start_dom || document).querySelectorAll(query);
+    for(var idx = 0; idx < list.length; idx++) {
+      if(!check || check(list[idx])) {
+        res.push(list[idx]);
+      }
+    }
+    return res;
+  },
+  assert_media: function(track_ref, user, primary) {
+    var kind = track_ref && track_ref.type;
+    if(track_ref == 'no-video') { kind = 'video'; track_ref = null; }
+    if(track_ref == 'no-audio') { kind = 'audio'; track_ref = null; }
+    if(!primary) { kind = 'video'; }
+    var query = primary ? room.query_list('#partner ' + kind) : room.query_list('.grid .preview '  + kind + '.secondary_preview');
+    var found = false;
+    query.forEach(function(elem) {
+      if(elem.getAttribute('data-user-id') == user.id) {
+        if(track_ref && elem.getAttribute('data-track-id') == track_ref.id) {
+          found = true;
+        } else {
+          if(kind == 'video' || !track_ref || (track_ref.version_id && elem.getAttribute('data-version-id') != track_ref.version_id)) {
+            elem.parentNode.removeChild(elem);
+          }
+        }
+      }
+    });
+    if(!found && track_ref && track_ref.generate_dom) {
+      // Create and add the element at the proper location
+      var dom = track_ref.generate_dom();
+      dom.classList.add('track-' + track_ref.id);
+      dom.setAttribute('data-version-id', track_ref.version_id);
+      dom.classList.add("room-" + track_ref.type);
+      dom.setAttribute('data-track-id', track_ref.id);
+      dom.setAttribute('data-user-id', user.id);
+      if(primary || kind != 'video') {
+        add_dom(dom, track_ref, user);  
+      } else {
+        dom.style.position = 'absolute';
+        dom.style.top = '5px';
+        dom.style.left = '5px';
+        dom.style.margin = '0';
+        dom.style.minWidth = '20px';
+        dom.style.maxWidth = '25%';
+        dom.style.width = '';
+        dom.style.height = '';
+        dom.classList.add('secondary_preview');
+        dom.classList.add('user-' + user.id);
+        document.querySelector('.grid .mid .preview').appendChild(dom);
+      }
+    }
+  },
   handle_message: function(data) {
     var json = data.message;
     if(!room.current_room || data.user_id == room.current_room.user_id) { return; }
@@ -1960,110 +1992,65 @@ var room = {
       room.show_image(json.url, json.text, big_image);
     } else if(json && json.action == 'update') {
       if(data.user) {
+        // TODO: should now recieve json.tracks which
+        // could include camera, microphone, share_video and share_audio
+        // Then we can check that these tracks match
+        // the current element srcObjects if defined
+        room.sharers = room.sharers || {};
+        if(json.tracks) {
+          if(json.microphone && json.tracks.microphone) {
+            room.assert_media(json.tracks.microphone, data.user, true);
+          } else if(!json.microphone) {
+            room.assert_media('no-audio', data.user, true);
+          }
+          if(json.camera && json.tracks.camera) {
+            room.assert_media(json.tracks.camera, data.user, !json.sharing);
+          } else if(!json.camera) {
+            room.assert_media('no-video', data.user, true);
+          }
+          if(json.sharing) {
+            room.sharers[data.user_id] = true;
+            if(json.tracks.share_video) {
+              document.querySelector('#communicator').classList.add('small_preview');
+              room.assert_media(json.tracks.share_video, data.user, true);
+            }
+            if(json.tracks.share_audio) {
+              room.assert_media(json.tracks.share_audio, data.user, true);
+            }
+          } else {
+            room.sharers[data.user_id] = false;
+            var actives = room.active_users || {};
+            var none_sharing = true;
+            for(var id in actives) {
+              if(actives[id] && room.sharers[id]) {
+                none_sharing = false;
+              }
+            }
+            if(none_sharing) {
+              document.querySelector('#communicator').classList.remove('small_preview');
+            }
+              // Remove secondary preview
+            room.assert_media('no-video', data.user, false);
+          }
+        } else {
+          // Legacy logic
+          // Check if we're missing elements and try to restore them
+        }
+
         ['audio', 'video'].forEach(function(type) {
           var partner_elem = document.querySelector('#partner ' + type);
-          var remote_audios = (room.all_remote_tracks || []).filter(function(t) { return t.user_id == data.message.user_id && t.type == type; });
-          if(remote_audios.length == 0) {
-            // Expected a remote audio, but none found
-            remote.refresh_remote_tracks(room.current_room.id, type);
-          } else if(partner_elem.srcObject && !partner_elem.srcObject.active) {
-            // Expected a remote audio, but not wired up to the video element
-            remote.refresh_remote_tracks(room.current_room.id, type);
+          var remote_tracks = (room.all_remote_tracks || []).filter(function(t) { return t.user_id == data.message.user_id && t.type == type; });
+          if(json[type == 'audio' ? 'microphone' : 'camera']) {
+            if(remote_tracks.length == 0) {
+              // Expected a remote audio, but none found
+              remote.refresh_remote_tracks(room.current_room.id, type);
+            } else if(partner_elem && partner_elem.srcObject && !partner_elem.srcObject.active) {
+              // Expected a remote audio, but not wired up to the video element
+              remote.refresh_remote_tracks(room.current_room.id, type);
+            }  
           }
-        });
-        room.sharers = room.sharers || {};
+        });  
 
-        if(data.message.sharing) {
-          // Check for two video feeds, if there
-          // are two and there isn't a secondary_preview,
-          // go ahead and set it up.
-          var elems = document.querySelectorAll('.grid .preview .secondary_preview');
-          var user_previews = [];
-          for(var idx = 0; idx < elems.length; idx++) {
-            if(elems[idx].getAttribute('data-user-id') == data.user_id) {
-              user_previews.push(elems[idx]);
-            }
-          }
-          if(!data.message.camera) {
-            // If sharing but no camera, remove secondary preview
-            var user_previews = document.querySelectorAll('.grid .mid .preview .secondary_preview.user-' + data.user_id);
-            var to_remove = [];
-            for(var idx = 0; idx < user_previews.length; idx++) {
-              if(user_previews[idx].getAttribute('data-user-id') == data.user_id) {
-                to_remove.push(user_previews[idx]);
-              }
-            }
-            to_remove.forEach(function(e) { e.parentNode.removeChild(e); });
-          } else if(user_previews.length == 0) {
-            // Set up the second video feed
-            if(((room.user_tracks || {})[data.user_id] || []).length > 1) {
-              var valids = room.user_tracks[data.user_id].filter(function(t) { return t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted && t.mediaStreamTrack.readyState != 'ended'});
-              if(valids.length > 1) {
-                // Shrink the self preview while sharing
-                document.querySelector('#communicator').classList.add('small_preview');
-                var prior_video = valids[0];
-                if(prior_video.generate_dom) {
-                  var elem = prior_video.generate_dom();
-                  elem.style.position = 'absolute';
-                  elem.style.top = '5px';
-                  elem.style.left = '5px';
-                  elem.style.margin = '0';
-                  elem.style.minWidth = '20px';
-                  elem.style.maxWidth = '25%';
-                  elem.style.width = '';
-                  elem.style.height = '';
-                  elem.classList.add('secondary_preview');
-                  elem.classList.add('user-' + data.user_id);
-                  elem.setAttribute('data-track-id', prior_video.id);
-                  elem.setAttribute('data-user-id', data.user_id);
-          
-                  document.querySelector('.grid .mid .preview').appendChild(elem);
-                }
-              }
-            }
-          }
-
-          room.sharers[data.user_id] = true;
-        } else {
-          // Remove any secondary_previews
-          room.sharers[data.user_id] = false;
-          var to_remove = [];
-          var elems = document.querySelectorAll('.grid .preview .secondary_preview');
-          var to_remove = [];
-          for(var idx = 0; idx < elems.length; idx++) {
-            if(elems[idx].getAttribute('data-user-id') == data.user_id) {
-              to_remove.push(elems[idx]);
-            }
-          }
-          to_remove.forEach(function(e) { e.parentNode.removeChild(e); });
-          // If we removed any secondary previews,
-          // we will probably need to replace the main feed
-          if(((room.user_tracks || {})[data.user_id] || []).length > 0) {
-            // TODO: We need to remove the old video feeds here
-            // for this user.
-            var valids = room.user_tracks[data.user_id].filter(function(t) { return t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted && t.mediaStreamTrack != 'ended'});
-            
-            if(valids.length > 0) {
-              var track = valids[valids.length - 1];
-              if(!document.querySelector('#partner video.track-' + track.id)) {
-                var dom = track.generate_dom();
-                dom.classList.add('track-' + track.id);
-                dom.setAttribute('data-version-id', track.version_id);
-                add_dom(dom, track, data.user);  
-              }
-            }
-          }
-  
-          // If nobody is sharing anymore, restore self preview
-          var actives = room.active_users || {};
-          var none_sharing = true;
-          for(var id in actives) {
-            if(actives[id] && room.sharers[id]) {
-              none_sharing = false;
-            }
-          }
-          document.querySelector('#communicator').classList.remove('small_preview');
-        }
         room.state_for = room.state_for || {};
         room.state_for[data.user_id] = {
           track_ids: data.message.track_ids,
@@ -2176,13 +2163,9 @@ var room = {
     if(user && (room.active_users || {})[user.id]) {
       delete room.active_users[user.id];
       input.play_sound('/sounds/exit.mp3');
-      var elems = document.querySelectorAll('#partner audio, #partner video, .grid .preview .secondary_preview');
-      var to_remove = [];
-      for(var idx = 0; idx < elems.length; idx++) {
-        if(elems[idx].getAttribute('data-user-id') == user.id) {
-          to_remove.push(elems[idx]);
-        }
-      }
+      var to_remove = room.query_list('#partner audio, #partner video, .grid .preview .secondary_preview', document, function(elem) {
+        return elem.getAttribute('data-user-id') == user.id;
+      })
       setTimeout(function() {
         if(!(room.active_users || {})[user.id]) {
           to_remove.forEach(function(e) {

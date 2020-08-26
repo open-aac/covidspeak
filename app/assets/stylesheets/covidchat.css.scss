@@ -740,6 +740,7 @@ strong {
             border: 2px solid #000;
             background: #fff;
             border-radius: 50px;
+            box-shadow: 0 0 10px #000;
             text-align: center;
             &::after {
               content: "×";
