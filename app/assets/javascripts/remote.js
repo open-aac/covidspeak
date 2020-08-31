@@ -274,7 +274,7 @@ Object.assign(remote, {
     var json = message;
     var user = remote.rooms[room.id].users[user.id].user;
     try {
-      if(typeof(str) == 'string') { 
+      if(typeof(message) == 'string') { 
         json = JSON.parse(json);
       }
       if(json.timestamp && remote.rooms[room.id] && remote.rooms[room.id].users[user.id]) {
