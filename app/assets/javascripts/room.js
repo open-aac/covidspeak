@@ -312,8 +312,6 @@ var room = {
         document.querySelector('#communicator').classList.add('muted');
       } else {
         audio_tracks.forEach(function(t) { 
-          t.live_content = true;
-          t.mediaStreamTrack.live_content = true;
           remote.add_local_tracks(room.current_room.id, t);
           t.mediaStreamTrack.enabled = true; 
         });
@@ -322,9 +320,6 @@ var room = {
       }
     }
     room.send_update();
-  },
-  send_key: function(char) {
-    // keyboard entry state should be shared, should allow keyboard entry
   },
   end_share: function() {
     if(room.share_tracks && room.share_tracks.length) {
@@ -534,7 +529,6 @@ var room = {
       alert('not supported');
       return;  
     }
-    var video = document.querySelector('#communicator video');
     div.appendChild(video_elem);
     var find_vid = function() {
       var file = div.querySelector('input');
@@ -1267,6 +1261,12 @@ var room = {
         status("Camera access not available, try loading in " + browser, {popout: true});
       } else {
         status("Can't accesss the camera, your device may not support video calling, or you have it disabled.", {big: true});
+      }
+    } else if(err && err.name == 'NotReadableError') {
+      if(input.compat.webview) {
+        status("Camera access not available, try loading in " + browser, {popout: true});
+      } else {
+        status("Can't accesss the camera, it looks like you may have another app already using camera.", {big: true});
       }
     } else if(input.compat.webview) {
       status("Camera won't load inside apps. Try copying the link and loading in " + browser, {popout: true, big: true});
@@ -2059,14 +2059,14 @@ var room = {
           video: data.message.video
         };
         data.message;
-        if(data.message.video) {
+        if(data.message.camera) {
           document.querySelector('#no_preview').style.display = 'none';
           document.querySelector('#eyes').style.display = 'block';
           // If no video feed present, send a request for it
           if(!room.all_remote_tracks.find(function(t) { return t.type == 'video' && t.user_id == data.user.id && !(t.mediaStreamTrack || {}).muted; })) {
             remote.refresh_remote_tracks(room.current_room.id, 'video');
           }
-        } else if(data.message.audio) {
+        } else if(data.message.microphone) {
           document.querySelector('#no_preview').style.display = 'block';
           document.querySelector('#eyes').style.display = 'none';
           document.querySelector('#no_preview').classList.remove('dancing');

@@ -53,7 +53,7 @@ var help_modal = null;
       dom.querySelector('#faq').addEventListener('click', function(event) {
         event.preventDefault();
         modal.close();
-        window.open('https://www.covidspeak.org/faq.html', '_blank');
+        window.open('https://coughdrop.zendesk.com/hc/en-us/sections/360010097531-Co-VidSpeak-Information', '_blank');
       });
     };
     modal.open('Co-VidSpeak Help', dom);
