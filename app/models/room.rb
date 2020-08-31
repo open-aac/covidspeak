@@ -8,9 +8,9 @@ class Room < ApplicationRecord
   def generate_defaults
     self.settings ||= {}
     self.settings['name'] ||= "Instant Room"
-    if self.settings['ended_at'] && self.settings['started_at']
+    if self.settings['ended_at'] && (self.settings['started_at'] || self.settings['fake_started_at'])
       # Remember: duration is in seconds
-      self.duration = self.settings['ended_at'] - self.settings['started_at'] - (self.settings['gaps'] || []).map{|g| g['duration'] || 0}.sum
+      self.duration = self.settings['ended_at'] - (self.settings['started_at'] || self.settings['fake_started_at']) - (self.settings['gaps'] || []).map{|g| g['duration'] || 0}.sum
     end
     true
   end
@@ -84,8 +84,7 @@ class Room < ApplicationRecord
 
   def time_left
     if !self.settings['started_at']
-      self.settings['started_at'] ||= Time.now.to_i
-      self.save
+      self.settings['fake_started_at'] ||= Time.now.to_i
     end
     time_cutoff = 6.hours.to_i
     time_cutoff = 3.minutes.to_i if self.short_room?
