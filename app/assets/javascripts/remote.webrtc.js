@@ -121,12 +121,19 @@ var remote = remote || {};
                   var pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
                   if(pc_ref) {
                     var senders = pc_ref.pc.getSenders();
-                    var types = {};
-                    var blank_sender = null;
+                    var intended_sender = null;
+                    var matching_senders = senders.filter(function(s, idx) { return s.kind == track.kind || (s.track && s.track.kind == track.kind) || (!s.kind && !s.track && idx == (track.kind == 'audio' ? 0 : 1)); });
+                    if(track.live_track) {
+                      intended_sender = matching_senders[0];
+                    } else {
+                      intended_sender = matching_senders.pop();
+                    }
+                    if(!intended_sender) {
+                      console.error("RTC: could not find sender for track", track);
+                    }
                     // Check if we're already sending a track of this kind
                     senders.forEach(function(s) {
-                      if(s.track && !s.track.muted) { types[s.track.kind] = true; }
-                      if(!s.track || (s.track.kind == track.kind && s.track.muted)) { blank_sender = blank_sender || s; }
+                      if(!s.track || (s.track.kind == track.kind && s.track.muted)) { intended_sender = intended_sender || s; }
                     });
                     main_room.subrooms[subroom_id][pc_ref.id].tracks = main_room.subrooms[subroom_id][pc_ref.id].tracks || {};
                     main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id] = main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id] || {};
@@ -134,8 +141,12 @@ var remote = remote || {};
                     // When the non-initiator switches their video feed, it needs more assertion to renegotiate
                     pc_ref.prevent_reconnect_until = 0;
                     main_room.subrooms[subroom_id].renegotiate_harder = true;
-                    if(!types[track.kind] && blank_sender) {
-                      blank_sender.replaceTrack(track).then(function() {
+                    if(intended_sender) {
+                      var old_track_id = intended_sender.track && intended_sender.track.id;
+                      intended_sender.replaceTrack(track).then(function() {
+                        if(old_track_id) {
+                          remote.webrtc.local_tracks = remote.webrtc.local_tracks.filter(function(t) { return t.id != old_track_id; });
+                        }
                         setTimeout(function() {
                           main_room.subrooms[subroom_id].renegotiate();
                         }, 100);
@@ -177,15 +188,6 @@ var remote = remote || {};
                 main_room.subrooms[subroom_id].renegotiate();
               }, 100);
             }
-            // main_room.subroom_ids.forEach(function(subroom_id) {
-            //   var pc = main_room.subrooms[subroom_id].rtcpc;
-            //   if(pc) {
-            //     var sender = pc.addTrack(track, pc_ref.local_stream);
-            //     main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id].sender = sender;
-            //     main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id].track = track;
-            //     res([track_ref]);
-            //   }
-            // });
           } else {
             return rej({error: 'no track or connection found'});
           }
@@ -415,6 +417,7 @@ var remote = remote || {};
 
       try {
         pc = new RTCPeerConnection(config);
+        pc.started = (new Date()).getTime();
       } catch(e) {
         console.error(e);
         remote.connection_error(main_room.ref, main_room.users[remote_user_id], 'failed');
@@ -479,13 +482,13 @@ var remote = remote || {};
               author_id: main_room.user_id,
               target_id: remote_user_id,
               type: 'ping',
-              ping: {ming: false, no_existing_connection: true}
+              ping: {mine: false, no_existing_connection: true}
             });
           }
           return; 
         }
         main_room.subrooms[subroom_id].renegotiate_harder = false;
-        if(pc_ref && (['connected', 'closed'].indexOf(pc_ref.refState) != -1 || purpose == 'bad_reuse')) {
+        if(!pc_ref || ['connected', 'closed'].indexOf(pc_ref.refState) != -1 || purpose == 'bad_reuse') {
           // We can set up a brand new connection which
           // will prevent the old session from pausing while
           // we negotiate
@@ -494,7 +497,11 @@ var remote = remote || {};
         }
         while(rtcpc.getTransceivers().length < 4) {
           rtcpc.extra_video = rtcpc.addTransceiver('video');
+          rtcpc.extra_video.sender.kind = 'video';
+          rtcpc.extra_video.kind = 'video';
           rtcpc.extra_audio = rtcpc.addTransceiver('audio');
+          rtcpc.extra_audio.sender.kind = 'audio';
+          rtcpc.extra_audio.kind = 'audio';
         }
         rtcpc.createOffer().then(function(desc) {
           // if(rtcpc.signalingState != "stable") { console.error("initializing when NOT STABLE", rtcpc.signalingState); return; }
@@ -679,6 +686,17 @@ var remote = remote || {};
         if(pc_ref.subroom_id && pc.data_channel) {
           pc.data_channel.subroom_id = pc_ref.subroom_id;
         }
+        var trans = pc.getTransceivers();
+        var zero_type = trans[0] && trans[0].track && trans[0].track.kind;
+        var one_type = trans[1] && trans[1].track && trans[1].track.kind;
+        if(trans[0] && (zero_type == 'audio' || one_type != 'audio')) {
+          trans[0].kind = 'audio';
+          trans[0].sender.kind = 'audio';
+        }
+        if(trans[1] && (zero_type != 'video' || one_type == 'video')) {
+          trans[1].kind = 'video';
+          trans[1].sender.kind = 'video';
+        }
         log("connected", pc_ref.id, pc_ref.user_id);
         if(pc_ref.already_connected) { return; }
         pc_ref.already_connected = true;
@@ -832,7 +850,7 @@ var remote = remote || {};
             if(oldpc.signalingState == 'closed' || oldpc.connectionState == 'closed' ) {
             } else {
               oldpc.getSenders().forEach(function(s) {
-                if(s.track  ) {
+                if(s.track) {
                   oldpc.removeTrack(s);
                 }
               });
@@ -896,6 +914,7 @@ var remote = remote || {};
 
 
       remote.webrtc.pcs.forEach(function(pc_ref) {
+        pc_ref.pc.started = pc_ref.pc.started || now;
         if(pc_ref && pc_ref.pc && ['closed', 'failed', 'disconnected'].indexOf(pc_ref.pc.connectionState) != -1) {
           pc_ref.pc.ended = pc_ref.pc.ended || now;
         }
