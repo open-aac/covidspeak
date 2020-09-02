@@ -1572,12 +1572,16 @@ strong {
       text-align: center;
     }
     .grid {
+      touch-action: pan-y;
       border: 1px solid #ccc;
       border-radius: 5px;
       padding: 5px;
       margin-bottom: 5px;
       font-size: 20px;
+      position: relative;
       cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
       &:hover {
         background: #eee;
       }
@@ -1602,7 +1606,9 @@ strong {
         object-position: center;
       }
       .links {
-        float: right;
+        position: absolute;
+        top: 5px;
+        right: 0;
       }
     }
   }
