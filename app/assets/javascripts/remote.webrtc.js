@@ -287,7 +287,7 @@ var remote = remote || {};
         if(!track) {
           // fallback for unexpected removal
           main_room.subroom_ids.forEach(function(subroom_id) {
-            var pc = main_room.subrooms[subroom_id].rtcpc;
+            var pc = (remote.webrtc.pc_ref('sub', subroom_id) || {}).pc; //main_room.subrooms[subroom_id].rtcpc;
             if(pc && !track) {
               pc.getSenders().forEach(function(sender) {
                 if(sender.track && ('0-' + sender.track.id) == track_ref.id) {
@@ -324,7 +324,9 @@ var remote = remote || {};
                 pc_ref.prevent_reconnect_until = 0;
                 main_room.subrooms[subroom_id].renegotiate_harder = true;
                 setTimeout(function() {
-                  pc.removeTrack(sender);
+                  if(pc.connectionState == 'connected') {
+                    pc.removeTrack(sender);
+                  }
                   delete main_room.subrooms[subroom_id][pc_ref.id].tracks[track_ref.id];
                   setTimeout(function() {
                     main_room.subrooms[subroom_id].renegotiate();  
@@ -374,6 +376,9 @@ var remote = remote || {};
         }
       }).pop();
       if(res && res.pc) {
+        if(type == 'sub' && res.pc.connectionState == 'connected') {
+          main_room.subrooms[id].rtcpc = res.pc;
+        }
         res.refState = res.pc.connectionState;
       }
       return res;
@@ -470,7 +475,7 @@ var remote = remote || {};
           return; 
         }
         main_room.subrooms[subroom_id].renegotiate_harder = false;
-        if(pc_ref && ['connected', 'closed'].indexOf(pc_ref.refState) != -1) {
+        if(pc_ref && (['connected', 'closed'].indexOf(pc_ref.refState) != -1 || purpose == 'bad_reuse')) {
           // We can set up a brand new connection which
           // will prevent the old session from pausing while
           // we negotiate
@@ -494,8 +499,9 @@ var remote = remote || {};
               offer: desc
             });
           }, function(err) {
-            console.error("connection description error", err, state);
-            if(purpose != 'no_connection') {
+            if(err.name == 'OperationError' && err.message && err.message.match(/setLocalDescription/)) {
+              return main_room.subrooms[subroom_id].renegotiate('bad_reuse');
+            } else if(purpose != 'no_connection') {
               // If you're not connected anywhere, then trouble
               // reconnecting is a last-ditch effort, and this
               // error will unnecessarily imply connection
@@ -503,6 +509,7 @@ var remote = remote || {};
               // TODO: add logic to prevent this error when not actually connected
               // remote.connection_error(main_room.ref, main_room.users[remote_user_id]);
             }
+            console.error("connection description error", err, err.name, state);
           });
         }, function(err) {
           console.error("offer error", err, rtcpc.signalingState);
@@ -1169,7 +1176,7 @@ var remote = remote || {};
         var main_room = remote.webrtc.rooms[room_id];
         if(main_room) {
           main_room.subroom_ids.forEach(function(subroom_id) {
-            var rtcpc = main_room.subrooms[subroom_id].rtcpc;
+            var rtcpc = (remote.webrtc.pc_ref('sub', subroom_id) || {}).pc;
             if(message.match(/update/)) {
               var json = null;
               try {
