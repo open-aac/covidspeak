@@ -1755,9 +1755,11 @@ var room = {
     var idx = room.image_slots.index;
     var img = document.createElement('img');
     img.classList.add('reaction');
-    var orig_left = ((idx * 60) + 10);
+    var small_screen = (window.innerWidth <= 700)
+    var spacing = !small_screen ? 60 :  30;
+    var orig_left = ((idx * spacing) + 10);
     img.style.left = orig_left + 'px';
-    if(big_image && popover_in_the_way) {
+    if(big_image && popover_in_the_way && !small_screen) {
       var elem = document.querySelector('.preview');
       var rect = elem.getBoundingClientRect();
       img.style.left = (rect.width - 100 - (total_slots * 60) + orig_left) + 'px';
@@ -2348,7 +2350,7 @@ document.addEventListener('touchstart', function(event) {
   if($(event.target).closest('#partner').length > 0) {
     event.preventDefault();
     drag(event);
-  } else if(true) {
+  } else if(!event.target.closest('.modal')) {
     event.preventDefault();
   }
 });
@@ -2530,7 +2532,10 @@ document.addEventListener('click', function(event) {
             var finished_button = function() {
               finished_button.count = (finished_button.count || 0) + 1;
               if(finished_button.count >= blank_buttons.length) {
-                room.assert_grid(grid, 'custom_' + (new Date()).getTime + "_" + Math.random(), locale, true);s
+                room.assert_grid(grid, 'custom_' + (new Date()).getTime + "_" + Math.random(), locale, true);
+                setTimeout(function() {
+                  room.send_update();
+                }, 1000);
               }
             };
             blank_buttons.forEach(function(button) {

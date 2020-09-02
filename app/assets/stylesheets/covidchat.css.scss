@@ -1923,11 +1923,15 @@ strong {
           }
         }
       }
+      #grids_popover {
+        margin-top: 30px;
+      }
       .extras {
         width: 322px;
       }
       .grids,.reactions {
         max-width: calc(100vw - 60px);
+        width: 265px;
       }
       .grids .grid_option {
         width: 76px;
