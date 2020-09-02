@@ -377,7 +377,12 @@ var remote = remote || {};
       }).pop();
       if(res && res.pc) {
         if(type == 'sub' && res.pc.connectionState == 'connected') {
-          main_room.subrooms[id].rtcpc = res.pc;
+          if(window.room && window.room.current_room && window.room.current_room.id) {
+            var main_room = remote.webrtc.rooms[window.room.current_room.id];
+            if(main_room && main_room.subrooms && main_room.subrooms[id]) {
+              main_room.subrooms[id].rtcpc = res.pc;
+            }
+          }
         }
         res.refState = res.pc.connectionState;
       }
