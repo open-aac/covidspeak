@@ -368,13 +368,18 @@ var remote = remote || {};
       }
     },
     pc_ref: function(type, id) {
-      var res = (remote.webrtc.pcs || []).filter(function(ref) { 
+      var list = (remote.webrtc.pcs || []).filter(function(ref) { 
         if(type == 'sub') {
           return ref.subroom_id == id;
         } else {
           return ref.id == type || ref.id == id;
         }
-      }).pop();
+      })
+      // First try to find a not-ended connection, then
+      // fall back to whatever you've got
+      var res = list.filter(function(pc_ref) { return ['closed', 'disconnected', 'failed'].indexOf(pc_ref.pc.connectionState) == -1; }).pop();
+      res = res || list.pop();
+
       if(res && res.pc) {
         if(type == 'sub' && res.pc.connectionState == 'connected') {
           if(window.room && window.room.current_room && window.room.current_room.id) {
