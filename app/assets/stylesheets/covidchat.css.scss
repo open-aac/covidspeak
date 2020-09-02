@@ -898,6 +898,7 @@ strong {
         object-position: center;
         opacity: 0;
         transition: opacity 0.5s ease-in-out, bottom 5s, left 4s, width 2s, height 2s, margin-left 2s;
+        z-index: 3;
         &.finished {
           width: 50px;
           height: 50px;

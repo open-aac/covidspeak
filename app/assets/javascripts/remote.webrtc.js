@@ -527,18 +527,25 @@ var remote = remote || {};
         });
       };
 
-      pc.addEventListener('datachannel', function(e) {
+      pc.addEventListener('datachannel', function(event) {
         // remote data channel added
         var remote_data = event.channel;
+        remote_data.subroom_id = subroom_id;
         remote_data.addEventListener('message', function(e) {
-          // If 'update', use the mid mappings to add in
-          // camera_track, microphone_track, share_video_track and share_audio_track
+          // Ensure you're using the latest active connection for mapping tracks
+          var pc_ref = remote.webrtc.pc_ref('sub', e.target.subroom_id || subroom_id);
+          var data_pc = pc;
+          if(pc_ref && pc_ref.refState == 'connected') {
+            data_pc = pc_ref.pc;
+          }
           var json = null;
           try {
             json = JSON.parse(e.data);
+            // If 'update', use the mid mappings to add in
+            // camera_track, microphone_track, share_video_track and share_audio_track
             if(json && json.action == 'update') {
               var mid_map = {};
-              pc.getTransceivers().forEach(function(trans, trans_idx) {
+              data_pc.getTransceivers().forEach(function(trans, trans_idx) {
                 var mid = (trans.mid || trans_idx).toString();
                 if(trans.receiver && trans.receiver.track && trans.receiver.track.readyState != 'ended') {
                   mid_map[mid] = trans.receiver.track;
@@ -669,6 +676,9 @@ var remote = remote || {};
       });
       connected = function(pc) {
         var pc_ref = remote.webrtc.pc_ref(pc.id || pc_id);
+        if(pc_ref.subroom_id && pc.data_channel) {
+          pc.data_channel.subroom_id = pc_ref.subroom_id;
+        }
         log("connected", pc_ref.id, pc_ref.user_id);
         if(pc_ref.already_connected) { return; }
         pc_ref.already_connected = true;
