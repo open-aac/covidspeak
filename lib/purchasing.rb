@@ -181,7 +181,7 @@ module Purchasing
         subscription = customer.subscriptions.data.detect{|s| s.items.data.any?{|i| i['price']['id'] == price_id } && s.metadata['covidchat_nonce'] == opts['nonce'] }
       end
       # attach the subscription
-      start_of_next_month = Date.today.beginning_of_month.to_time.to_i
+      start_of_month = Date.today.beginning_of_month.to_time.to_i
       subscription ||= Stripe::Subscription.create({
         customer: customer['id'],
         items: [
