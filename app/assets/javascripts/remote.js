@@ -284,6 +284,14 @@ Object.assign(remote, {
       }
     } catch(e) { }
   
+    // TODO: track how recently a user a sent a message,
+    // If they appear active (no connection in progress)
+    // but haven't sent a message for 2 minutes,
+    // mark them as left and trigger notifications
+    // TODO: add .disconnect to manually shut off a room?
+    if(!remote.rooms[room.id].users[user.id].tracks) {
+      remote.track_added(room, user, track);
+    }
     remote.notify('message', {
       message: json,
       room: remote.rooms[room.id].room,
