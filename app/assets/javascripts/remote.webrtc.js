@@ -513,7 +513,8 @@ var remote = remote || {};
           return; 
         }
         main_room.subrooms[subroom_id].renegotiate_harder = false;
-        if(!pc_ref || ['connected', 'closed'].indexOf(pc_ref.refState) != -1 || purpose == 'bad_reuse') {
+        var active_conn = pc_ref && main_room.subrooms[subroom_id][pc_ref.id];
+        if(!pc_ref || !active_conn || ['connected', 'closed'].indexOf(pc_ref.refState) != -1 || purpose == 'bad_reuse') {
           // We can set up a brand new connection which
           // will prevent the old session from pausing while
           // we negotiate
