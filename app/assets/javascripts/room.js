@@ -26,11 +26,6 @@ remote.addEventListener('track_added', function(data) {
   var track = data.track;
   room.all_remote_tracks = room.all_remote_tracks || [];
   room.all_remote_tracks.push({type: track.type, id: track.id, user_id: data.user_id, mediaStreamTrack: track.mediaStreamTrack});
-  // Muted tracks are being caused by our multi-transceiver
-  // approach, and can probably safely be ignored
-  if(track && track.mediaStreamTrack && track.mediaStreamTrack.muted) {
-    console.error("RTC: muted media track arrived", track);
-  }
   if(track.generate_dom && track.mediaStreamTrack && track.mediaStreamTrack.readyState != 'ended') {
     console.log("adding remote track", track);
     room.assert_media(track, data.user, true);
