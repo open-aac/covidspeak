@@ -2858,7 +2858,7 @@ document.addEventListener('click', function(event) {
             dom.querySelector('.add_url').style.display = 'inline';
             dom.querySelector('.url_status').innerText = "Online Book (Loading)...";
             // https://tarheelreader.org/2020/07/29/wear-a-mask/
-            session.ajax("http://tools.openaac.org/tarheel/book?id=" + encodeURIComponent(val), {type: 'GET'}).then(function(res) {
+            session.ajax("https://tools.openaac.org/tarheel/book?id=" + encodeURIComponent(val), {type: 'GET'}).then(function(res) {
               var prefix = "Online Book: ";
               if(val.match(/tarheel/)) {
                 prefix = "Tarheel Reader Book: ";
