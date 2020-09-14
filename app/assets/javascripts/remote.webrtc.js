@@ -426,7 +426,6 @@ var remote = remote || {};
                 var local = stats_by_id[pair.localCandidateId];
                 var remote = stats_by_id[pair.remoteCandidateId];
                 if(local && remote) {
-                  log(true, "Stats Candidates", local.candidateType, remote.candidateType);
                   if(remote.candidateType == 'srflx' || remote.candidateType == 'prflx') {
                     type = 'STUN';
                   } else if(remote.candidateType == 'relay') {
@@ -525,6 +524,7 @@ var remote = remote || {};
       room.pcs = room.pcs || [];
       room.pcs.unshift(pc);
       pc_ref.local_stream = new MediaStream();
+      main_room.subrooms[subroom_id].user_id = remote_user_id;
       main_room.subrooms[subroom_id].rtcpc = pc;
       main_room.subrooms[subroom_id].pc_id = pc_id;    
       main_room.subrooms[subroom_id][pc_ref.id] = {};
@@ -569,6 +569,8 @@ var remote = remote || {};
               type: 'ping',
               ping: {mine: false, no_existing_connection: true}
             });
+          } else {
+            log(true, "not pinging");
           }
           return; 
         }
@@ -583,6 +585,7 @@ var remote = remote || {};
         }
         remote.webrtc.initialize_tracks(rtcpc, main_room, subroom_id, true);
 
+        log(true, "creating offer", remote_user_id);
         rtcpc.createOffer().then(function(desc) {
           log(true, "offer created", remote_user_id);
           // if(rtcpc.signalingState != "stable") { console.error("initializing when NOT STABLE", rtcpc.signalingState); return; }
@@ -899,6 +902,7 @@ var remote = remote || {};
       // TODO: transceiver.mid is still not globally-supported
       // so in the mean time let's create some fake tracks if
       // there aren't ones we're expecting
+      if(!pc) { return; }
       var pc_ref = remote.webrtc.pc_ref(pc.id);
 
       log(true, "adding initial local tracks", room.share_tracks, remote.webrtc.local_tracks);
@@ -1122,9 +1126,22 @@ var remote = remote || {};
         pc_ref.pc.started = pc_ref.pc.started || now;
         if(pc_ref && pc_ref.pc && ['closed', 'failed', 'disconnected'].indexOf(pc_ref.pc.connectionState) != -1) {
           pc_ref.pc.ended = pc_ref.pc.ended || now;
+        } else if(pc_ref && pc_ref.pc && pc_ref.pc.connectionState == 'connected') {
+          pc_ref.pc.updated = now;
         }
-        if(pc_ref && pc_ref.pc && pc_ref.pc.connectionState != 'closed' && pc_ref.pc.connectionState != 'failed') {
-          // TODO: check data track to make sure it's still open
+        pc_ref.stale = false;
+        if(pc_ref.room_id && pc_ref.subroom_id) {
+          var main_room = remote.webrtc.rooms[pc_ref.room_id];
+          var last_update = main_room && (main_room.subrooms[pc_ref.subroom_id] || {}).last_update;
+          if(last_update && last_update.ts < (new Date()).getTime() - (30 * 1000)) {
+            // If a connection hasn't seen an update in 30 
+            // seconds, then something is probably wrong with
+            // at least the data track
+            pc_ref.stale = true;
+          }
+        }
+        
+        if(pc_ref && pc_ref.pc && pc_ref.pc.connectionState != 'closed' && pc_ref.pc.connectionState != 'failed' && !pc_ref.stale) {
           all_connections_ended = false;
           if(pc_ref.pc.connectionState == 'connected') {
             // Sometimes we get in a state where we think we're
@@ -1203,12 +1220,25 @@ var remote = remote || {};
       remote.webrtc.poll_status.timer = setTimeout(remote.webrtc.poll_status, 3000);
     },
     reconnect: function() {
+      var now = (new Date()).getTime();
       if(remote.webrtc.last_room_id && remote.webrtc.rooms[remote.webrtc.last_room_id]) {
         var main_room = remote.webrtc.rooms[remote.webrtc.last_room_id];
         main_room.subroom_ids.forEach(function(subroom_id) {
           if(main_room.subrooms[subroom_id]) {
             main_room.subrooms[subroom_id].disconnected = true;
-            main_room.subrooms[subroom_id].renegotiate('no_connection');
+            if(main_room.subrooms[subroom_id].rtcpc && main_room.subrooms[subroom_id].rtcpc.updated > now - (3 * 60 * 1000)) {
+              var ping = {no_existing_connection: true};
+              var remote_user_id = main_room.subrooms[subroom_id].user_id;
+              var room_owner = subroom_id.split(/::/)[1];
+              if(room_owner == main_room.user_id) { ping.mine = true; }
+              log(true, "PING to", remote_user_id, ping);
+              main_room.send({
+                author_id: main_room.user_id,
+                target_id: remote_user_id,
+                type: 'ping',
+                ping: ping
+              });
+            }
           }
         });  
       }
@@ -1250,8 +1280,14 @@ var remote = remote || {};
           }, 15000);
           log(true, "room has both parties", force, remote_user_id, subroom_id, main_room.already, pc_ref && pc_ref.refState);
           if(room_owner == main_room.user_id) {
-            log(true, "starting room as owner");
-            var pc = remote.webrtc.initialize(remote_user_id, room_ref.id);
+            var subroom_id = main_room.subroom_id(remote_user_id);
+            var pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
+            // if(pc_ref && pc_ref.refState == 'connected') {
+            //   log(true, 'already have an active room');
+            // } else {
+              log(true, "starting room as owner");
+              var pc = remote.webrtc.initialize(remote_user_id, room_ref.id);
+            // }
           } else {
             log(true, "waiting for offer from room owner...");
             // TODO: if room owner doesn't send offer soon, re-ping
@@ -1259,6 +1295,7 @@ var remote = remote || {};
         };
         main_room.onmessage = function(msg) {
           if(msg.type == 'users') {
+            log(true, 'USERS UPDATE', msg.list);
             main_room.raw_users = msg.list;
             main_room.users = main_room.users || {};
             var me = msg.list.find(function(u) { return u.id == main_room.user_id; });
