@@ -584,6 +584,7 @@ var remote = remote || {};
         remote.webrtc.initialize_tracks(rtcpc, main_room, subroom_id, true);
 
         rtcpc.createOffer().then(function(desc) {
+          log(true, "offer created", remote_user_id);
           // if(rtcpc.signalingState != "stable") { console.error("initializing when NOT STABLE", rtcpc.signalingState); return; }
           var state = rtcpc.signalingState;
           rtcpc.original_desc = desc;
@@ -920,6 +921,13 @@ var remote = remote || {};
           }
         }
       });
+      // if(input.compat.system == 'Android') {
+      //   // Android doesn't seem capable of sending
+      //   // 2 video tracks at once?
+      //   if(tracks_to_send[1] && tracks_to_send[2]) {
+      //     tracks_to_send[1].muted = true;
+      //   }
+      // }
       if(navigator.userAgent.match(/Edg\//)) {
         // Edge does not support mid property yet, so we
         // have to ensure the first two tracks are filled
@@ -998,9 +1006,13 @@ var remote = remote || {};
           sender = sender_map[(track.kind == 'audio' ? 'share_audio' : 'share_video')];
         }
         if(sender) {
-          log(true, "adding local track to a known location", track);
-          sender.replaceTrack(track);
-          sender.kind = track.kind;
+          if(sender.track == track) {
+            log(true, "track already added at that location", track);
+          } else {
+            log(true, "adding local track to a known location", track);
+            sender.replaceTrack(track);
+            sender.kind = track.kind;  
+          }
         } else {
           log(true, "adding local track wherever it fits", track);
           sender = pc.addTrack(track, pc_ref.local_stream);
