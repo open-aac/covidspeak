@@ -317,12 +317,15 @@ var room = {
     room.send_update();
   },
   end_share: function() {
-    if(room.share_tracks && room.share_tracks.length) {
+    document.querySelector('.grid .preview').classList.remove('custom_self_content');
+    if(room.share_tracks) {
       if(room.share_tracks.container && room.share_tracks.container.parentNode) {
         room.share_tracks.container.parentNode.removeChild(room.share_tracks.container);
       }
       var track_ids = {};
       room.priority_tracks = null;
+      room.custom_share = null;
+      room.assert_media('no-custom', {id: 'self'}, true);
       room.share_tracks.forEach(function(track) {
         track_ids[track.id] = true;
         remote.remove_local_track(room.current_room.id, track);
@@ -361,6 +364,26 @@ var room = {
       });
     }
     // TODO: publish screen share stream
+  },
+  share_book: function(book) {
+    room.end_share();
+    if(book) {
+      document.querySelector('.grid .preview').classList.add('custom_self_content');
+      var track = custom_track.process_book(book, true, function(state) {
+        room.send_update(state);
+      });
+      room.custom_share = {
+        id: 'book' + Math.random() + '.' + (new Date()).getTime(),
+        type: 'book',
+        book: book,
+        track: track,
+      };
+      book.share_id = room.custom_share.id;
+      room.assert_media(track, {id: 'self'}, true);
+      var img = track.generate_dom({mini: true});
+      room.update_preview(img);
+      room.share_tracks = [];
+    }
   },
   share_image: function() {
     if(room.share_tracks && room.share_tracks.share_pic) {
@@ -463,9 +486,16 @@ var room = {
   },
   update_preview: function(elem, playable) {
     var communicator = document.querySelector('#communicator');
-    communicator.innerHTML = '';
     document.querySelector('#communicator').classList.remove('pending');
     if(elem) {
+      if(elem.tagName == 'IMG') {
+        Array.from(document.querySelectorAll('#communicator img.icon')).forEach(function(elem) {
+          elem.parentNode.removeChild(elem);
+        });
+        elem.classList.add('icon');
+      } else {
+        communicator.innerHTML = '';
+      }
       communicator.appendChild(elem);
       var end_share = document.createElement('div');
       end_share.classList.add('end_share');
@@ -476,6 +506,7 @@ var room = {
         communicator.classList.remove('paused');
       }
     } else {
+      communicator.innerHTML = '';
       communicator.classList.remove('preview');
       communicator.classList.remove('playable');
       communicator.classList.remove('paused');
@@ -542,7 +573,7 @@ var room = {
               } else if(video_elem.mozCaptureStream) {
                 stream = video_elem.mozCaptureStream();
               }
-              stream.getTracks().forEach(function(t) { t.share_content = truee; });
+              stream.getTracks().forEach(function(t) { t.share_content = true; });
               room.priority_tracks = stream.getTracks();
               remote.add_local_tracks(room.current_room.id, stream).then(function(tracks) {
                 tracks.forEach(function(t) { t.share_content = true; });
@@ -656,6 +687,11 @@ var room = {
     }
     if(room.share_tracks && room.share_tracks.length) {
       message.sharing = true;
+    }
+    if(room.custom_share) {
+      message.sharing = true;
+      message.custom_share = room.custom_share;
+      message.custom_share.id = message.custom_share.id || ((new Date()).getTime() + "." + Math.random());
     }
     message.track_ids = (room.local_tracks || []).map(function(t) { return t.id; }).join('+');
 
@@ -1056,6 +1092,7 @@ var room = {
             }
           }).then(function(room_session) {
             room_session.room_initiator = (room.room_id == localStorage.room_id);
+            if(mirror_type || teaching_type) { room_session.room_initiator = true; }
             room.current_room = room_session;
             room.status('Waiting for Partner...', {invite: true});
             console.log("Successfully joined a Room: " + room_session.id + " as " + res.user_id);
@@ -1910,8 +1947,10 @@ var room = {
     var kind = track_ref && track_ref.type;
     if(track_ref == 'no-video') { kind = 'video'; track_ref = null; }
     if(track_ref == 'no-audio') { kind = 'audio'; track_ref = null; }
-    if(!primary) { kind = 'video'; }
-    var query = primary ? room.query_list('#partner ' + kind) : room.query_list('.grid .preview '  + kind + '.secondary_preview');
+    var filter_kind = (track_ref && track_ref.dom_tag) || kind;
+    if(track_ref == 'no-custom') { filter_kind = '.custom_kind'; track_ref = null; }
+    if(!primary && kind == 'audio') { kind = 'video'; }
+    var query = primary ? room.query_list('#partner ' + filter_kind) : room.query_list('.grid .preview '  + filter_kind + '.secondary_preview');
     var found = false;
     query.forEach(function(elem) {
       if(elem.getAttribute('data-user-id') == user.id) {
@@ -1926,7 +1965,11 @@ var room = {
     });
     if(!found && track_ref && track_ref.generate_dom) {
       // Create and add the element at the proper location
-      var dom = track_ref.generate_dom();
+      var dom = track_ref.generate_dom({for_communicator: room.current_room.as_communicator});
+      if(track_ref.dom_tag) {
+        dom.classList.add('custom_kind');
+      }
+      dom.track_ref = track_ref;
       dom.classList.add('track-' + track_ref.id);
       dom.setAttribute('data-version-id', track_ref.version_id);
       dom.classList.add("room-" + track_ref.type);
@@ -1935,12 +1978,6 @@ var room = {
       if(primary || kind != 'video') {
         add_dom(dom, track_ref, user);  
       } else {
-        dom.style.position = 'absolute';
-        dom.style.top = '5px';
-        dom.style.left = '5px';
-        dom.style.margin = '0';
-        dom.style.minWidth = '20px';
-        dom.style.maxWidth = '25%';
         dom.style.width = '';
         dom.style.height = '';
         dom.classList.add('secondary_preview');
@@ -1987,6 +2024,12 @@ var room = {
         // show a small version of the image
       }
       room.show_image(json.url, json.text, big_image);
+    } else if(json && json.action == 'custom_state') {
+      if(room.custom_share && room.custom_share.id == json.id) {
+        if(room.custom_share.track && room.custom_share.track.process) {
+          room.custom_share.track.process(json.state);
+        }
+      }
     } else if(json && json.action == 'update') {
       if(data.user) {
         // TODO: should now recieve json.tracks which
@@ -1995,22 +2038,44 @@ var room = {
         // the current element srcObjects if defined
         room.sharers = room.sharers || {};
         if(json.tracks) {
+          // console.log("tracks assertion", json);
           if(json.microphone && json.tracks.microphone) {
             room.assert_media(json.tracks.microphone, data.user, true);
           } else if(!json.microphone) {
             room.assert_media('no-audio', data.user, true);
           }
           if(json.camera && json.tracks.camera) {
-            room.assert_media(json.tracks.camera, data.user, !json.sharing);
+            var primary_view = !json.sharing && !room.custom_share;
+            room.assert_media(json.tracks.camera, data.user, primary_view);
           } else if(!json.camera) {
             room.assert_media('no-video', data.user, true);
           }
           if(json.sharing) {
             room.sharers[data.user_id] = true;
+            if(!mirror_type && !teaching_type) {
+              room.end_share();
+            }
             if(json.tracks.share_video) {
               document.querySelector('#communicator').classList.add('small_preview');
               room.assert_media(json.tracks.share_video, data.user, true);
+            } else if(json.custom_share && !mirror_type && !teaching_type) {
+              room.custom_shares = room.custom_shares || {};
+              room.custom_shares[data.user.id] = json.custom_share;
+              document.querySelector('.grid .preview').classList.add('custom_content');
+              if(json.custom_share.type == 'book' && json.custom_share.book && json.custom_share.book.page != null) {
+                json.custom_share.book.share_id = json.custom_share.id;
+                room.assert_media(custom_track.process_book(json.custom_share.book, false, function(state) {
+                  var message = {action: 'custom_state', id: json.custom_share.id, state: state};
+                  remote.send_message(room.current_room.id, message).then(null, function() { });
+                }), data.user, true);
+              }
+            } 
+            if(!json.custom_share) {
+              room.custom_shares = room.custom_shares || {};
+              delete room.custom_shares[data.user.id];
+              document.querySelector('.grid .preview').classList.remove('custom_content');
             }
+
             if(json.tracks.share_audio) {
               room.assert_media(json.tracks.share_audio, data.user, true);
             }
@@ -2024,10 +2089,16 @@ var room = {
               }
             }
             if(none_sharing) {
+              if(!room.custom_share) {
+                document.querySelector('.grid .preview').classList.remove('custom_content');
+              }
               document.querySelector('#communicator').classList.remove('small_preview');
             }
-              // Remove secondary preview
-            room.assert_media('no-video', data.user, false);
+            // Remove secondary preview
+            if(!room.custom_share) {
+              room.assert_media('no-video', data.user, false);
+              room.assert_media('no-custom', data.user, true);    
+            }
           }
         } else {
           // Legacy logic
@@ -2710,20 +2781,74 @@ document.addEventListener('click', function(event) {
       }
       $button.find(".popover").css('display', 'none');
     } else if(action == 'share') {
-      var actions = [];
-      if(room.share_tracks) {
-        actions.push({action: 'cancel', label: "End Share", callback: function() { room.end_share(); modal.close(); }});
-      }
-      if(room.image_sharing) {
-        actions.push({action: 'image', label: "Picture", icon: 'image', callback: function() { room.share_image(); modal.close(); }});
-      }
-      if(room.video_sharing) {
-        actions.push({action: 'video', label: "Video", icon: 'camera-video', callback: function() { room.share_video(); modal.close(); }});
-      }
-      if(room.screen_sharing) {
-        actions.push({action: 'screen', label: "Screen", icon: 'fullscreen', callback: function() { room.share_screen(); modal.close(); }});
-      }
-      modal.open("Share Content", document.getElementById('share_modal'), actions);
+      var dom = document.getElementById('share_modal');
+      dom.onattached = function(dom) {
+        if(room.share_tracks) {
+          dom.querySelector('button.end').style.display = 'inline';
+          dom.querySelector('button.end').addEventListener('click', function(event) {
+            room.end_share(); modal.close();
+          });
+        }
+        if(room.image_sharing) {
+          dom.querySelector('button.picture').style.display = 'inline';
+          dom.querySelector('button.picture').addEventListener('click', function(event) {
+            room.share_image(); modal.close();
+          });
+        }
+        if(room.video_sharing) {
+          dom.querySelector('button.video').style.display = 'inline';
+          dom.querySelector('button.video').addEventListener('click', function(event) {
+            room.share_video(); modal.close();
+          });
+        }
+        if(room.screen_sharing) {
+          dom.querySelector('button.screen').style.display = 'inline';
+          dom.querySelector('button.screen').addEventListener('click', function(event) {
+            room.share_screen(); modal.close();
+          });
+        }
+        dom.querySelector('button.custom').style.display = 'inline';
+        dom.querySelector('button.custom').addEventListener('click', function(event) {
+          dom.querySelector('.options').style.display = 'none';
+          dom.querySelector('.custom_share').style.display = 'block';
+          dom.querySelector('.custom_url').focus();
+        });
+
+        dom.querySelector('.custom_url').addEventListener('input', function(e) {
+          var val = e.target.value;
+          if(val.match(/tarheelreader\.org/) || val.match(/coreworkshop\.org/)) {
+            // TODO: remember most-recent URLs
+            dom.querySelector('.add_url').style.display = 'inline';
+            dom.querySelector('.url_status').innerText = "Online Book (Loading)...";
+            // https://tarheelreader.org/2020/07/29/wear-a-mask/
+            session.ajax("http://tools.openaac.org/tarheel/book?id=" + encodeURIComponent(val), {type: 'GET'}).then(function(res) {
+              var prefix = "Online Book: ";
+              if(val.match(/tarheel/)) {
+                prefix = "Tarheel Reader Book: ";
+              } else if(val.match(/coreworkshop/)) {
+                prefix = "Communication Workshop Book: ";
+              }
+              dom.querySelector('.url_status').innerText = prefix + res.title;
+              dom.resource = res;
+              dom.type = 'book';
+            });
+          } else {
+            dom.querySelector('.add_url').style.display = 'none';
+            dom.querySelector('.url_status').innerText = (val ? "No known resources for that URL" : "");
+          }
+        });
+        dom.querySelector('.add_url').addEventListener('click', function(e) {
+          if(dom.resource && dom.type == 'book') {
+            var book = dom.resource;
+            book.id = book.book_url.replace(/[^\w]+/g, '-');
+            book.page = 0;
+            room.share_book(book);
+            modal.close();
+          }
+        });
+      };
+  
+      modal.open("Share Content", dom);
     } else if(action == 'send') {
       var container = document.getElementsByClassName('reactions')[0];
       if($(event.target).closest(".reactions").length > 0 && event.target.tagName == 'IMG') {

@@ -1,3 +1,14 @@
+/* 
+  z-index levels:
+  1 - configuration for user video feed
+  2 - non-video dynamic content
+  3 - user video preview boxes
+  4 - text overlay
+  5 - video player controls
+  6 - reactions
+*/
+
+
 body, div, dl, dt, dd, ul, ol, li, h1, h2, h3, h4, h5, h6, 
 pre, form, fieldset, input, textarea, p, blockquote, th, td { 
 	padding: 0;
@@ -202,6 +213,8 @@ button {
       margin-left: 20px;
       margin-right: 20px;
       white-space: pre-line;
+      position: absolute;
+      z-index: 4;
       &:empty {
         margin-top: 0;
       }
@@ -414,7 +427,7 @@ strong {
       }
       .popover {
         display: none;
-        z-index: 3;
+        z-index: 4;
         border: 2px solid #000; 
         background: #666; 
         position: absolute; 
@@ -571,6 +584,7 @@ strong {
     }
     .preview {
       flex: 6;
+      transition: flex 1s linear;
       position: relative;
       background: #000;
       border-radius: 5px;
@@ -642,6 +656,7 @@ strong {
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.7);
+        z-index: 1;
         #status {
           text-align: center;
           color: #fff;
@@ -683,8 +698,8 @@ strong {
         box-shadow: 0 0 5px #000;
         min-width: 20px;
         max-width: 30%;
-        transition: max-width 1s;
-        z-index: 2;
+        transition: max-width 1s, margin-left 1s linear;
+        z-index: 3;
         &.small_preview {
           max-width: 18%;
         }
@@ -728,6 +743,14 @@ strong {
               background-image: url(/icons/pause.svg);
               background-position: 0 0;
             }
+          }
+          img.icon {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 50px;
+            height: 50px;
+            opacity: 0.7;
           }
           .end_share {
             cursor: pointer;
@@ -783,7 +806,7 @@ strong {
         transition: opacity 0.5s ease-in-out;
         button {
           position: relative;
-          z-index: 2;
+          z-index: 1;
           width: 80px;
           height: 50px;
           background: #eee;
@@ -819,6 +842,15 @@ strong {
       .secondary_preview {
         box-shadow: 0 0 5px #000;
         border-radius: 5px;
+        margin: 0;
+        z-index: 3;
+        transition: margin-left 1s linear;
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        min-width: 20px;
+        max-width: 25%;
+        max-height: 50%;
       }
       #text {
         .prompt {
@@ -827,7 +859,7 @@ strong {
           left: 10px;
           height: 50px;
           width: 50px;
-          z-index: 2;
+          z-index: 4;
           background: #fff;
           cursor: pointer;
           border-radius: 5px;
@@ -855,6 +887,7 @@ strong {
           border: 0;
           background: transparent;
           position: absolute;
+          z-index: 4;
           display: none;
           width: 100%;
           opacity: 0.0;
@@ -898,7 +931,7 @@ strong {
         object-position: center;
         opacity: 0;
         transition: opacity 0.5s ease-in-out, bottom 5s, left 4s, width 2s, height 2s, margin-left 2s;
-        z-index: 3;
+        z-index: 6;
         &.finished {
           width: 50px;
           height: 50px;
@@ -906,10 +939,19 @@ strong {
           bottom: calc(100% - 10px - 50px);
         }
       }
+      &.custom_content,&.custom_self_content {
+        .secondary_preview {
+          margin-left: -100px;
+        }
+        #communicator {
+          margin-left: -100px;
+        }
+      }
     }
   }
   .mid {
     flex: 2;
+    transition: flex 1s linear;
     #eyes {
       opacity: 0;
       transition: opacity 0.5s ease-in-out;
@@ -931,6 +973,32 @@ strong {
         border: 2px solid #aaa;
         box-shadow: 0 0 10px #fff;
       }
+    }
+  }
+}
+.grid.communicator .mid {
+  .preview.custom_content {
+    #communicator {
+      display: none;
+    }
+  }
+}
+.grid.communicator .mid {
+  .preview.custom_self_content {
+    background: transparent;
+    #partner {
+      border-radius: 0;
+    }
+    #communicator {
+      max-width: 25%;
+    }
+  }
+}
+.grid.big_preview {
+  .mid {
+    flex: 4;
+    .preview {
+      flex: 10;
     }
   }
 }
@@ -1115,6 +1183,7 @@ strong {
   }
 }
 .modal_button {
+  margin-bottom: 5px;
   img {
     margin: -8px 5px -8px -8px;
     width: 30px;
@@ -1236,6 +1305,7 @@ strong {
   height: 15px;
   width: 0;
   opacity: 0.7;
+  transition: width 0.2s linear;
 }
 #settings_modal {
   select {
@@ -1350,6 +1420,7 @@ strong {
   display: none;
   opacity: 0;
   transition: opacity 1s ease-in-out;
+  z-index: 5;
   .running {
     color: #fff;
   }
@@ -1867,6 +1938,81 @@ strong {
     }
   }
 }
+covidspeak-book {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+  overflow: hidden;
+  .next,.back {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 80px;
+    height: 80px;
+    z-index: 1;
+    border-width: 2px;
+    img {
+      width: 100%;
+      height: 30px;
+      object-fit: contain;
+      object-position: center;
+    }
+  }
+  .back {
+    right: 90px;
+  }
+  .page {
+    position: absolute;
+    right: 10px;
+    bottom: 90px;
+    text-align: right;
+    color: #aaa;
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 5px;
+    border-radius: 5px;
+    z-index: 1;
+  }
+  .text {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 30%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    font-size: 30px Arial;
+  }
+  .img, .img_left, .img_right {
+    position: absolute;
+    top: 30%;
+    height: 70%;
+    object-fit: contain;
+    object-position: center;
+  }
+  .img {
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+  .img_left {
+    left: 0;
+    right: 50%;
+    width: 50%;
+  } 
+  .img_right {
+    left: 50%;
+    right: 0;
+    width: 50%;
+  }
+}
+
 @media (max-width: 1000px) {
   .grid .mid .preview #nav {
     .pres {
@@ -1962,7 +2108,7 @@ strong {
   }
 
   .grid .mid #eyes > div {
-    margin-left: -100px;
+    margin-left: -25%;
   }
   
 }
