@@ -217,7 +217,8 @@ var audio_loop = function() {
     }
     // set user as loudest, update display
   }
-  window.requestAnimationFrame(audio_loop);
+  setTimeout(audio_loop, 200);
+  // window.requestAnimationFrame(audio_loop);
 };
 
 input.compat = {};
