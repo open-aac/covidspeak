@@ -941,7 +941,7 @@ strong {
       }
       &.custom_content,&.custom_self_content {
         .secondary_preview {
-          margin-left: -100px;
+          margin-left: -25%;
         }
         #communicator {
           margin-left: -100px;
@@ -2108,7 +2108,7 @@ covidspeak-book {
   }
 
   .grid .mid #eyes > div {
-    margin-left: -25%;
+    margin-left: -100px;
   }
   
 }

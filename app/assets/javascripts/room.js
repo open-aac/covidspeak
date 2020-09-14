@@ -2088,7 +2088,7 @@ var room = {
             room.assert_media('no-video', data.user, true);
           }
           if(json.sharing) {
-            room.sharers[data.user_id] = true;
+            room.sharers[data.user_id] = (new Date()).getTime();
             if(!mirror_type && !teaching_type) {
               room.end_share();
             }
@@ -2119,6 +2119,15 @@ var room = {
           } else {
             room.sharers[data.user_id] = false;
             var actives = room.active_users || {};
+            var now = (new Date()).getTime();
+            // Auto-unshare for any users that haven't asserted
+            // their share for more than a minute
+            for(var user_id in room.sharers) {
+              if(room.sharers[user_id] && room.sharers[user_id] < now - (60 * 1000)) {
+                room.assert_media('no-custom', {id: user_id}, true);
+                room.sharers[user_id] = false;
+              }
+            }
             var none_sharing = true;
             for(var id in actives) {
               if(actives[id] && room.sharers[id]) {
@@ -2271,6 +2280,7 @@ var room = {
       var to_remove = room.query_list('#partner audio, #partner video, .grid .preview .secondary_preview', document, function(elem) {
         return elem.getAttribute('data-user-id') == user.id;
       })
+      room.assert_media('no-custom', user, true);
       setTimeout(function() {
         if(!(room.active_users || {})[user.id]) {
           to_remove.forEach(function(e) {
