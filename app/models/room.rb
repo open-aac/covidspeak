@@ -166,6 +166,7 @@ class Room < ApplicationRecord
       self.settings['user_configs'][user_id_hash]['reactions'] = opts['reactions'].to_i
       self.settings['user_configs'][user_id_hash]['buttons'] = opts['buttons'].to_i
       self.settings['user_configs'][user_id_hash]['minutes_heard'] = opts['minutes_heard'].to_i
+      self.settings['user_configs'][user_id_hash]['connection_type'] = opts['connection_type']
       self.settings['user_configs'][user_id_hash]['timestamp'] ||= Time.now.to_i
       if opts['ip']
         hashed_addr = Room.masked_ip(opts['ip'], self.settings['room_nonce']) rescue nil

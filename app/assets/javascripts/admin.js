@@ -243,6 +243,9 @@ var admin = {
           (room.configs || []).forEach(function(config, idx) {
             var div = document.createElement('div');
             div.innerText = config;
+            if(room.connections && room.connections[idx]) {
+              div.innerText = div.innerText + " (" + room.connections[idx] + ")";
+            }
             elem.querySelector('.devices').appendChild(div);
             if(room.actions && room.actions[idx]) {
               var sub = document.createElement('div');
@@ -389,6 +392,21 @@ var admin = {
             admin.load_account(room.account_id);
           });
           process_room(room);
+          var hardest_connection = null;
+          (room.connections || []).forEach(function(conn) {
+            if(conn) {
+              hardest_connection = hardest_connection || conn;
+              if(hardest_connection != 'TURN' && conn == 'TURN') {
+                hardest_connection = conn;
+              } else if(hardest_connection == 'local' && conn == 'STUN') {
+                hardest_connection = conn;
+              }
+            }
+          });
+          if(hardest_connection) {
+            room.duration_string = room.duration_string + " (" + hardest_connection + ")";
+          }
+
           extras.populate(elem, {
             code: room.account_code,
             name: room.account_name,
@@ -396,6 +414,7 @@ var admin = {
             duration: room.duration_string,
             "-sub_id": room.sub_id ? ("(" + room.sub_id + ")") : ""
           });
+
           if(room.unused) {
             elem.classList.add('unused');
           }

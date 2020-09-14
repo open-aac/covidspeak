@@ -277,6 +277,43 @@ var room = {
         data.buttons = room.usage_stats.buttons;
         data.minutes_heard = input.heard_minutes;
       }
+      // Track which rooms required a TURN server
+      // vs. STUN or local connections
+      for(var user_id in (room.active_users || {})) {
+        remote.connection_type(room.current_room.id, user_id).then(function(type) {
+          room.connection_types = room.connection_types || {};
+          var now = (new Date()).getTime();
+          room.connection_types[user_id] = {ts: now, type: type};
+          var hardest_connection = null;
+          for(var uid in room.connection_types) {
+            var ref = room.connection_types[uid];
+            if(ref.ts > now - (3 * 60 * 1000)) {
+              hardest_connection = hardest_connection || ref.type;
+              if(hardest_connection != 'TURN' && ref.type == 'TURN') {
+                hardest_connection = ref.type;
+              } else if(hardest_connection == 'local' && ref.type == 'STUN') {
+                hardest_connection = ref.type;
+              }
+              if(hardest_connection) {
+                if(!room.connection_type) {
+                  setTimeout(function() {
+                    clearTimeout(room.active_timeout);
+                    room.active_timeout = null;
+                    room.set_active();
+                  }, 500);
+                }
+                room.connection_type = hardest_connection;
+              }
+            }
+          }
+        }, function(err) { 
+          room.connection_types = room.connection_types || {};
+          delete room.connection_types[user_id];
+        });
+      }
+      if(room.connection_type) {
+        data.connection_type = room.connection_type;
+      }
       session.ajax('/api/v1/rooms/' + room.room_id + '/keepalive', {
         method: 'POST',
         data: data

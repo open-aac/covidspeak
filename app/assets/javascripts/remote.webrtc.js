@@ -394,6 +394,66 @@ var remote = remote || {};
         });
       }
     },
+    connection_type: function(room_id, user_id) {
+      return new Promise(function(resolve, reject) {
+        var main_room = remote.webrtc.rooms[room_id];
+        var subroom_id = main_room.subroom_id(user_id);
+        var pc_ref = remote.webrtc.pc_ref('sub', subroom_id);
+        // main_room.subrooms[subroom_id].rtcpc;
+        if(pc_ref && pc_ref.refState == 'connected') {
+          // LOCAL = host
+          // STUN = srflx
+          // TURN = relay
+          // room.pcs[0].getStats().forEach()
+          // find all where s.type == 'candidate-pair' && s.nominated && s.state == 'succeeded' 
+          //     and extract localCandidateId and remoteCandidateId
+          // find entries where s.id matches those ids
+          //     and record protocol, candidateType
+          // send this with keepalive to track connection types
+          //     so we can see how many hit the TURN server
+          if(pc_ref.pc && pc_ref.pc.getStats) {
+            pc_ref.pc.getStats(null).then(function(stats) {
+              var stats_by_id = {};
+              var pairs = [];
+              stats.forEach(function(stat) {
+                stats_by_id[stat.id] = stat;
+                if(stat.type == 'candidate-pair' && stat.nominated && stat.state == 'succeeded') {
+                  pairs.push(stat);
+                }
+              }); 
+              var type = null;
+              pairs.forEach(function(pair) {
+                var local = stats_by_id[pair.localCandidateId];
+                var remote = stats_by_id[pair.remoteCandidateId];
+                if(local && remote) {
+                  log(true, "Stats Candidates", local.candidateType, remote.candidateType);
+                  if(remote.candidateType == 'srflx' || remote.candidateType == 'prflx') {
+                    type = 'STUN';
+                  } else if(remote.candidateType == 'relay') {
+                    type = 'TURN';
+                  } else if(remote.candidateType == 'host') {
+                    type = 'local';
+                  } else {
+                    console.error("RTC: Unrecognized candidate type", remote.candidateType);
+                    reject("unrecognized candidate type")
+                  }
+                }
+              });
+              if(type) {
+                resolve(type);
+              } else {
+                reject("no stats found");
+              }
+              reject("stats not found");
+            }, function(err) {
+              reject(err);
+            })
+          }
+        } else {
+          reject('not found');
+        }
+      });
+    },
     pc_ref: function(type, id) {
       var list = (remote.webrtc.pcs || []).filter(function(ref) { 
         if(type == 'sub') {

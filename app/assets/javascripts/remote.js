@@ -175,6 +175,15 @@ Object.assign(remote, {
 
     })
   },
+  connection_type: function(room_id, user_id) {
+    if(remote[remote.backend].connection_type) {
+      return remote[remote.backend].connection_type(room_id, user_id);
+    } else {
+      return new Promise(function(res, rej) {
+        rej('unknown');
+      })
+    }
+  },
   user_added: function(room, user, notify) {
     remote.rooms[room.id].users = remote.rooms[room.id].users || {}
     remote.rooms[room.id].users[user.id] = remote.rooms[room.id].users[user.id] || {};

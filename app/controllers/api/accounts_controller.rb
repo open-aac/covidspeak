@@ -123,10 +123,12 @@ class Api::AccountsController < ApplicationController
     if room.settings['user_configs']
       res[:configs] = []
       res[:actions] = []
+      res[:connections] = []
       list = room.settings['user_configs'].to_a.sort_by{|k, c| c['timestamp']}
       list.each do |id, opts|
         ip_hash = (opts['ip_hash'] || opts['partial_ip'] || '0').sub(/\.0\.0$/, '')
         res[:configs] << "#{opts['system']}.#{opts['browser']}#{opts['mobile'] ? '.mobile' : ''}.#{ip_hash}"
+        res[:connections] << opts['connection_type'] || 'unknown'
         res[:actions] << {reactions: opts['reactions'], buttons: opts['buttons'], minutes_heard: opts['minutes_heard']}
       end
     end
