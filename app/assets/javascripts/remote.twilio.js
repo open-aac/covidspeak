@@ -1,3 +1,7 @@
+// TODO: fix this... doesn't connect correctly
+// Also it needs to discern between live_content
+// and shared feeds, maybe using SID?
+// https://media.twiliocdn.com/sdk/js/video/releases/2.0.0/docs/Track.html
 var remote = remote || {};
 remote.twilio = {
   start_local_tracks: function(opts) {
@@ -143,6 +147,8 @@ remote.twilio = {
             // TODO: can we figure out the video dimensions here?
             remote.track_added(room_ref, participant_ref, track_ref);
             track.on('message', function(data) {
+              // If 'update', use the SIDs mappings to add in
+              // camera_track, microphone_track, share_video_track and share_audio_track
               remote.message_received(room_ref, participant_ref, track_ref, data);
             });
           };
@@ -190,6 +196,8 @@ remote.twilio = {
     });
   },
   send_message: function(room_id, message) {
+    // If 'update', add in the SIDs mapping
+    // for camera, microphone, share_video, share_audio
     return new Promise(function(res, rej) {
       if(remote.twilio.data_track) {
         var str = message;
