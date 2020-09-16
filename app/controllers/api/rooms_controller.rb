@@ -143,6 +143,25 @@ class Api::RoomsController < ApplicationController
     render :json => {:room => {id: room_id, key: room_key, type: room.type, high_res: false, js: js_url, demo: room.short_room?, closed: room.expired?}, user_id: trimmed_identity, access: access}
   end
 
+  def temp_join_code
+    room = Room.find_by(code: params[:room_id])
+    if room && room.user_allowed?(params[:user_id])
+      code = WordCode.temp_code(room.code)
+      render json: {code: code}
+    else
+      api_error(400, {error: "room or user not found"})
+    end
+  end
+
+  def room_id
+    code = WordCode.room_id(params['temp_join_code'])
+    if code
+      render json: {room_id: code}
+    else
+      api_error(400, {error: "no code found"})
+    end
+  end
+
   def keepalive
     room = Room.find_by(code: params[:room_id])
     if room && room.user_allowed?(params[:user_id])
@@ -154,7 +173,7 @@ class Api::RoomsController < ApplicationController
         room.closed
       else
         params['ip'] = request.remote_ip
-        room.in_use(params[:user_id], params)
+          room.in_use(params[:user_id], params)
       end
       render json: {updated: true, closed: room.expired?, demo: room.short_room?, time_left: room.time_left}
     else

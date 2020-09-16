@@ -152,6 +152,7 @@ module Purchasing
     method = (session['setup_intent'] || {})['payment_method']
     method ||= ((session['customer'] || {})['invoice_settings'] || {})['default_payment_method']
     method ||= (session['subscription'] || {})['default_payment']
+    opts['join_code'] = opts['join_code'].gsub(/["\s]+/, '') if opts['join_code']
     opts = JSON.parse(RedisAccess.default.get("purchase_settings/#{session_id}")) rescue {}
     if !customer || !subscription
       return false unless method

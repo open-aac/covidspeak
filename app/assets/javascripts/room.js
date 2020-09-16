@@ -1887,31 +1887,56 @@ var room = {
     }).then(function(res) { }, function(err) { });
 
     document.querySelector('#invite_modal .link').innerText = url;
-    var actions = [
-      {action: 'copy', label: "Copy Link", callback: function() {
-        // Select the link anchor text  
-        extras.copy(url).then(function(res) {
-          if(res.copied) {
-            document.querySelector('.modal .modal_footer .modal_button').innerText = 'Copied!';
-            setTimeout(function() {
-              modal.close();
-            }, 2000);
-          }
-        }, function() {
-
-        });
-      }}
-    ];
-    if(navigator.canShare && navigator.canShare()) {
-      actions.push({action: 'share', label: "Share", callback: function() {
-        if(navigator.share) {
-          navigator.share({url: url});
-        }
-        modal.close();
-      }})
-    }
     var dom = document.getElementById('invite_modal');
     dom.onattached = function(dom) {
+      if(navigator.canShare && navigator.canShare()) {
+        dom.querySelector('.modal_button.share').style.display = 'inline';
+      }
+  
+      dom.querySelector('.options').addEventListener('click', function(event) {
+        var button = event.target.closest('.modal_button');
+        var type = button.getAttribute('rel');
+        if(button) {
+          if(type == 'join_code') {
+            var status = dom.querySelector('.temp_join_code');
+            status.innerText = "Loading...";
+            session.ajax('/api/v1/rooms/' + room.room_id + '/temp_join_code', {
+              method: 'POST',
+              data: {user_id: room.current_user_id}
+            }).then(function(res) {
+              status.innerText = res.code;
+            }, function(err) {
+              status.innerText = "Error Loading Code";
+            });  
+          }
+          if(type == 'copy') {
+            extras.copy(url).then(function(res) {
+              if(res.copied) {
+                dom.querySelector('.copy_status').innerText = 'Copied!';
+                setTimeout(function() {
+                  modal.close();
+                }, 2000);
+              }
+            }, function() {
+    
+            });
+          } else if(type == 'share') {
+            if(navigator.share) {
+              navigator.share({url: url});
+            }
+            modal.close();
+          } else {
+            dom.querySelector('.options').style.display = 'none';
+            dom.querySelectorAll('.view').forEach(function(view) {
+              if(view.classList.contains(type + '_view')) {
+                view.style.display = 'block';
+              } else {
+                view.style.display = 'none';
+              }
+            });
+          }
+        }
+      });
       dom.querySelector('#external_invite').addEventListener('submit', function(event) {
         event.preventDefault();
         var address = dom.querySelector('#invite_target').value.replace(/\s/g, '');
@@ -1924,6 +1949,9 @@ var room = {
             if(res.invited) {
               dom.querySelector('#send_invite').innerText = 'Invite Sent!';
               dom.querySelector('#invite_target').value = "";
+              setTimeout(function() {
+                modal.close();
+              }, 2000);
             } else {
               dom.querySelector('#send_invite').innerText = 'Send Failed';
             }
@@ -1933,7 +1961,7 @@ var room = {
         }
       });
     };
-    modal.open("Invite a Visitor", dom, actions);
+    modal.open("Invite a Visitor", dom);
     if(window.QRCode) {
       var qr = new window.QRCode(document.querySelector('.modal #invite_modal .qr_code'), url);
       document.querySelector('.modal #invite_modal .qr_code').setAttribute('title', '');

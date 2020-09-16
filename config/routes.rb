@@ -31,6 +31,8 @@ Rails.application.routes.draw do
       get 'status' => 'rooms#status'
       post 'activate' => 'rooms#activate'
       post 'invite' => 'rooms#invite'
+      post 'temp_join_code' => 'rooms#temp_join_code'
+      get 'room_id' => 'rooms#room_id', on: :collection
     end
     resources :users
     post 'feedback' => 'users#feedback'

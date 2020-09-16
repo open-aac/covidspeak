@@ -8,15 +8,15 @@
       </button>
     </div>
   </div>
-  <h2 style='margin-bottom: 10px;'>Enter your Join Code to Start a New Room</h2>
+  <h2 style='margin-bottom: 10px;'>Enter your Join Code</h2>
   <div>
     <form id='join'>
       <input type='text' style='width: calc(100% - 185px);' placeholder='Join Code' id='join_code' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='off'/>
       <button type='submit' class='primary' style='width: 180px; margin-right: 0;'>
         <img src="/logo.svg" class='img_logo' style='height: 40px; margin: -10px 0;'/> 
-        Start Room
+        <span id='join_prompt'>Start Room</span>
       </button>
-      <div class='big_checkbox' style='margin: 10px 0; padding-left: 52px; text-align: left; padding-top: 0; font-size: 14px; font-size: 18px; padding-top: 10px;'>
+      <div class='big_checkbox' id='as_communicator_holder' style='margin: 10px 0; padding-left: 52px; text-align: left; padding-top: 0; font-size: 14px; font-size: 18px; padding-top: 10px;'>
         <label>
           <input type='checkbox' id='as_communicator' checked='true'/>
           Add me to the room as the communicator
@@ -64,8 +64,12 @@ var ts = parseInt(localStorage.room_set_at || "0", 10);
 if(ts > ((new Date()).getTime() - (30 * 60 * 1000)) && localStorage.room_id && localStorage.user_id) {
   document.querySelector('#existing_room').style.display = 'block';
 }
-document.querySelector('#join_code').addEventListener('input', function(e) {
-  var value = event.target.value;
+var check_code = function() {
+  var value = document.querySelector('#join_code').value.replace(/^\s+/, '').replace(/\s+$/, '');
+  var prompt = document.querySelector('#join_prompt');
+  var options = document.querySelector('#as_communicator_holder');
+  prompt.innerText = "Start Room";
+  options.style.display = 'block';
   if(value) { value = value.split(/:/)[0]; }
   if(value && value == "demo".substring(0, value.length)) {
     document.querySelector('#manage_schedule_container').style.display = 'none';
@@ -73,18 +77,23 @@ document.querySelector('#join_code').addEventListener('input', function(e) {
     document.querySelector('#manage_schedule_container').style.display = 'none';
   } else if(value && value == "teach".substring(0, value.length)) {
     document.querySelector('#manage_schedule_container').style.display = 'none';
-  } else {
+  } else if(value && value.match(/\s/)) {
+    document.querySelector('#manage_schedule_container').style.display = 'none';
+    prompt.innerText = "Join Room";
+    options.style.display = 'none';
+    } else {
     document.querySelector('#manage_schedule_container').style.display = value ? 'block' : 'none';
   }
+};
+document.querySelector('#join_code').addEventListener('input', function(e) {
+  check_code();
 });
 if(location.search) {
   var join = (new URL(location)).searchParams.get('join');
   if(join) {
     var min_join = join.split(/:/)[0];
     document.querySelector('#join_code').value = join;
-    if(min_join != 'demo' && min_join != 'mirror' && min_join != 'teach') {
-      document.querySelector('#manage_schedule_container').style.display = 'block';
-    }
+    check_code();
   }
 }
 document.querySelector('#join_code_help').addEventListener('click', function(event) {
@@ -121,7 +130,7 @@ document.querySelector('#join').addEventListener('submit', function(event) {
   event.preventDefault();
   var code = document.querySelector('#join_code').value;
   var bundle_id = code.split(/:/)[1];
-  code = code.split(/:/)[0];
+  code = code.split(/:/)[0].replace(/^["\s]+/, '').replace(/["\s+]$/, '');
   if(code == 'mirror') {
     location.href = '/rooms/mirror-' + (new Date()).getTime() + "x" + Math.round(Math.random() * 99999) + '/join';
     return;
@@ -133,33 +142,48 @@ document.querySelector('#join').addEventListener('submit', function(event) {
   document.querySelector('#join button').innerText = "Starting...";
   var error = document.querySelector('#join .error');
   error.innerText = '';
-  session.ajax('/api/v1/users', {
-    method: 'POST',
-    data: {join_code: code, type: remote.backend}
-  }).then(function(res) {
-    res.user.as_communicator = document.querySelector('#as_communicator').checked ? true : false;
-    room.start_and_enter_room(res, bundle_id);
-  }, function(err) {
-    document.querySelector('#join button').innerText = "Start Room";
-    if(err && err.responseJSON && err.responseJSON.throttled) {
-      if(err.responseJSON.throttled == 'too_many_live') {
-        error.innerText = "All rooms are in use for this join code";
-      } else if(err.responseJSON.throttled == 'not_active') {
-        error.innerText = "This join code doesn't have an active subscription";
-      } else if(err.responseJSON.throttled == 'too_many_daily') {
-        error.innerText = "Daily room limit has been reached for this join code";
-      } else if(err.responseJSON.throttled == 'too_many_monthly') {
-        error.innerText = "Monthly room limit has been reached for this join code";
+  var lookup = function() {
+    session.ajax('/api/v1/users', {
+      method: 'POST',
+      data: {join_code: code, type: remote.backend}
+    }).then(function(res) {
+      res.user.as_communicator = document.querySelector('#as_communicator').checked ? true : false;
+      room.start_and_enter_room(res, bundle_id);
+    }, function(err) {
+      document.querySelector('#join button').innerText = "Start Room";
+      if(err && err.responseJSON && err.responseJSON.throttled) {
+        if(err.responseJSON.throttled == 'too_many_live') {
+          error.innerText = "All rooms are in use for this join code";
+        } else if(err.responseJSON.throttled == 'not_active') {
+          error.innerText = "This join code doesn't have an active subscription";
+        } else if(err.responseJSON.throttled == 'too_many_daily') {
+          error.innerText = "Daily room limit has been reached for this join code";
+        } else if(err.responseJSON.throttled == 'too_many_monthly') {
+          error.innerText = "Monthly room limit has been reached for this join code";
+        } else {
+          error.innerText = "No rooms are available for this join code";
+        }
+      } else if(err && err.status == 500) {
+        error.innerText = "Unexpected error starting room";
+        console.error("User confirmation error: ", err);
       } else {
-        error.innerText = "No rooms are available for this join code";
+        error.innerText = "Please re-check your join code";
+        console.error("User confirmation error: ", err);
       }
-    } else if(err && err.status == 500) {
-      error.innerText = "Unexpected error starting room";
-      console.error("User confirmation error: ", err);
-    } else {
-      error.innerText = "Please re-check your join code";
-      console.error("User confirmation error: ", err);
-    }
-  });
+    });
+  }
+  if(code.match(/\s/)) {
+    session.ajax("/api/v1/rooms/room_id?temp_join_code=" + code, {
+      method: 'GET'
+    }).then(function(res) {
+      var url = location.origin + "/rooms/" + res.room_id + "/join";
+      location.href = url;
+    }, function(err) {
+      lookup();
+    });
+  } else {
+    lookup();
+  }
+  
 });
 </script>

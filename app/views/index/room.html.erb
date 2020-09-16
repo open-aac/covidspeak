@@ -394,18 +394,52 @@
 </div>
 <div id="invite_modal" class="content">
   <a class="link" style='position: absolute; left: -2000px;'>http://www.example.com</a>
-  <p style='margin-top: -10px;'>
-    You can invite someone to join this room by copy the 
-    link code to this device's clipboard or hold up 
-    your camera app (or QR Code app on Kindle Fires)
-    to scan this code and load a share link:
-  </p>
-  <div class='qr_code'>
+  <div class='options' style='margin: 30px 30px; text-align: center;'>
+    <p style='margin-top: -10px; margin-bottom: 20px;'>
+      You can invite someone to join this room by sending
+      them a link, scanning and sharing a QR code, or 
+      telling them a short-term join code.
+    </p>
+    <button class="modal_button" rel="share" style='display: none; width: calc(90% + 14px); min-height: 50px; height: auto;'>
+      <img src="/icons/share-fill.svg">Share
+    </button>
+    <button class="modal_button" rel="scan" style='width: 45%; min-height: 50px; height: auto;'>
+      <img src="/icons/upc-scan.svg">Scan Code
+    </button>
+    <button class="modal_button" rel="copy" style='width: 45%; min-height: 50px; height: auto;'>
+      <img src="/icons/clipboard.svg"><span class='copy_status'>Copy Link</span>
+    </button>
+    <button class="modal_button" rel="join_code" style='width: 45%; min-height: 50px; height: auto;'>
+      <img src="/icons/card-text.svg">Join Code
+    </button>
+    <button class="modal_button" rel="email" style='width: 45%; min-height: 50px; height: auto;'>
+      <img src="/icons/envelope.svg">Email/SMS
+    </button>
   </div>
-  <form style='text-align: center;' id='external_invite'>
-    <input type='text' id='invite_target' placeholder='Email or SMS'/>
-    <button type='submit' class='button' id='send_invite' style='width: 150px;'>Send Invite</button>
-  </form>
+  <div class='scan_view view' style='display: none;'>
+    <p>
+      Hold up 
+      your camera app (or QR Code app on Kindle Fires)
+      to scan this code and load a link you can share
+      with others:
+    </p>
+        
+    <div class='qr_code'>
+    </div>
+  </div>
+  <div class='email_view view' style='display: none;'>
+    <p>Enter the email address or cell number you'd like to have receive an invite link:</p>
+    <form style='text-align: center; margin-top: 40px;' id='external_invite'>
+      <input type='text' id='invite_target' placeholder='Email or SMS'/>
+      <button type='submit' class='button' id='send_invite' style='width: 150px;'>Send Invite</button>
+    </form>
+  </div>
+  <div class='join_code_view view' style='display: none;'>
+    <p>You can tell people to go to covidspeak.org, hit "Join a Room", and enter the following three words with a space between each word to join your room. This code will expire in 5 minutes.</p>
+    <div class='temp_join_code' style='font-size: 25px; text-align: center; margin: 40px;'>
+        loading...
+    </div>
+  </div>
   <div class='shown_link' style='display: none;'></div>
 </div>
 <div id="settings_modal" class="content">
