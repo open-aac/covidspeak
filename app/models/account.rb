@@ -180,6 +180,7 @@ class Account < ApplicationRecord
     self.clean_old_codes
     attempts = 0
     setting = 'permanent'
+    raise "code already exists" if code && self.settings['codes'][code]
     while attempts < 10 && (!code || self.settings['codes'][code])
       code = GoSecure.nonce('temporary_account_code')[0, 6].gsub(/0/, 'j').gsub(/1/, 'h')
       setting = 2.weeks.from_now.to_i

@@ -173,6 +173,7 @@ var admin = {
         contact_name: account.contact_name,
         contact_email: account.contact_email,
         cancel_reason: account.cancel_reason,
+        created_string: account.created_string,
         "--cancel_reason_parent": !!account.cancel_reason,
         purchase_state: account.purchase_state,
         "--purchase_summary_parent": !!(account.payment_type == 'paid' && account.can_start_room),
