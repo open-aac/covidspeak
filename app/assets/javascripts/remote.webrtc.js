@@ -645,6 +645,7 @@ var remote = remote || {};
                 }
                 // Trust the other side's mapping of mids,
                 // only if you don't have them mapped yourself
+                trans.kind = trans.kind || trans.sender.kind;
                 if(!trans.kind) {
                   if(json.audio_mids && mid && json.audio_mids.indexOf(mid) != -1) {
                     trans.kind = 'audio';
@@ -799,8 +800,10 @@ var remote = remote || {};
           pc.data_channel.subroom_id = pc_ref.subroom_id;
         }
         var trans = pc.getTransceivers();
-        var zero_type = trans[0] && trans[0].track && trans[0].track.kind;
-        var one_type = trans[1] && trans[1].track && trans[1].track.kind;
+        var zero_type = trans[0] && trans[0].receiver && trans[0].receiver.track && trans[0].receiver.track.kind;
+        zero_type = zero_type || (trans[0] && trans[0].sender && trans[0].sender.track && trans[0].sender.track.kind);
+        var one_type = trans[1] && trans[1].receiver && trans[1].receiver.track && trans[1].receiver.track.kind;
+        one_type = one_type || (trans[1] && trans[1].sender && trans[1].sender.track && trans[1].sender.track.kind);
         if(trans[0] && (zero_type == 'audio' || one_type != 'audio')) {
           trans[0].kind = 'audio';
           trans[0].sender.kind = 'audio';
