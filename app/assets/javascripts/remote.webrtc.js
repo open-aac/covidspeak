@@ -849,7 +849,14 @@ var remote = remote || {};
         var pc_ref = remote.webrtc.pc_ref(e.target.id || pc.id || pc_id);
         pc_ref.refState = e.target.connectionState;
         main_room.subrooms[subroom_id].id_index++;
-        if(e.target.connectionState == 'failed' || e.target.connectionState == 'disconnected') { 
+        if(e.target.connectionState == 'connecting') {
+          // Give up trying to connect after 15 seconds
+          setTimeout(function() {
+            if(e.target.connection_state == 'connecting') {
+              e.target.close();
+            }
+          }, 15000);
+        } else if(e.target.connectionState == 'failed' || e.target.connectionState == 'disconnected') { 
           if(main_room && main_room.status) { main_room.status({connection_failed: true}); }
           disconnected(e.target);
         } else if(e.target.connectionState == 'connected') {
