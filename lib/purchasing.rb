@@ -298,10 +298,8 @@ module Purchasing
   def self.purchase_modify(opts)
     Stripe.api_key = ENV['STRIPE_SECRET_KEY']
     Stripe.api_version = '2020-03-02'
-      session = Stripe::Checkout::Session.create({
+    purchase_opts = {
       mode: 'setup',
-      customer_email: opts[:contact_email],
-      customer: opts[:customer_id],
       metadata: { platform_source: 'covidspeak' },
       payment_method_types: ['card'],
       # subscription_data: {
@@ -312,7 +310,13 @@ module Purchasing
       },
       success_url: opts[:success_url],
       cancel_url: opts[:cancel_url]
-    })
+    }
+    if opts[:customer_id]
+      purchase_opts[:customer] = opts[:customer_id]
+    else
+      purchase_opts[:customer_email] = opts[:contact_email]
+    end
+    session = Stripe::Checkout::Session.create(purchase_opts)
     opts['initiator'] = 'update_or_set_billing'
     opts['source'] = opts[:subscription_id] ? 'update' : 'purchase'
     opts['nonce'] = GoSecure.nonce('account_unique_nonce')
