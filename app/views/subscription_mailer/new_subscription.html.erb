@@ -1,6 +1,7 @@
 There was a new subscription activated for Co-VidSpeak!<br/><br/>
 
 Account: <b><%= @account.settings['name'] || 'No Name' %></b><br/>
+Account Type: <b><%= @account.payment_frequency %></b><br/>
 Account ID: <b><%= @account.id %></b><br/>
 Join Code: <b><%= @account.code %></b><br/>
 Contact Name: <b><%= @account.settings['contact_name'] || 'No Name' %></b><br/>
