@@ -16,6 +16,7 @@ class PurchasingController < ApplicationController
       contact_email: params['contact_email'],
       contact_name: params['contact_name'],
       quantity: [1, params['quantity'].to_i].max,
+      type: params['purchase_type'],
       join_code: join_code,
       name: params['name'],
       success_url: "#{host}/purchasing/success?session_id={CHECKOUT_SESSION_ID}",

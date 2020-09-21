@@ -9,6 +9,14 @@
       <dl id='account_details'>
         <dt>Created:</dt>
           <dd class='created_string'><%= @account.created_at.strftime("%e %b %Y") %></dd>
+        <dt>Account Type:</dt>
+          <dd class='account_type'>
+            <% if @account.paid_account? %>
+              <%= @account.payment_frequency == 'yearly' ? "yearly" : "monthly" %>
+            <% else %>
+              <%= "free" %>
+            <% end %>
+          </dd>
         <dt>Join Code:</dt>
           <dd><a href="/?join=<%= @account.code %>" class='join_link'><span class='join_code'><%= @account.code %></span> <img src='/icons/link-45deg.svg'/></a></dd>
         <dt class='max_concurrent_rooms_dt'>Simultaneous Rooms:</dt>

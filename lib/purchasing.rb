@@ -23,6 +23,7 @@ module Purchasing
             state: 'active',
             account_id: subscription['metadata']['covidchat_account_id'],
             subscription_id: subscription['id'],
+            type: subscription['metadata']['covidchat_purchase_type'],
             customer_id: subscription['customer'],
             source_id: 'stripe',
             source: 'customer.subscription.created'
@@ -67,6 +68,7 @@ module Purchasing
               state: 'active',
               account_id: subscription['metadata']['covidchat_account_id'],
               subscription_id: subscription['id'],
+              type: subscription['metadata']['covidchat_purchase_type'],
               customer_id: subscription['customer'],
               source_id: 'stripe',
               source: 'customer.subscription.updated'
@@ -154,6 +156,7 @@ module Purchasing
     method ||= (session['subscription'] || {})['default_payment']
     opts = JSON.parse(RedisAccess.default.get("purchase_settings/#{session_id}")) rescue {}
     opts['join_code'] = opts['join_code'].gsub(/["\s]+/, '') if opts['join_code']
+    price_id = ENV['STRIPE_YEARLY_PRICE_ID'] if opts['type'] == 'yearly'
     if !customer || !subscription
       return false unless method
       # find customer (list all by email) or create customer
@@ -182,16 +185,19 @@ module Purchasing
         subscription = customer.subscriptions.data.detect{|s| s.items.data.any?{|i| i['price']['id'] == price_id } && s.metadata['covidchat_nonce'] == opts['nonce'] }
       end
       # attach the subscription
-      start_of_month = Date.today.beginning_of_month.to_time.to_i
-      subscription ||= Stripe::Subscription.create({
+      sub_hash = {
         customer: customer['id'],
         items: [
           {price: price_id},
         ],
-        backdate_start_date: start_of_month,
         default_payment_method: method['id'],
-        metadata: { platform_source: 'covidspeak', covidchat_nonce: opts['nonce'] }
-      }, {idempotency_key: "#{session_id}-#{opts['nonce']}"})
+        metadata: { platform_source: 'covidspeak', covidchat_nonce: opts['nonce'], covidchat_purchase_type: opts['type'] }
+      }
+      if opts['type'] != 'yearly'
+        start_of_month = Date.today.beginning_of_month.to_time.to_i
+        sub_hash[:backdate_start_date] = start_of_month
+      end
+      subscription ||= Stripe::Subscription.create(sub_hash, {idempotency_key: "#{session_id}-#{opts['nonce']}"})
     end
     add_purchase_summary(opts, method)
     
@@ -237,6 +243,7 @@ module Purchasing
           account_id: account.id,
           subscription_id: subscription['id'],
           customer_id: customer['id'],
+          type: subscription['metadata']['covidchat_purchase_type'],
           source_id: 'stripe',
           source: 'web.purchase.updated',
           purchase_summary: opts['purchase_summary']          
@@ -287,6 +294,7 @@ module Purchasing
       account_id: account.id,
       subscription_id: subscription['id'],
       customer_id: customer['id'],
+      type: opts['type'],
       source_id: 'stripe',
       source: 'web.purchase',
       purchase_summary: opts['purchase_summary']          

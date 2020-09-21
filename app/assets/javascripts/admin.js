@@ -214,11 +214,15 @@ var admin = {
           account.history.forEach(function(month) {
             var elem = template.cloneNode(true);
             elem.classList.remove('template');
+            var billing_string = month.billed ? "billed" : "not billed";
+            if(account.payment_frequency == 'yearly') { 
+              billing_string = '';
+            }
             extras.populate(elem, {
               month: month.month,
               minutes: (month.minutes || 0).toLocaleString(),
               rooms: month.rooms,
-              billing_string: month.billed ? "billed" : "not billed"
+              billing_string: billing_string
             });
             content.querySelector('.bills').appendChild(elem);
           });
@@ -324,13 +328,17 @@ var admin = {
       var recent_accounts = 0;
       var billable_slots = 0;
       var paid_accounts = 0;
+      var prepaid_slots = 0;
       var billed_slots = 0;
       data.accounts.forEach(function(account) {
         var elem = template.cloneNode(true);
         process_account(account);
-        if(account.payment_type == 'paid') {
+        if(account.payment_type == 'paid' && account.payment_frequency == 'monthly') {
           paid_accounts++;
           billable_slots = billable_slots + (account.max_concurrent_rooms || 1);
+        }
+        if(account.payment_type == 'paid' && account.payment_frequency == 'yearly') {
+          prepaid_slots = prepaid_slots + (account.max_concurrent_rooms || 1);
         }
         if(account.recent_activity) {
           recent_accounts++;
@@ -371,6 +379,9 @@ var admin = {
         elem.classList.remove('template');
         document.querySelector("#accounts .list").appendChild(elem);
       });
+      if(prepaid_slots > 0) {
+        paid_accounts = (paid_accounts || 'None') + " " + prepaid_slots + " prepaid";
+      }
 
       (document.querySelector('#accounts .recent_accounts') || {}).innerText = recent_accounts || 'None';
       (document.querySelector('#accounts .paid_accounts') || {}).innerText = paid_accounts || 'None';

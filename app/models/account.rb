@@ -76,7 +76,7 @@ class Account < ApplicationRecord
       'rooms' => total_rooms
     })
     account.save
-    if force && account.paid_account?
+    if force && account.paid_account? && account.payment_frequency == 'monthly'
       if account.settings['subscription'] && account.settings['subscription']['subscription_id']
         account_rooms = account.settings['max_concurrent_rooms'] || 1
         # TODO: for really excessive usage, charge extra??
@@ -375,6 +375,15 @@ class Account < ApplicationRecord
     SubscriptionMailer.deliver_message('new_subscription', self)
   end
 
+  def payment_frequency
+    if self.paid_account?
+      return 'yearly' if self.settings['subscription']['subscription_type'] == 'yearly'
+      'monthly'
+    else
+      'free'
+    end
+  end
+
   def self.confirm_subscription(opts)
     account_id = (opts[:account_id] || opts['account_id']).to_s
     if account_id && account_id.match(/^cv_/)
@@ -384,6 +393,7 @@ class Account < ApplicationRecord
     return false unless account.paid_account?
     if opts[:state] == 'active'
       account.settings['subscription'] ||= {}
+      account.settings['subscription']['subscription_type'] = opts[:type]
       if account.settings['subscription']['subscription_id'] && account.settings['subscription']['subscription_id'] != opts[:subscription_id]
         account.settings['subscription']['past_subscriptions'] ||= []
         account.settings['subscription']['past_subscriptions'] << {sub_id: account.settings['subscription']['subscription_id'], cus_id: account.settings['subscription']['customer_id'], reason: 'replaced'}
@@ -413,6 +423,7 @@ class Account < ApplicationRecord
       return true
     elsif opts[:state] == 'canceled' || opts[:state] == 'deleted'
       account.settings['subscription'] ||= {}
+      account.settings['subscription'].delete('subscription_type')
       account.settings['subscription']['past_subscriptions'] ||= []
       account.settings['subscription']['past_subscriptions'] << {sub_id: account.settings['subscription']['subscription_id'], cus_id: account.settings['subscription']['customer_id'], reason: opts[:state]}
       if opts[:cancel_reason]

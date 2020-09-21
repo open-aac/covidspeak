@@ -8,7 +8,7 @@ Simultaneous Rooms: <%= @account.settings['max_concurrent_rooms'] %>
 
 You can use your join code to start or schedule a room at any time, and then use that room to video chat with your communication partner. Co-VidSpeak has lots of great features like Emoji Reactions, Photo Sharing, and Custom Layouts, to help make things more engaging and effective for your video call.
 
-Remember that you will only be billed for months in which you use more than 30 minutes of call time. If you have any questions about your account or if you run into any issues, please let us know right away so we can help out.
+<% if @account.payment_frequency == 'monthly' %>Remember that you will only be billed for months in which you use more than 30 minutes of call time.<% end %> If you have any questions about your account or if you run into any issues, please let us know right away so we can help out.
 
 To review your account details at any time, use this link to log in to your account: <%= ApplicationMailer.current_host %>/accounts/<%= @account.admin_code %>?code=<%= @account.code %>
 

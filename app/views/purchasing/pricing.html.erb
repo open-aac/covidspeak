@@ -6,8 +6,21 @@
     <li><img src='/icons/camera-video.svg'/> Two-person video chat with communication grids</li>
     <li><img src='/icons/display.svg'/> Runs on Windows, Mac, iOS, Android in native browsers</li>
     <li>
-      <b style='font-size: 18px;'>US<span style='font-size: 26px; padding: 0 3px;'>$8 / month</span> / simultaneous room, cancel anytime</b>
-      <div><i>No charge for months with under 30 minutes usage</i></div>
+      <div style='display: flex; flex-direction: row'>
+        <div style='flex: 1; text-align: center'>
+          <div style='color: #2469a6; border-bottom: 1px solid #2469a6; width: 170px; margin: 0 auto;'>
+            US<span style='font-size: 26px; font-weight: bold;'>$8 / month</span>
+          </div>
+          <div>No charge for months w/<br/>under 30 minutes usage</div>
+        </div>
+        <div style='flex: 1; text-align: center'>
+          <div style='color: #a62424; border-bottom: 1px solid #a62424; width: 170px; margin: 0 auto;'>
+            US<span style='font-size: 26px; font-weight: bold;'>$80 / year</span>
+          </div>
+          <div>save $16 over active<br/>monthly account</div>
+        </div>
+      </div>
+      <div style='text-align: center; font-style: italic; margin-top: 20px;'>price per simultaneous room, cancel anytime</div>
     </li>
     <li><img src='/icons/chat-text.svg'/> Unlimited 1-1 meetings</li>
     <li><img src='/icons/gear.svg'/> Set preferred default layouts</li>
@@ -38,7 +51,8 @@
       <input type='number' id='rooms' min='1' placeholder='Simultaneous Rooms Needed' style='width: 485px; max-width: 100%;'/>
     </div><div style='margin-bottom: 5px;'>
       <div style='margin: 15px 0 5px;'><i>You will only be charged at the end of each billing period in which you use at least 30 minutes of call time.</i></div>
-      <button class='primary' id='purchase' style='width: 485px; max-width: 100%;'>Sign Up for US$<span id='purchase_amount'>8</span>/month</button>
+      <button class='primary' id='monthly_purchase' style='width: calc(50% - 8px); height: auto; max-width: 100%;'>Sign Up for<br/><span style='font-size: 14px;'>US</span><b>$<span id='monthly_purchase_amount'>8</span> / month</b></button>
+      <button class='primary' id='yearly_purchase' style='background: #a62424; width: calc(50% - 8px); height: auto; max-width: 100%; margin-right: 0;'>Sign Up for<br/><span style='font-size: 14px;'>US</span><b>$<span id='yearly_purchase_amount'>80</span> / year</b></button>
     </div>
   </div>
 </div>
@@ -47,7 +61,8 @@
     document.querySelector('#rooms').addEventListener('input', function(e) {
       var total = parseInt(e.target.value, 10);
       if(isNaN(total) || total < 1) { total = 1; }
-      document.querySelector('#purchase_amount').innerText = total * 8;
+      document.querySelector('#monthly_purchase_amount').innerText = total * 8;
+      document.querySelector('#yearly_purchase_amount').innerText = total * 80;
     });
     
     document.querySelector('#buy_now').addEventListener('click', function(event) {
@@ -55,7 +70,7 @@
       document.querySelector('#buy_links').parentNode.removeChild(document.querySelector('#buy_links'))
       document.querySelector('#buy').style.display = 'block';
     });
-    var start_purchase = function() {
+    var start_purchase = function(yearly) {
       var quantity = parseInt(document.querySelector('#rooms').value, 10);
       if(isNaN(quantity) || quantity < 1) { quantity = 1; }
 
@@ -72,6 +87,7 @@
             name: name,
             contact_name: contact_name,
             contact_email: contact_email,
+            purchase_type: yearly ? 'yearly' : 'monthly',
             quantity: quantity
           }
         }
@@ -88,10 +104,14 @@
         modal.note("There was an unexpected error communicating with the purchasing system");
       });
     };
-    document.querySelector('#purchase').addEventListener('click', function(event) {
+    document.querySelector('#monthly_purchase').addEventListener('click', function(event) {
       event.preventDefault();
       start_purchase();
-    })
+    });
+    document.querySelector('#yearly_purchase').addEventListener('click', function(event) {
+      event.preventDefault();
+      start_purchase(true);
+    });
   })();
 </script>
 <script>
