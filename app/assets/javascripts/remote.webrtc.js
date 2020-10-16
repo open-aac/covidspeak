@@ -1217,14 +1217,15 @@ var remote = remote || {};
         }
       });
       if(needs_refresh) {
-        remote.webrtc.refresh_count = 0;
-      } else {
         remote.webrtc.refresh_count = (remote.webrtc.refresh_count || 0) + 1;
+      } else {
+        remote.webrtc.refresh_count = 0;
       }
       if(!all_connections_ended && !needs_refresh) {
         // If we succeeded in getting an active connection
       }
       if(remote.webrtc.refresh_count > 1 || (remote.webrtc.has_connected && all_connections_ended)) {
+        remote.webrtc.refresh_count = 0;
         log(needs_refresh ? "missing expected track type, try to reconnect" : "no active connections, try to reconnect");
         remote.webrtc.failed_retries = (remote.webrtc.failed_retries || 0) + 1;
         if(remote.webrtc.failed_retries < 3) {
