@@ -772,6 +772,7 @@ var remote = remote || {};
           e.candidate.address;
           e.candidate.port;
           e.candidate.priority;
+          log(true, 'sending candidate', e.candidate);
           main_room.send({
             author_id: main_room.user_id,
             target_id: remote_user_id,
@@ -1183,8 +1184,10 @@ var remote = remote || {};
             room.state_for = room.state_for || {};
             remote.webrtc.remote_issue_ids = remote.webrtc.remote_issue_ids || {};
             if(room.state_for[pc_ref.user_id] && room.state_for[pc_ref.user_id].video) {
-              if(!receivers.find(function(r) { return r.track && r.track.kind == 'video' && r.track.enabled && !r.track.muted; })) {
-                console.error("Expected to receive remote video but none found");
+              var vidrec = receivers.find(function(r) { return r.track && r.track.kind == 'video' && r.track.enabled && r.track.readyState != 'ended'; });
+              if(!vidrec || vidrec.track.muted) {
+                // NOTE: video seems to get muted temporarily on iOS
+                console.error(vidrec.track.muted ? "Remote video found, but unexpetedly muted" : "Expected to receive remote video but none found");
                 if(!remote.webrtc.remote_issue_ids[room.state_for.track_ids]) {
                   needs_refresh = true;
                   remote.webrtc.remote_issue_ids[room.state_for.track_ids] = true;
@@ -1192,7 +1195,7 @@ var remote = remote || {};
               }
             }
             if(room.state_for[pc_ref.user_id] && room.state_for[pc_ref.user_id].audio) {
-              if(!receivers.find(function(r) { return r.track && r.track.kind == 'audio' && r.track.enabled && !r.track.muted; })) {
+              if(!receivers.find(function(r) { return r.track && r.track.kind == 'audio' && r.track.enabled && !r.track.muted && r.track.readyState != 'ended'; })) {
                 console.error("Expected to receive remote audio but none found");
                 if(!remote.webrtc.remote_issue_ids[room.state_for.track_ids]) {
                   needs_refresh = true;
@@ -1213,16 +1216,34 @@ var remote = remote || {};
           }
         }
       });
+      if(needs_refresh) {
+        remote.webrtc.refresh_count = 0;
+      } else {
+        remote.webrtc.refresh_count = (remote.webrtc.refresh_count || 0) + 1;
+      }
       if(!all_connections_ended && !needs_refresh) {
         // If we succeeded in getting an active connection
       }
-      if(needs_refresh || (remote.webrtc.has_connected && all_connections_ended)) {
-        log("no active connections, try to reconnect");
+      if(remote.webrtc.refresh_count > 1 || (remote.webrtc.has_connected && all_connections_ended)) {
+        log(needs_refresh ? "missing expected track type, try to reconnect" : "no active connections, try to reconnect");
         remote.webrtc.failed_retries = (remote.webrtc.failed_retries || 0) + 1;
         if(remote.webrtc.failed_retries < 3) {
           remote.webrtc.reconnect();
         } else {
-          log("too many failed reconnects, not trying again");
+          var cutoff = needs_refresh ? 5000 : 60000;
+          if(!remote.webrtc.failed_retries_timer || cutoff < remote.webrtc.failed_retries_timer.cutoff) {
+            if(remote.webrtc.failed_retries_timer) {
+              clearTimeout(remote.webrtc.failed_retries_timer.timer);
+            }
+            remote.webrtc.failed_retries_timer = {
+              cutoff: cutoff,
+              timer: setTimeout(function() {
+                remote.webrtc.failed_retries_timer = null;
+                remote.webrtc.failed_retries = Math.min(1, remote.webrtc.failed_retries || 0);
+              }, needs_refresh ? 5000 : 60000)
+            };
+          }
+          log("too many failed reconnects, not trying again until after cooldown");
         }
       } else if(!room.active && remote.webrtc.pcs.length > 0 && !all_connections_ended) {
         room.set_active(true);
@@ -1236,7 +1257,7 @@ var remote = remote || {};
         main_room.subroom_ids.forEach(function(subroom_id) {
           if(main_room.subrooms[subroom_id]) {
             main_room.subrooms[subroom_id].disconnected = true;
-            if(main_room.subrooms[subroom_id].rtcpc && main_room.subrooms[subroom_id].rtcpc.updated > now - (3 * 60 * 1000)) {
+            if(main_room.subrooms[subroom_id].rtcpc && main_room.subrooms[subroom_id].rtcpc.updated > now - (6 * 60 * 1000)) {
               var ping = {no_existing_connection: true};
               var remote_user_id = main_room.subrooms[subroom_id].user_id;
               var room_owner = subroom_id.split(/::/)[1];
@@ -1446,7 +1467,7 @@ var remote = remote || {};
                   // do nothing
                 } else {
                   pc.addIceCandidate(msg.candidate || '').then(function() {
-                    log(true, "candidate added");
+                    log(true, "  candidate received & added");
                     // something happens automagically??
                   }, function(err) {
                     if(msg.candidate != null) {
