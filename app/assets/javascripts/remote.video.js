@@ -166,7 +166,14 @@ remote.video = {
       }
       main_room.ref = room_ref;
       var pre_video = document.createElement('video');
-      pre_video.src = "https://d18vdu4p71yql0.cloudfront.net/covidspeak.mp4";
+      var video_url = (location.hash || "").substring(1)
+      if(video_url && video_url.match(/^http/)) {
+        remote.video.timings[video_url] = {en: []};
+      } else {
+        video_url = remote.video.url;
+      }
+      remote.video.current_url = video_url;
+      pre_video.src = video_url;
       pre_video.addEventListener('canplay', function(e) {
         console.log("VIDEO READY");
         res(room_ref);
@@ -207,7 +214,10 @@ remote.video = {
             room.status("Loading Video...");
           }
           var video = document.createElement('video');
-          video.src = "https://d18vdu4p71yql0.cloudfront.net/covidspeak.mp4";
+          video.src = video_url;
+          if(video_url != remote.video.url) {
+            video.loop = true;
+          }
           video.controls = false;
           video.addEventListener('canplay', function(e) {
             console.log("DOM VIDEO READY");
@@ -215,15 +225,17 @@ remote.video = {
             remote.video.video_room_id = main_room.ref.id;
             remote.video.track_video(video);
             var show_controls = function() {
-              var elem = document.querySelector('#video_controls');
-              elem.style.display = 'block';
-              var rect = document.querySelector('.col.right').getBoundingClientRect();
-              elem.style.right = (rect.width) + "px";
-              elem.style.left = 'unset';
-              document.querySelector('#text').classList.add('slide_down');
-              setTimeout(function() {
-                elem.style.opacity = 1.0;
-              }, 500);
+              if(video_url == remote.video.url) {
+                var elem = document.querySelector('#video_controls');
+                elem.style.display = 'block';
+                var rect = document.querySelector('.col.right').getBoundingClientRect();
+                elem.style.right = (rect.width) + "px";
+                elem.style.left = 'unset';
+                document.querySelector('#text').classList.add('slide_down');
+                setTimeout(function() {
+                  elem.style.opacity = 1.0;
+                }, 500);
+              }
             };
             video.play().then(function() {
               setTimeout(show_controls, 5000);
@@ -242,7 +254,7 @@ remote.video = {
   track_video: function(video) {
     if(video) {
       remote.video.video_elem = video;
-      remote.video.timings['en'].forEach(function(timing) {
+      (remote.video.timings[remote.video.current_url]['en'] || []).forEach(function(timing) {
         timing.handled = false;
       });
     }
@@ -259,7 +271,7 @@ remote.video = {
     var sec = Math.round(time) % 60;
     document.querySelector('#video_controls .running').innerText = (min || '0') + ":" + sec.toString().padStart(2, '0');
     var main_room = remote.video.rooms[remote.video.video_room_id];
-    remote.video.timings['en'].forEach(function(timing) {
+    (remote.video.timings[remote.video.current_url]['en'] || []).forEach(function(timing) {
       var cont = function() {
         if(!cont.continued) {
           cont.continued = true;
@@ -311,7 +323,7 @@ remote.video = {
   },
   jump: function(action) {
     if(!remote.video.video_elem) { return; }
-    var chapters = remote.video.timings['en'].filter(function(t) { return t.action == 'chapter'; });
+    var chapters = (remote.video.timings[remote.video.current_url]['en'] || []).filter(function(t) { return t.action == 'chapter'; });
     if(action == 'back') {
       var chapter = chapters.filter(function(t) { return t.time < remote.video.video_elem.currentTime - 3; }).pop();
       if(chapter) {
@@ -357,8 +369,11 @@ remote.video = {
 
 
 };
+// https://d18vdu4p71yql0.cloudfront.net/Puppet.mp4
+remote.video.url = "https://d18vdu4p71yql0.cloudfront.net/covidspeak.mp4";
 remote.video.timings = {};
-remote.video.timings['en'] = [
+remote.video.timings[remote.video.url] = {}
+remote.video.timings[remote.video.url]['en'] = [
   {time: (0 * 60) + 24, action: 'chapter'},
   {time: (0 * 60) + 54, action: 'chapter'},
   {time: (1 * 60) + 24, action: 'chapter'},
@@ -476,160 +491,3 @@ remote.video.timings['en'] = [
     }
   }}
 ];
-// TODO: need to include note about how buttons are flipped
-
-/*
- Script:
- Hi! My name Brian, and Welcome to Co-VidSpeak! 
- This is an app you can
- use to communicate remotely with someone who may not
- be able to speak. I'm going to walk you through some
- of the basic features of Co-VidSpeak so you can feel
- more comfortable using it. You can watch this video 
- any time by using "teach" as the join code for starting
- a room. Whenever you want to be done just hit "more" 
- and then "end" to leave this room.
-
- Co-VidSpeak is basically just a two-way video call
- with some options in a frame around the video feed.
- You should see right now a video of my happy friendly
- face, as well as a preview of your own video feed.
- If your video isn't showing up, you may need to check
- your permissions for your device to make sure you're
- letting it share your video feed. If the wrong camera
- is showing you can change your preferred camera by
- hitting "More" and then "Settings". I'll give you a moment
- in case you need to do that now. Just hit "I'm Ready"
- when you want to continue. [wait for ready]
- 
- All right, here we go.
- If someone can't speak, they can use their eyes or hit
- these buttons to send them to the other person. Co-VidSpeak
- isn't just a video call, it also has buttons surrounding
- the video that we can use. For example, I can 
- hit "hi" [send] and it will highlight for
- you. You can also hit buttons and they will highlight
- for me so I can see what you're selecting. Go ahead and
- try hitting a button to send a message to me. 
- [wait for any button message]
-
- Great! That works if we can both hit buttons, but there
- are times when I may not be able to use my hands. In that
- case I can gesture using my eyes to tell you which button
- I'm thinking of, and you can hit it for me. Eye gestures
- will work best if my video feed is lined up correctly.
- If you tap or click the screen you should see a dotted
- line appear, which you can use the line up my video feed.
- Use the plus and minus icons to zoom and out to help
- you get a good of me eyes and to get my feed lined up 
- well for eye gestures. I'll give you a moment to play 
- with that. [wait for ready]
- 
- Ready? Now let's practice talking using eye gestures.
- I'll look at one of the buttons, [assert default grid]
- and you see if you can
- tell which button I'm gesturing towards. 
- [wait for specific button message]
-
- Awesome. Remember to hit the button when you can tell
- what the other person is gesturing towards, because then
- it will highlight for them and they can confirm with you
- that you got the right thing. It may be a good idea to
- come up with a simple gesture for yes or not that the
- other person can use. For example, smiling or blinking 
- for yes or raising their eyebrows for no.
-
- Sorry to interrupt myself, but there's something
- important I forgot to mention here. When you're talking
- to the other person, remember not to talk about buttons
- on the left or right, because they're actually on opposite
- sides for the other person. My right is your left, see?
- If you see "yes" on the your
- right, they will see it on their right because the video
- feed is flipped (otherwise anything with words in your
- video would look backwards). Back to the video.
-
- So far we've been using the "Quick" layout, which has
- a few simple options. There are other layouts we can
- load as well. I'll go ahead and load one now [send].
- Do you see how the layout changed to some new options?
- You can load a different layout by hitting "layout"
- and choosing a different view. Try loading a new layout
- now. [wait for layout change]
-
- Nice job! You can switch between layouts as much as you 
- need, depending on what you're talking about. It's probably
- a good idea to check with the other person before 
- changing the layout, in case they're still trying to 
- say something. Nobody likes being cut off. Also you can
- always jump back to the "Quick" layout by hitting "Quick"
- at the top left.
-
- In addition to the default layouts, you can set custom
- options at any time. You may have specific topics you think
- they might be interested in, or you want to ask a 
- question that has multiple possible answers. To change
- the layout by hand, hit "Customize". You should see a 
- layout pop up with text boxes. You can change how many
- text boxes are shown, in case you need fewer options or
- it's hard to tell which choice they're looking at.
- Just tap in any of the boxes and change them to whatever
- you like. When you're done hit "Update Buttons" to make
- the change. [wait for customization]
-
- There you go, now you know how to customize a layout!
- Now you can use Co-VidSpeak to discuss just about 
- anything! Remember that if the other person is tired
- or having trouble focusing, changing the layout a lot 
- may be difficult for them to follow along with.
-
- Hi, other me again. You'll see a reminder of this
- when customizing, but remember that if you customize
- a layout, it'll show up exactly how you create it for
- the communicator's side, since they'll be the one
- possibly using eye gestures. If you're on the other
- side, the buttons on the left and right will be switched
- for you. So don't, like, freak out if you customize a board
- and the sides get switched for you.
- Anyway, I'll go now.
-
- Another nice thing about Co-VidSpeak is that you can
- send reactions using emoji. Here, I'll send you a party
- emoji [send]. Now let's see if you can send me an 
- emoji back. Hit "React" and then choose a reaction to
- send to me. [wait for emoji]
-
- Reactions can be a quick and easy way to show sympathy
- or other feelings without having to use words. It turns
- out there's actually a lot we can say without speaking.
-
- One other feature of Co-VidSpeak is the ability to send
- photos, videos, or share your screen, with the other
- person. This isn't supported on all devices, so you
- may not be able to right now, but if you hit
- "More" and then "Show", there may be options to share
- a picture, a video, or share your screen. When you do
- this you'll see your video preview change to show
- whatever it is you're sharing. You should still be 
- able to talk while sharing. If it's a video you can
- tap the preview to pause or resume. Once you're done
- sharing you can hit the circle "x" to end the share
- and go back to showing your video feed. I'll give you
- a moment to try it out if you'd like to. [wait for ready]
-
- Those are the main features of Co-VidSpeak! You can 
- also use your keyboard to type custom messages, or
- use the keyboard layout [jump to keyboard layout] 
- to help the other person
- write a message that isn't available from the default
- layouts [send "y"] [send "o"]. If you prefer no
- pictures or different pictures for the buttons, you can
- find that option by hitting "More" and then "Settings".
-
- Thanks for taking some time to learn about Co-VidSpeak!
- Feel free to play around as much as you'd like in this
- practice room. When you're done practicing hit "More" 
- and then "End" to leave the room.
-
- [extra goodies at the end after a long pause]
-*/
