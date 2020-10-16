@@ -52,6 +52,11 @@ var process_account = function(account) {
   if(account.payment_type == 'paid') {
     if(account.can_start_room) {
       account.purchase_state = "Active";
+      if(account.payment_frequency == 'monthly') {
+        account.purchase_state = account.purchase_state + " (monthly)";
+      } else if(account.payment_frequency == 'yearly') {
+        account.purchase_state = account.purchase_state + " (yearly)";
+      }
     } else {
       account.purchase_state = "Canceled";
     }
@@ -380,7 +385,7 @@ var admin = {
         document.querySelector("#accounts .list").appendChild(elem);
       });
       if(prepaid_slots > 0) {
-        paid_accounts = (paid_accounts || 'None') + " " + prepaid_slots + " prepaid";
+        paid_accounts = (paid_accounts || 'None') + " (" + prepaid_slots + " prepaid)";
       }
 
       (document.querySelector('#accounts .recent_accounts') || {}).innerText = recent_accounts || 'None';
