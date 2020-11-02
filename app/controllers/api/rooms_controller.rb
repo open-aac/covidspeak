@@ -139,8 +139,23 @@ class Api::RoomsController < ApplicationController
     # Optional JavaScript URL to embed on room load
     js_url = (room.account && room.account.settings['js_url']) || nil
 
+    beta = room.account && (room.account.code == 'webrtc' || room.account.code == 'test')
+
     # Generate the token
-    render :json => {:room => {id: room_id, key: room_key, type: room.type, high_res: false, js: js_url, demo: room.short_room?, closed: room.expired?}, user_id: trimmed_identity, access: access}
+    render :json => {
+      :room => {
+        id: room_id, 
+        key: room_key, 
+        type: room.type, 
+        high_res: false, 
+        js: js_url, 
+        demo: room.short_room?, 
+        closed: room.expired?,
+        beta: beta
+      }, 
+      user_id: trimmed_identity, 
+      access: access
+    }
   end
 
   def temp_join_code

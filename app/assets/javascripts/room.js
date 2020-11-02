@@ -27,7 +27,7 @@ remote.addEventListener('track_added', function(data) {
   room.all_remote_tracks = room.all_remote_tracks || [];
   room.all_remote_tracks.push({type: track.type, id: track.id, user_id: data.user_id, mediaStreamTrack: track.mediaStreamTrack});
   if(track.generate_dom && track.mediaStreamTrack && track.mediaStreamTrack.readyState != 'ended') {
-    console.log("adding remote track", track);
+    // console.log("adding remote track", track);
     room.assert_media(track, data.user, true);
     room.user_tracks = room.user_tracks || {};
     if(track.type == 'video') {
@@ -35,7 +35,7 @@ remote.addEventListener('track_added', function(data) {
       // if needed when screen sharing
       room.user_tracks[data.user_id] = (room.user_tracks[data.user_id] || []).concat([track]).slice(-5);
     }
-} else {
+  } else {
     console.log("remote track added with no DOM", track);
   }
 });
@@ -1068,6 +1068,10 @@ var room = {
 
         room.current_user_id = res.user_id;
         remote.backend = res.room.type;
+        if(res.room.beta && remote.webrtc2) {
+          console.log("RTC: BETA enabled");
+          remote.backend = 'webrtc2';
+        }
         var local_tried = false;
         remote.start_local_tracks(room.input_settings).then(function(tracks) {
           local_tried = true;

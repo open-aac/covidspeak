@@ -357,7 +357,7 @@ var remote = remote || {};
           var last_update = main_room.subrooms[subroom_id].last_update;
           var active_mids = {};
           if(last_update) {
-            ['camera', 'microphonoe', 'share_video', 'share_audio'].forEach(function(key) {
+            ['camera', 'microphone', 'share_video', 'share_audio'].forEach(function(key) {
               var check = key.match(/share/) ? 'sharing' : key;
               if(last_update[check] && last_update[key + '_mids']) {
                 last_update[key + '_mids'].forEach(function(mid) {
