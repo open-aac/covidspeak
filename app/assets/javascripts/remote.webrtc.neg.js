@@ -22,7 +22,7 @@ remote.webrtc2 = remote.webrtc2 || {};
         var list = [];
         for(var key in main_room.subrooms) {
           var sub = main_room.subrooms[key];
-          if(key != 'latest' && sub && sub.active) {
+          if(key != 'latest' && sub && sub.active && ['disconnected', 'closed', 'failed'].indexOf(sub.active.pc.connectionState) == -1) {
             list.push(sub);
           }
         }
@@ -195,7 +195,7 @@ remote.webrtc2 = remote.webrtc2 || {};
           } else if(state == 'active') {
             resolve();
             remote.webrtc2.neg.connection_ready(subroom, pc);
-            // same as 'connected' callback from previus
+            // same as 'connected' callback from previous
           }
         });
         var pc_ref = remote.webrtc2.neg.pc_ref(subroom, pc);
@@ -285,6 +285,13 @@ remote.webrtc2 = remote.webrtc2 || {};
       }
       if(subroom.pending && subroom.pending.pc == pc) {
         subroom.pending = null;
+      }
+      if(subroom.active && subroom.active.pc == pc) {
+        setTimeout(function() {
+          if(subroom.active && subroom.active.pc == pc) {
+            subroom.active = null;
+          }
+        }, 1000);
       }
       delete remote.webrtc2.tracks.mid_fallbacks[subroom.id];
       setTimeout(function() {
@@ -381,6 +388,12 @@ remote.webrtc2 = remote.webrtc2 || {};
         var connection_state = function(err) {
           if(err) {
             reject(err);
+            var pc_ref = remote.webrtc2.neg.pc_ref(subroom, pc);
+            if(pc_ref && pc_ref.cleanup) {
+              setTimeout(function() {
+                pc_ref.cleanup();
+              }, 500);
+            }
             state_change('closed')  
           } else {
             resolve(pc);
@@ -814,7 +827,7 @@ remote.webrtc2 = remote.webrtc2 || {};
                   var pc_ref = remote.webrtc2.neg.pc_ref(subroom, subroom.active.pc);
                   if(pc_ref && pc_ref.cleanup) {
                     pc_ref.allow_replacing();
-                    log("no active or pending connections");
+                    log("no active or pending connections for", subroom.remote_user.id);
                     needs_refresh = true;
                   }
                   if(subroom.pending && subroom.pending.pc) {
@@ -852,7 +865,7 @@ remote.webrtc2 = remote.webrtc2 || {};
       if(!room.active && any_connections_found && !all_connections_ended) {
         room_js.set_active(true);
       }
-      remote.webrtc2.neg.poll_status.timer = setTimeout(remote.webrtc2.poll_status, 3000);
+      remote.webrtc2.neg.poll_status.timer = setTimeout(remote.webrtc2.neg.poll_status, 3000);
     },
     connection_type: function(main_room, user_id) {
       return new Promise(function(resolve, reject) {
