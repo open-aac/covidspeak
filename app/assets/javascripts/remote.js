@@ -187,10 +187,14 @@ Object.assign(remote, {
   user_added: function(room, user, notify) {
     remote.rooms[room.id].users = remote.rooms[room.id].users || {}
     remote.rooms[room.id].users[user.id] = remote.rooms[room.id].users[user.id] || {};
+    if(notify === false && (!remote.rooms[room.id].users[user.id].user || remote.rooms[room.id].users[user.id].user.placeholder)) {
+      user.placeholder = true;
+    }
     remote.rooms[room.id].users[user.id].user = user;
     // Trigger for each user that joins, or for each
     // user that is already in the session
     if(notify !== false) {
+      delete user.placeholder;
       remote.notify('user_added', {
         user: user,
         room: remote.rooms[room.id].room,
@@ -208,16 +212,16 @@ Object.assign(remote, {
       room: remote.rooms[room.id].room,
       room_id: room.id
     });
-    var someone_left = false;
+    var someone_still_here = false;
     for(var user_id in remote.rooms[room.id].users) {
       if(window.room.current_room && user_id == window.room.current_room.user_id) {
       } else {
-        if(!remote.rooms[room.id].users[user_id].user.removed) {
-          someone_left = true;
+        if(!remote.rooms[room.id].users[user_id].user.removed && !remote.rooms[room.id].users[user_id].user.placeholder) {
+          someone_still_here = true;
         }
       }
     }
-    if(!someone_left) {
+    if(!someone_still_here) {
       remote.notify('room_empty', {
         room: remote.rooms[room.id].room,
         room_id: room.id
