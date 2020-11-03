@@ -348,6 +348,7 @@ Object.assign(remote, {
       id: room_id,
       user_id: user_id,
       send: function(message) {
+        message.webrtc = true;
         session.send_to_room(room_id, message);
       },
       subroom_id: function(remote_user_id) {
