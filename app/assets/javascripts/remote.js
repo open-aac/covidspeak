@@ -195,6 +195,7 @@ Object.assign(remote, {
     // user that is already in the session
     if(notify !== false) {
       delete user.placeholder;
+      remote.empty = false;
       remote.notify('user_added', {
         user: user,
         room: remote.rooms[room.id].room,
@@ -222,6 +223,7 @@ Object.assign(remote, {
       }
     }
     if(!someone_still_here) {
+      remote.empty = true;
       remote.notify('room_empty', {
         room: remote.rooms[room.id].room,
         room_id: room.id

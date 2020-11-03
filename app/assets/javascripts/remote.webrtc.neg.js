@@ -271,6 +271,7 @@ remote.webrtc2 = remote.webrtc2 || {};
       remote.webrtc2.failed_retries = 0;
       (subroom.to_close || []).forEach(function(ref) { if(ref) { ref.close(); } });
       subroom.to_close = null;
+      delete subroom.closed;
       // we should be live!
       remote.user_added(subroom.main.ref, subroom.remote_user);
     },
@@ -281,7 +282,7 @@ remote.webrtc2 = remote.webrtc2 || {};
       if(pc.connectionState != 'failed' && pc.connectionState != 'disconnected' && pc.connectionState != 'closed') { 
         setTimeout(function() {
           pc.close();
-        }, 1000)
+        }, 500)
       }
       if(subroom.pending && subroom.pending.pc == pc) {
         subroom.pending = null;
@@ -295,12 +296,13 @@ remote.webrtc2 = remote.webrtc2 || {};
       }
       delete remote.webrtc2.tracks.mid_fallbacks[subroom.id];
       setTimeout(function() {
+        subroom.closed = true;
         if(subroom.active && subroom.active.pc != pc && subroom.active.pc.connectionState == 'connected') {
           // Don't say user left and re-entered when just reconnecting
         } else {
           remote.user_removed(subroom.main.ref, subroom.remote_user);
         }
-      }, 1000)
+      }, 2000);
       var check_for_reconnect = function() {
         // If we still haven't managed a healthy connection, try again
         if(subroom.active && subroom.active.pc != pc) {
@@ -419,7 +421,7 @@ remote.webrtc2 = remote.webrtc2 || {};
               }
             }, 15000);
           } else if(e.target.connectionState == 'failed' || e.target.connectionState == 'disconnected' || e.target.connectionState == 'closed') { 
-            if(main_room && main_room.status) { main_room.status({connection_failed: true}); }
+            if(main_room && main_room.status && !subroom.closed) { main_room.status({connection_failed: true}); }
             connection_state(e.target);
           } else if(e.target.connectionState == 'connected') {
             connection_state();
