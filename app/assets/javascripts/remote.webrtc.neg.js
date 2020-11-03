@@ -856,7 +856,6 @@ remote.webrtc2 = remote.webrtc2 || {};
     },
     connection_type: function(main_room, user_id) {
       return new Promise(function(resolve, reject) {
-        var main_room = remote.webrtc2.rooms[room_id];
         var subroom_id = main_room.subroom_id(user_id);
         var subroom = main_room.subrooms[subroom_id];
         var pc_ref = remote.webrtc2.neg.pc_ref(subroom);

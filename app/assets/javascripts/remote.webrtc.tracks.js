@@ -698,7 +698,7 @@ remote.webrtc2 = remote.webrtc2 || {};
               var old_track = sender.track;
               sender.replaceTrack(track).then(function(res) {
                 delete pc_ref.local_tracks['0-' + old_track.id];
-                pc_ref.local_tracks[track_ref.id] = main_room.subrooms[subroom_id][pc.id].tracks[track_ref.id] || {};
+                pc_ref.local_tracks[track_ref.id] = pc_ref.local_tracks[track_ref.id] || {};
                 pc_ref.local_tracks[track_ref.id].track = track;
                 pc_ref.local_tracks[track_ref.id].sender = sender;
                 if(old_track.live_content) {
