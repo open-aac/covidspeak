@@ -33,6 +33,7 @@ remote.webrtc2 = remote.webrtc2 || {};
           }
         };
         var pc_ref = remote.webrtc2.neg.pc_ref(subroom, pc);
+        if(!pc_ref) { debugger }
         pc_ref.data_channels = pc_ref.data_channels || []
         local_data.local = true;
         pc_ref.data_channels.push(local_data);
@@ -42,11 +43,12 @@ remote.webrtc2 = remote.webrtc2 || {};
         });
         local_data.addEventListener('close', function() {
           // channel was closed
-          if(['disconnected', 'failed', 'closed'].indexOf(pc.connectionState) == -1) {
-            log(true, "re-asserting data channel", pc.connectionState);
-            remote.webrtc2.tracks.attach_data_channel(subroom, pc);
+          if(remote.webrtc2.neg.is_active(subroom, pc)) {
+            if(['disconnected', 'failed', 'closed'].indexOf(pc.connectionState) == -1) {
+              log(true, "re-asserting data channel", pc.connectionState);
+              remote.webrtc2.tracks.attach_data_channel(subroom, pc);
+            }
           }
-          // TODO: start a new data channel
         });
         var pc_ref = remote.webrtc2.neg.pc_ref(subroom, pc);
         pc_ref.data_track_id = pc_ref.data_track_id || uid;
@@ -85,11 +87,10 @@ remote.webrtc2 = remote.webrtc2 || {};
           rej({error: "no data track found for one or more participants", message: message});
         }
       });
-
     },
     send_data: function(subroom, msg) {
       var pc_ref = remote.webrtc2.neg.pc_ref(subroom);
-      var remote_channel = [].concat(pc_ref.data_channels).reverse().find(function(c) { return c.readyState == 'open'; });
+      var remote_channel = [].concat(pc_ref.data_channels || []).reverse().find(function(c) { return c.readyState == 'open'; });
       if(remote_channel) {
         remote_channel.send(msg);
       } else if(pc_ref.pc.connectionState == 'connected') {
@@ -112,6 +113,7 @@ remote.webrtc2 = remote.webrtc2 || {};
         data.subroom_id = subroom.id;
         data.addEventListener('message', function(e) {
           // Ensure you're using the latest active connection for mapping tracks
+          subroom.stale_data = false;
           remote.webrtc2.tracks.process_message(subroom, pc, e.data);
         });
       };
@@ -128,10 +130,12 @@ remote.webrtc2 = remote.webrtc2 || {};
         pc_ref.data_channels.push(remote_data);
         remote_data.addEventListener('close', function() {
           setTimeout(function() {
-            if((pc_ref.data_channels || []).filter(function(c) { return c.readyState != 'closing' && c.readyState != 'closed'}).length == 0) {
-              if(['disconnected', 'failed', 'closed'].indexOf(pc.connectionState) == -1) {
-                log(true, "trying to repair lost data channel", pc.connectionState);
-                remote.webrtc2.tracks.attach_data_channel(subroom, pc);
+            if(remote.webrtc2.neg.is_active(subroom, pc)) {
+              if((pc_ref.data_channels || []).filter(function(c) { return c.readyState != 'closing' && c.readyState != 'closed'}).length == 0) {
+                if(['disconnected', 'failed', 'closed'].indexOf(pc.connectionState) == -1) {
+                  log(true, "trying to repair lost data channel", pc.connectionState);
+                  remote.webrtc2.tracks.attach_data_channel(subroom, pc);
+                }
               }
             }
           }, 5000);
@@ -192,7 +196,9 @@ remote.webrtc2 = remote.webrtc2 || {};
           remote.webrtc2.start_processsing(track, function(generator) {
             log(true, "remote track processed", track);
             track_ref.generate_dom = generator;
-            remote.track_added(subroom.main.ref, subroom.remote_user, track_ref);
+            if(remote.webrtc2.neg.is_active(subroom, pc)) {
+              remote.track_added(subroom.main.ref, subroom.remote_user, track_ref);
+            }
             pc_ref.adding_tracks[track.id] = false;
             pc_ref.remote_tracks = pc_ref.remote_tracks || {};
             pc_ref.remote_tracks[track.id] = {ref: track_ref, track: track, pc: pc_ref.pc};
@@ -217,10 +223,12 @@ remote.webrtc2 = remote.webrtc2 || {};
             var track = event.track;
             delete pc_ref.remote_tracks[track.id];
             setTimeout(function() {
-              remote.track_removed(subroom.main.ref, subroom.remote_user, {
-                id: track_id,
-                type: track.kind
-              });  
+              if(remote.webrtc2.neg.is_active(subroom, pc)) {
+                remote.track_removed(subroom.main.ref, subroom.remote_user, {
+                  id: track_id,
+                  type: track.kind
+                });  
+              }
               track.enabled = false;
               track.stop();
             }, 1000);
@@ -300,6 +308,10 @@ remote.webrtc2 = remote.webrtc2 || {};
         log(true, 'message handled on different pc than received');
         data_pc = subroom.pending.pc;
       }
+      if(!remote.webrtc2.neg.is_active(subroom, pc)) {
+        return;
+      }
+
       var pc_ref = remote.webrtc2.neg.pc_ref(subroom, data_pc);
 
       var json = null;
@@ -348,10 +360,13 @@ remote.webrtc2 = remote.webrtc2 || {};
             }
           });
           subroom.last_update = json;
+          subroom.last_update.ts = (new Date()).getTime();
+          log(true, "message", json);
           remote.message_received(subroom.main.ref, subroom.remote_user, {id: "0.i-" + pc_ref.data_track_id}, json);
           return;
         }
       } catch(e) { }
+      log(true, "message", data);
       remote.message_received(subroom.main.ref, subroom.remote_user, {id: "0-" + pc_ref.data_track_id}, data);
 
     },
@@ -766,6 +781,70 @@ remote.webrtc2 = remote.webrtc2 || {};
           rej({error: 'failed to unpublish'});
         }
       });
+    },
+    validate_tracks: function(subroom, pc) {
+      var pc_ref = remote.webrtc2.neg.pc_ref(subroom, pc);
+      var valid = true;
+      if(pc_ref && pc_ref.pc && pc_ref.pc.connectionState != 'disconnected' && pc_ref.pc.connectionState != 'closed' && pc_ref.pc.connectionState != 'failed' && !subroom.stale_data) {
+        if(pc_ref.pc.connectionState == 'connected') {
+          // Sometimes we get in a state where we think we're
+          // connected, but nothing is showing. There is
+          // a deeper issue but this should patch it...
+          var receivers = pc_ref.pc.getReceivers();
+          var senders = pc_ref.pc.getSenders();
+          var video_muted = true;
+          var track_ids = (room.local_tracks || []).map(function(t) { return t.id; }).join('+');
+          subroom.local_issue_ids = subroom.local_issue_ids || {};
+          if((room.local_tracks || []).find(function(t) { return t.type == 'video' && t.mediaStreamTrack && t.mediaStreamTrack.enabled && !t.mediaStreamTrack.muted; })) {
+            video_muted = false;
+          }
+          if(!video_muted && !senders.find(function(r) { return r.track && r.track.kind == 'video' && r.track.enabled && !r.track.muted; })) {
+            console.error("Expected to be sending local video but none attached to the stream");
+            if(!subroom.local_issue_ids[track_ids]) {
+              valid = false;
+              subroom.local_issue_ids[track_ids] = true;
+            }
+          }
+          if(!room.mute_audio && !senders.find(function(r) { return r.track && r.track.kind == 'audio' && r.track.enabled && !r.track.muted; })) {
+            console.error("Expected to be sending local audio but none attached to the stream");
+            if(!subroom.local_issue_ids[track_ids]) {
+              valid = false;
+              subroom.local_issue_ids[track_ids] = true;
+            }  
+          }
+
+          room.state_for = room.state_for || {};
+          subroom.remote_issue_ids = subroom.remote_issue_ids || {};
+          if(room.state_for[pc_ref.user_id] && room.state_for[pc_ref.user_id].video) {
+            var vidrec = receivers.find(function(r) { return r.track && r.track.kind == 'video' && r.track.enabled && r.track.readyState != 'ended'; });
+            if(!vidrec || vidrec.track.muted) {
+              // NOTE: video seems to get muted temporarily on iOS
+              console.error(vidrec.track.muted ? "Remote video found, but unexpetedly muted" : "Expected to receive remote video but none found");
+              if(!subroom.remote_issue_ids[room.state_for.track_ids]) {
+                valid = false;
+                subroom.remote_issue_ids[room.state_for.track_ids] = true;
+              }
+            }
+          }
+          if(room.state_for[pc_ref.user_id] && room.state_for[pc_ref.user_id].audio) {
+            if(!receivers.find(function(r) { return r.track && r.track.kind == 'audio' && r.track.enabled && !r.track.muted && r.track.readyState != 'ended'; })) {
+              console.error("Expected to receive remote audio but none found");
+              if(!subroom.remote_issue_ids[room.state_for.track_ids]) {
+                valid = false;
+                subroom.remote_issue_ids[room.state_for.track_ids] = true;
+              }
+            }
+          }
+          if(valid && subroom.started < (new Date()).getTime() - (30 * 1000)) {
+            // If we have sustained a connection for at
+            // least 30 second and it's not missing
+            // anything, clear issue_ids;
+            subroom.local_issue_ids = {};
+            subroom.remote_issue_ids = {};
+          }
+        }
+      }
+      return valid;
     },
     refresh_tracks: function(main_room) {
       if(main_room && main_room.subrooms) {

@@ -15,6 +15,28 @@ var remote = remote || {};
   }
   var rooms = {};
   remote.webrtc2 = Object.assign(remote.webrtc2 || {}, {
+    start_processsing: function(track, callback) {
+      // This method will cause track_added to not be
+      // triggered until the stream goes live, to help
+      // prevent time with a black screen
+      if(track.kind == 'video' || track.kind == 'audio') {
+        var stream = new MediaStream();
+        stream.addTrack(track);
+        var elem = document.createElement(track.kind);
+        elem.srcObject = stream;
+        var loaded_meta = false;
+        var do_it = function() {
+          if(!loaded_meta) {
+            loaded_meta = true;
+            callback(remote.webrtc.dom_generator(track));
+          }
+        };
+        elem.onloadedmetadata = do_it;
+        setTimeout(do_it, 1000);
+      } else {
+        callback(null);
+      }
+    },
     dom_generator: function(track, stream) {
       stream = new MediaStream();
       stream.addTrack(track);  

@@ -19,7 +19,14 @@ remote.webrtc2 = remote.webrtc2 || {};
       var main_room = remote.join_room(room_key);
       main_room.subrooms = {};
       main_room.active_subrooms = function() {
-        return Object.values(main_room.subrooms).filter(function(s) { return s.active; });
+        var list = [];
+        for(var key in main_room.subrooms) {
+          var sub = main_room.subrooms[key];
+          if(key != 'latest' && sub && sub.active) {
+            list.push(sub);
+          }
+        }
+        return list;
       };
       main_room.ice = access.ice_servers;
       var room_ref = {
@@ -54,6 +61,9 @@ remote.webrtc2 = remote.webrtc2 || {};
           main_room.subrooms[subroom_id] = main_room.subrooms[subroom_id] || {};
           var subroom = main_room.subrooms[subroom_id];
           main_room.subrooms.latest = subroom;
+          var now = (new Date()).getTime();
+          subroom.started = subroom.started || now;
+          subroom.updated = now;
           subroom.main = main_room;
           subroom.id_index = subroom.id_index || 1;
           subroom.remote_user = subroom.remote_user || remote_user;
@@ -268,7 +278,7 @@ remote.webrtc2 = remote.webrtc2 || {};
       var pc_ref = remote.webrtc2.neg.pc_ref(subroom, pc);
       log(true, "disconnected", pc_ref.id, subroom.remote_user.id);
       pc_ref.already_connected = false;
-      if(pc.connectionState != 'failed' && pc.connectionState != 'disconnected') { 
+      if(pc.connectionState != 'failed' && pc.connectionState != 'disconnected' && pc.connectionState != 'closed') { 
         setTimeout(function() {
           pc.close();
         }, 1000)
@@ -338,16 +348,7 @@ remote.webrtc2 = remote.webrtc2 || {};
       }
       subroom.pcs = subroom.pcs || {};
       // Prune old connections
-      for(var ref_id in subroom.pcs) {
-        if(subroom.active && subroom.active.pc == subroom.pcs[ref_id]) {
-        } else if(subroom.pending && subroom.pending.pc == subroom.pcs[ref_id]) {
-        } else {
-          if(subroom.pcs[ref_id].cleanup) {
-            subroom.pcs[ref_id].cleanup();
-          }
-          delete subroom.pcs[ref_id];
-        }
-      }
+      remote.webrtc2.neg.prune_pcs(subroom);
       subroom.pcs[ref_id] = {
         pc: pc,
         id: ref_id,
@@ -377,6 +378,21 @@ remote.webrtc2 = remote.webrtc2 || {};
         log(true, "candidate error", e.errorCode, e.target);
       });      
       var promise = new Promise(function(resolve, reject) {
+        var connection_state = function(err) {
+          if(err) {
+            reject(err);
+            state_change('closed')  
+          } else {
+            resolve(pc);
+            state_change('active');
+            setTimeout(function() {
+              if(pc.connectionState == 'connected') {
+                remote.webrtc2.has_connected = true;
+              }
+            }, 10000);
+            setTimeout(remote.webrtc2.neg.poll_status, 15000);
+          }
+        };
         pc.addEventListener('connectionstatechange', function(e) {
           // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceConnectionState
           log(true, "state change", e.target.connectionState);
@@ -386,28 +402,23 @@ remote.webrtc2 = remote.webrtc2 || {};
             setTimeout(function() {
               if(e.target.connection_state == 'connecting') {
                 e.target.close();
-                reject({timeout: true});
-                state_change('closed')
+                connection_state({timeout: true});
               }
             }, 15000);
-          } else if(e.target.connectionState == 'failed' || e.target.connectionState == 'disconnected') { 
+          } else if(e.target.connectionState == 'failed' || e.target.connectionState == 'disconnected' || e.target.connectionState == 'closed') { 
             if(main_room && main_room.status) { main_room.status({connection_failed: true}); }
-            reject(e.target);
-            state_change('closed')
+            connection_state(e.target);
           } else if(e.target.connectionState == 'connected') {
-            resolve(e.target);
-            state_change('active');
+            connection_state();
           }
         });
         pc.addEventListener('iceconnectionstatechange', function(e) {
           log(true, "ice change", e.target.iceConnectionState);
-          if(e.target.connectionState === undefined && ['connected', 'disconnected', 'failed'].indexOf(e.target.iceConnectionState) != -1) {
-            if(e.target.iceConnectionState == 'failed' || e.target.iceConnectionState == 'disconnected') {
-              reject(e.target);
-              state_change('closed');
+          if(e.target.connectionState === undefined && ['connected', 'disconnected', 'failed', 'closed'].indexOf(e.target.iceConnectionState) != -1) {
+            if(e.target.iceConnectionState == 'failed' || e.target.iceConnectionState == 'disconnected' || e.target.iceConnectionState == 'closed') {
+              connection_state(e.target);
             } else if(e.target.iceConnectionState == 'connected') {
-              resolve(e.target);
-              state_change('active');
+              connection_state();
             }
           }
           if(e.target.iceConnectionState == 'checking') {
@@ -437,6 +448,17 @@ remote.webrtc2 = remote.webrtc2 || {};
         }
       });
       return pc;
+    },
+    is_active: function(subroom, pc) {
+      var result = false;
+      if(subroom.active && subroom.active.pc == pc) {
+        result = true;
+      } else if(!subroom.active || subroom.active.replaceable) {
+        if(subroom.pending && subroom.pending.pc == pc) {
+          result = true;
+        }
+      }
+      return result;
     },
     renegotiate: function(subroom, force) {
       var main_room = subroom.main;
@@ -726,12 +748,111 @@ remote.webrtc2 = remote.webrtc2 || {};
         subroom.candidate_received.id = id; 
       });
     },
-    idem: function(subroom_id, callback) {
-      // Only call callback if there is no pending connection
+    prune_pcs: function(subroom) {
+      for(var ref_id in subroom.pcs) {
+        if(subroom.active && subroom.active.pc == subroom.pcs[ref_id].pc) {
+        } else if(subroom.pending && subroom.pending.pc == subroom.pcs[ref_id].pc) {
+        } else {
+          log("pruning non-active, non-pending connection");
+          if(subroom.pcs[ref_id].cleanup) {
+            subroom.pcs[ref_id].cleanup();
+          }
+          delete subroom.pcs[ref_id];
+        }                  
+      }
     },
     poll_status: function() {
       // If a data track hasn't had an update in 20 seconds, assume it is broken
       // TODO: it's possible to add new data channels
+
+      if(remote.webrtc2.neg.poll_status.timer) {
+        clearTimeout(remote.webrtc2.neg.poll_status.timer);
+      }
+      log(true, "checking all connections");
+      var all_connections_ended = true;
+      var any_connections_found = false;
+      var now = (new Date()).getTime();
+      var room_js = window.room;
+      // TODO: remote.webrtc2.tracks.track_status()
+      for(var key in remote.webrtc2.rooms) {
+        var room = remote.webrtc2.rooms[key];
+        if(room) {
+          for(var jey in room.subrooms) {
+            var subroom = room.subrooms[jey];
+            if(subroom) {
+              remote.webrtc2.neg.prune_pcs(subroom);
+      
+              var needs_refresh = false;
+              if(subroom.active || subroom.pending) {
+                any_connections_found = true;
+                if(subroom.active.pc && subroom.active.pc.connectionState == 'connected') {
+                  all_connections_ended = false;
+                  // For an active connection, validate all expected tracks are live
+                  subroom.updated = now;
+                  if(!remote.webrtc2.tracks.validate_tracks(subroom, subroom.active.pc)) {
+                    log("missing expected track type");
+                    needs_refresh = true;
+                  } else if(subroom.last_update) {
+                    if(subroom.last_update.ts < (now - (10 * 60 * 1000))) {
+                      // When updates stop arriving, a connection
+                      // has gone stale. The room needs a reconnection
+                      // remote.webrtc2.neg.renegotiate(subroom, true);
+                      log("missing active data channel");
+                      needs_refresh = true;
+                    } else if(subroom.last_update.ts < (now - (30 * 1000))) {
+                      // If updates have only stopped recently, first try adding
+                      // a new data channel to see if that helps
+                      subroom.stale_data = true;
+                      if((subroom.active.last_data_channel_rescue || 0) < (now - 3 * 60 * 1000)) {
+                        subroom.active.last_data_channel_rescue = now;
+                        remote.webrtc2.tracks.attach_data_channel(subroom, subroom.active.pc);
+                      }
+                    }
+                  }
+                } else {
+                  // For a non-active connection, clean it up
+                  var pc_ref = remote.webrtc2.neg.pc_ref(subroom, subroom.active.pc);
+                  if(pc_ref && pc_ref.cleanup) {
+                    pc_ref.allow_replacing();
+                    log("no active or pending connections");
+                    needs_refresh = true;
+                  }
+                  if(subroom.pending && subroom.pending.pc) {
+                    // If there is a pending connection,
+                    // mark it and sweep if it's the same 
+                    // after 15 seconds
+                    subroom.pending.first_pending_poll = now;
+                    if(subroom.pending.first_pending_poll < (now - (15 * 1000))) {
+                      var pc_ref = remote.webrtc2.neg.pc_ref(subroom, subroom.pending.pc);
+                      if(pc_ref && pc_ref.cleanup) {
+                        pc_ref.cleanup();
+                      }
+                    }
+                  }
+                }
+              } else if(subroom.updated && subroom.updated < (now - (10 * 60 * 1000))) {
+                // Delete rooms that have been dormant more than 10 minutes
+                delete room.subrooms[jey];
+              }
+              if(needs_refresh) {
+                subroom.refresh_count = (subroom.refresh_count || 0) + 1;
+                if(subroom.refresh_count < 5) {
+                  log("trying to reconnect");
+                  remote.webrtc2.neg.renegotiate(subroom, true);
+                } else {
+                  log("not retrying because too many failed attempts");
+                }
+              } else {
+                subroom.refresh_count = 0;
+              }
+            }
+          }
+        }
+      }
+      if(!room.active && any_connections_found && !all_connections_ended) {
+        room_js.set_active(true);
+      }
+      remote.webrtc2.neg.poll_status.timer = setTimeout(remote.webrtc2.poll_status, 3000);
     },
     connection_type: function(main_room, user_id) {
       return new Promise(function(resolve, reject) {
