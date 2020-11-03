@@ -67,12 +67,15 @@ remote.addEventListener('track_removed', function(data) {
   }
 });
 remote.addEventListener('room_empty', function(data) {
+  room.empty = true;
   room.status('No One is Here', {invite: true, leave: true});
   room.active = false;
 });
 remote.addEventListener('user_added', function(data) {
   // TODO: keep a rotation of helpers for the communicator,
   // and keep communicators on everyone else's view
+  room.empty = false;
+  room.user_entry_code = (new Date()).getTime() + "." + Math.random();
   if(data.user.id != room.current_room.user_id) {
     if(!room.active) {
     }
@@ -1124,8 +1127,10 @@ var room = {
                 room.status("Partner Taking 10-minute Training...", {invite: true});
               } else if(status.waiting_room) {
                 room.status("Partner in Waiting Room...", {invite: true});
+                var user_code = "empty" + (new Date()).getTime() + "." + Math.random();
+                room.user_entry_code = user_code;
                 setTimeout(function() {
-                  if(!room.active) {
+                  if(!room.active && !room.empty && room.user_code == user_entry_code) {
                     room.status("Waiting for Partner to Connect...", {invite: true});
                   }
                 }, 30000);
