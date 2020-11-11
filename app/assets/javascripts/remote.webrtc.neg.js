@@ -225,12 +225,14 @@ remote.webrtc2 = remote.webrtc2 || {};
           handles.send = true;
           check_done();
         }, function(err) {
+          log(true, "candidate send error", err);
           handle_error(err);
         });
         remote.webrtc2.neg.wait_for_candidates(subroom, pc).then(function() {
           handles.receive = true;
           check_done();
         }, function(err) {
+          log(true, "candidate receive error", err);
           handle_error(err);
         });
       });
@@ -490,7 +492,7 @@ remote.webrtc2 = remote.webrtc2 || {};
       });
       if(force) {
         var channel = subroom.pending || subroom.active;
-        var pc_ref = remote.webrtc2.neg.pc_ref(subroom, channel.pc);
+        var pc_ref = remote.webrtc2.neg.pc_ref(subroom, channel && channel.pc);
         if(pc_ref && pc_ref.cleanup) {
           pc_ref.allow_replacing();
         }  

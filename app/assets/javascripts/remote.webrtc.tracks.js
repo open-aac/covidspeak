@@ -876,6 +876,7 @@ remote.webrtc2 = remote.webrtc2 || {};
                   if(!pc_ref.adding_tracks[track.id]) {
                     pc_ref.adding_tracks[track.id] = true;
                     var stream = new MediaStream();
+                    // TODO: this is not an error on Safari, it happens regularly
                     console.error("MISSED A TRACK! adding now...", trans.mid, track.id, track);
                     stream.addTrack(track);
                     remote.webrtc2.tracks.process_track(subroom, pc_ref.pc, track, stream);
