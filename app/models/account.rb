@@ -233,6 +233,16 @@ class Account < ApplicationRecord
     if !user_id_or_hash.match(/^r/)
       str = "r" + GoSecure.sha512(user_id_or_hash, 'room_id for user')[0, 40]
     end
+    if ENV['BETA_TIMESTAMP'] && self.settings['beta_timestamp'] != ENV['BETA_TIMESTAMP']
+      # Beta takes 40 days to roll out, based on the id of the account
+      # NOTE: to quickly disable beta completely, set it to date in the future
+      mod = (self.id % 10) + 1
+      cutoff = Time.at(ENV['BETA_TIMESTAMP'].to_i) + (mod * 4).days
+      if Time.now.to_i > cutoff.to_i
+        self.settings['beta_timestamp'] = ENV['BETA_TIMESTAMP']
+        self.save
+      end
+    end
     str = str + "zz" + GoSecure.sha512(str, 'room_id confirmation')[0, 40]
     room = Room.find_or_initialize_by(code: str, account_id: self.id)
     room.settings ||= {}

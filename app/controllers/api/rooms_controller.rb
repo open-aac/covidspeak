@@ -139,7 +139,7 @@ class Api::RoomsController < ApplicationController
     # Optional JavaScript URL to embed on room load
     js_url = (room.account && room.account.settings['js_url']) || nil
 
-    beta = room.account && (room.account.code == 'webrtc' || room.account.code == 'test')
+    beta = room.account && (room.account.code == 'webrtc' || room.account.code == 'test' || room.account.settings['beta_timestamp'] == ENV['BETA_TIMESTAMP'])
 
     # Generate the token
     render :json => {

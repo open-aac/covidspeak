@@ -49,6 +49,9 @@ var process_account = function(account) {
       target = 'webrtc (' + account.address + ')';
     }
   }
+  if(account.beta) {
+    target = "BETA " + target;
+  }
   if(account.payment_type == 'paid') {
     if(account.can_start_room) {
       account.purchase_state = "Active";

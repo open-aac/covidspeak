@@ -150,6 +150,7 @@ class Api::AccountsController < ApplicationController
       past_due: !!account.settings['past_due'],
       payment_type: account.paid_account? ? 'paid' : 'free',
       payment_frequency: account.payment_frequency,
+      beta: account.settings['beta_timestamp'] && account.settings['beta_timestamp'] == ENV['BETA_TIMESTAMP'],
       demo: !!account.settings['short_rooms'],
       purchase_summary: (account.settings['subscription'] || {})['purchase_summary'],
       last_meter_update: last_meter,
