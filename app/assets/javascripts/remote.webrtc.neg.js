@@ -109,7 +109,7 @@ remote.webrtc2 = remote.webrtc2 || {};
       var me = msg.list.find(function(u) { return u.id == main_room.user_id; });
       if(me && msg.list.indexOf(me) != -1) {
         msg.list.forEach(function(remote_user) {
-          remote.webrtc2.neg.ping_user(main_room, remote_user, me);
+          remote.webrtc2.neg.ping_user(main_room, remote_user, "not in room yet");
         });
         (main_room.pending_messages || []).forEach(function(msg) {
           main_room.onmessage(msg);
@@ -138,7 +138,8 @@ remote.webrtc2 = remote.webrtc2 || {};
       if(!subroom.active || force) {
         var ping = {};
         if(room_owner_id == main_room.user_id) { ping.mine = true; }
-        if(!subroom.active || subroom.active.replaceable || subroom.active.pc.connectionState != 'connected' || force) { ping.no_existing_connection = true; }
+        if(!subroom.active || subroom.active.replaceable || subroom.active.pc.connectionState != 'connected' || force) { ping.renew_connection = true; }
+        if(force) { ping.force_reason = force.toString(); }
 
         log(true, "PING to", remote_user_id, ping);
         main_room.send({
@@ -479,6 +480,7 @@ remote.webrtc2 = remote.webrtc2 || {};
     },
     renegotiate: function(subroom, force) {
       var main_room = subroom.main;
+      var reason = "forced renegotiation";
       // If we're renegotiating already but the 
       // pending connection doesn't have the right
       // tracks, then we need to start over
@@ -487,6 +489,7 @@ remote.webrtc2 = remote.webrtc2 || {};
           if(subroom[channel].pc && remote.webrtc2.tracks.missing_tracks(subroom[channel].pc).length > 0) {
             log(true, "missing tracks on " + channel + " connection, starting negotiation over");
             force = true;
+            reason = "missing tracks";
           }
         }
       });
@@ -498,7 +501,7 @@ remote.webrtc2 = remote.webrtc2 || {};
         }  
 
         // TODO: should we try re-offering on the active pc in this case?
-        remote.webrtc2.neg.ping_user(main_room, subroom.remote_user, true);
+        remote.webrtc2.neg.ping_user(main_room, subroom.remote_user, reason);
       }
     },
     offer_and_wait: function(subroom, msg) {
@@ -507,7 +510,7 @@ remote.webrtc2 = remote.webrtc2 || {};
       return new Promise(function(resolve, reject) {
         var force = false;
         var main_room = subroom.main;
-        if(subroom.owner_id == main_room.user_id && msg.pong.no_existing_connection) {
+        if(subroom.owner_id == main_room.user_id && msg.pong.renew_connection) {
           force = true;
         }
         if(subroom.owner_id == main_room.user_id) {
@@ -600,21 +603,26 @@ remote.webrtc2 = remote.webrtc2 || {};
         var pong = {};
         var main_room = subroom.main;
         if(subroom.owner_id == main_room.user_id) { pong.mine = true; }
-        if(!subroom.active || subroom.active.replaceable || subroom.active.pc.connectionState != 'connected') { pong.no_existing_connection = true; }
+        if(!subroom.active || subroom.active.replaceable || subroom.active.pc.connectionState != 'connected') { 
+          pong.renew_connection = true;
+          pong.force_reason = subroom.active ? (subroom.active.replaceable ? "replacing conneection" : "inactive connection") : "no active connection";
+        }
         if(subroom.owner_id == main_room.user_id) {
           // send a ping instead
-          remote.webrtc2.neg.ping_user(main_room, subroom.remote_user, true);
+          remote.webrtc2.neg.ping_user(main_room, subroom.remote_user, "replying to backwards ping");
         } else {
+          var force = false;
+          if(msg.ping.mine && msg.ping.renew_connection) {
+            force = true;
+            pong.renew_connection = true;
+            pong.force_reason = "responding to " + msg.ping.force_reason;
+          }
           main_room.send({
             author_id: main_room.user_id,
             target_id: msg.author_id, 
             type: 'pong',
             pong: pong
           });  
-          var force = false;
-          if(msg.ping.mine && msg.ping.no_existing_connection) {
-            force = true;
-          }
           log(true, "sending PONG", subroom, pong, force);
           var promise = remote.webrtc2.neg.start_connection(subroom, force);
           if(promise.repeat) {
