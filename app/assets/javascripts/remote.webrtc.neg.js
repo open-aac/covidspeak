@@ -379,16 +379,10 @@ remote.webrtc2 = remote.webrtc2 || {};
         }
         log(true, "needs negotiation", pc.connectionState);
       });
-      pc.addEventListener('icecandidate', function(e) {
-        log(true, "ICE CANDIDATE");
-      });
       pc.addEventListener('icegatheringstatechange', function(e) {
         log(true, "ice gather change", e.target.iceGatheringState);
 
       });
-      pc.addEventListener('icecandidateerror', function(e) {
-        log(true, "candidate error", e.errorCode, e.target);
-      });      
       var promise = new Promise(function(resolve, reject) {
         var connection_state = function(err) {
           if(err) {
@@ -448,12 +442,6 @@ remote.webrtc2 = remote.webrtc2 || {};
         });
       });
       pc.promise = promise;
-      pc.addEventListener('icegatheringstatechange', function(e) {
-        log(true, "ice gather change", e.target.iceGatheringState);
-        if(pc.iceGatheringState != 'complete') { return; }
-        // see: https://github.com/webrtc/samples/blob/59aea35498839806af937e8ce6aa99aa0bdb9e46/src/content/peerconnection/trickle-ice/js/main.js#L197
-
-      });
       pc.addEventListener('icecandidateerror', function(e) {
         log(true, "candidate error", e.errorCode, e.target);
         if (e.errorCode >= 300 && e.errorCode <= 699) {
@@ -720,7 +708,7 @@ remote.webrtc2 = remote.webrtc2 || {};
                 type: 'candidate',
                 candidate: e.candidate
               });
-              log(true, "local candidates complete");
+              log(true, "local candidate sending complete");
               resolve();  
             }, 10);
           }
@@ -737,7 +725,7 @@ remote.webrtc2 = remote.webrtc2 || {};
             handled = true;
             reject({timeout:  true});
           }
-        }, 8000);
+        }, 15000);
         var id = (new Date()).getTime() + "." + Math.random();
         subroom.candidate_received = function(msg) {
           var handle = function(result) {
@@ -765,7 +753,7 @@ remote.webrtc2 = remote.webrtc2 || {};
             }, function(err) {
               if(!msg.candidate != null) {
                 // handle(err || {});
-                console.error("candidate error", err, msg);
+                console.error("candidate add error", err.name, err, msg);
               }
             });  
           }

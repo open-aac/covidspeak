@@ -26,12 +26,14 @@ acorn
 action
 address
 adult
+after
 afternoon
 age
 aim
 airplane
 airport
 alarm
+allow
 allowed
 almond
 amazon
