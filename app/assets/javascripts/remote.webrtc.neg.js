@@ -222,6 +222,7 @@ remote.webrtc2 = remote.webrtc2 || {};
             cleanup_finished_connection();
           }
         };
+        log(true, "sending all local candidates");
         remote.webrtc2.neg.send_candidates(subroom, pc).then(function() {
           handles.send = true;
           check_done();
@@ -381,7 +382,16 @@ remote.webrtc2 = remote.webrtc2 || {};
       });
       pc.addEventListener('icegatheringstatechange', function(e) {
         log(true, "ice gather change", e.target.iceGatheringState);
-
+        if(pc.iceGatheringState == 'gathering') {
+          var pc_ref = remote.webrtc2.neg.pc_ref(subroom, pc);
+          if(pc_ref && pc_ref.early_candidates) {
+            log(true, "adding already-received candidates");
+            pc_ref.early_candidates.forEach(function(msg) {
+              subroom.candidate_received(msg);
+            });
+            pc_ref.early_candidates = null;
+          }
+        }
       });
       var promise = new Promise(function(resolve, reject) {
         var connection_state = function(err) {
@@ -683,7 +693,7 @@ remote.webrtc2 = remote.webrtc2 || {};
       return new Promise(function(resolve, reject) {
         var handled = false;
         setTimeout(function() {
-          if(handled) {
+          if(!handled) {
             handled = true;
             reject({timeout: true});
           }
@@ -741,19 +751,28 @@ remote.webrtc2 = remote.webrtc2 || {};
               }
             }
           };
-          if(pc.connectionState == 'closed' || ['completed', 'failed', 'disconnected', 'closed'].indexOf(pc.iceConnectionState) != -1) {
+          if(pc.connectionState == 'closed' || pc.iceGatheringState == 'complete' || ['completed', 'failed', 'disconnected', 'closed'].indexOf(pc.iceConnectionState) != -1) {
             // do nothing
             handle({error: 'connection closed'});
           } else {
             if(!msg.candidate || msg.candidate == '') {
               return handle();
             }
+            if(pc.iceGatheringState == 'new') {
+              log(true, "candidate too early! queueing...");
+              var pc_ref = remote.webrtc2.neg.pc_ref(subroom, pc);
+              if(pc_ref && pc_ref.early_candidates) {
+                pc_ref.early_candidates = pc_ref.early_candidates || [];
+                pc_ref.early_candidates.push(msg);
+              }
+              return;
+            }
             pc.addIceCandidate(msg.candidate || '').then(function() {
               log(true, "  candidate received & added");
             }, function(err) {
               if(!msg.candidate != null) {
                 // handle(err || {});
-                console.error("candidate add error", err.name, err, msg);
+                console.error("candidate add error", err.name, pc.iceGatheringState, err, msg);
               }
             });  
           }
