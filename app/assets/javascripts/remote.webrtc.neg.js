@@ -872,7 +872,7 @@ remote.webrtc2 = remote.webrtc2 || {};
                 delete room.subrooms[jey];
               } else {
                 if(!subroom.refresh_count || subroom.refresh_count % 5 == 0) {
-                  log("no connections in place for", subroom.remote_user.id);
+                  log("no connections in place for", subroom);
                 }
                 needs_refresh = true;
               }

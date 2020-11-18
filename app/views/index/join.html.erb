@@ -152,13 +152,23 @@ document.addEventListener('click', function(event) {
       document.querySelector('#accept_reminder').style.visibility = 'visible';
       return;
     }
+    var elems = document.querySelector('#middle').querySelectorAll('audio,video');
+    for(var idx = 0; idx < elems.length; idx++) {
+      if(elems[0].srcObject) {
+        elems[0].srcObject.getTracks().forEach(function(track) {
+          track.enabled = false;
+          track.stop();
+        });
+      }
+    }
+
     localStorage.terms_accepted = 'true';    
-    room.transfer_tracks = room.other_tracks;
-    room.other_tracks = null;
+    // room.transfer_tracks = room.other_tracks;
+    // room.other_tracks = null;
     room.cleanup();
     setTimeout(function() {
       location.href = event.target.closest('a.join').href;
-    }, input.compat.mobile ? 200 : 50);
+    }, input.compat.mobile ? 500 : 50);
   } else if(event.target.id == 'popout_browser') {
     room.cleanup();
     window.open(location.href, '_system');
