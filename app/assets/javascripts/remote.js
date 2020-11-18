@@ -3,17 +3,32 @@
 // object (for example, remote.myvideo)
 var remote = remote || {};
 Object.assign(remote, {
-  start_local_tracks: function(opts) {
+  start_local_tracks: function(opts, existing_tracks) {
     // Resolves a list of objects with the following attributes
     // { type: "video, audio, data", id: "", generate_dom: function...}
+    var delay = 0;
+    delete opts['existing_tracks'];
+    if(existing_tracks) {
+      var aud = existing_tracks.find(function(t) { return t.kind == 'audio' && t.enabled && !t.muted && t.readyState == 'live'; });
+      var vid = existing_tracks.find(function(t) { return t.kind == 'video' && t.enabled && !t.muted && t.readyState == 'live'; });
+      if(aud && vid) {
+        opts = Object.assign({}, opts);
+        opts.existing_tracks = [aud, vid];
+      } else {
+        existing_tracks.forEach(function(t) { t.enabled = false; t.stop(); });
+        delay = 200;
+      }
+    }
     return new Promise(function(res, rej) {
-      remote[remote.backend].start_local_tracks(opts).then(function(tracks) {
-        remote.default_local_tracks = tracks;
-        remote.local_tracks = tracks;
-        res(tracks);
-      }, function(err) {
-        rej(err);
-      });
+      setTimeout(function() {
+        remote[remote.backend].start_local_tracks(opts).then(function(tracks) {
+          remote.default_local_tracks = tracks;
+          remote.local_tracks = tracks;
+          res(tracks);
+        }, function(err) {
+          rej(err);
+        });
+      }, delay);
     });
   },
   local_track: function(type) {

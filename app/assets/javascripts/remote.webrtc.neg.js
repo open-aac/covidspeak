@@ -813,10 +813,10 @@ remote.webrtc2 = remote.webrtc2 || {};
       // TODO: remote.webrtc2.tracks.track_status()
       for(var key in remote.webrtc2.rooms) {
         var room = remote.webrtc2.rooms[key];
-        if(room) {
+        if(room && key != 'latest') {
           for(var jey in room.subrooms) {
             var subroom = room.subrooms[jey];
-            if(subroom) {
+            if(subroom && jey != 'latest') {
               remote.webrtc2.neg.prune_pcs(subroom);
       
               var needs_refresh = false;
@@ -870,13 +870,18 @@ remote.webrtc2 = remote.webrtc2 || {};
               } else if(subroom.updated && subroom.updated < (now - (10 * 60 * 1000))) {
                 // Delete rooms that have been dormant more than 10 minutes
                 delete room.subrooms[jey];
+              } else {
+                if(!subroom.refresh_count || subroom.refresh_count % 5 == 0) {
+                  log("no connections in place for", subroom.remote_user.id);
+                }
+                needs_refresh = true;
               }
               if(needs_refresh) {
                 subroom.refresh_count = (subroom.refresh_count || 0) + 1;
                 if(subroom.refresh_count < 5) {
                   log("trying to reconnect");
                   remote.webrtc2.neg.renegotiate(subroom, true);
-                } else {
+                } else if(subroom.refresh_count % 5 == 0) {
                   log("not retrying because too many failed attempts");
                 }
               } else {

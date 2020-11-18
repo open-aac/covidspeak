@@ -3,10 +3,17 @@ var volume = null;
 var preview_volume = null;
 var input = {
   request_media: function(opts) {
+    var opts = Object.assign({}, opts);
     if(opts.video && !opts.video.deviceId) {
       delete opts.video.deviceId;
     }
     return new Promise(function(res, rej) {
+      if(opts.existing_tracks) {
+        stream = new MediaStream();
+        opts.existing_tracks.forEach(function(t) { stream.addTrack(t); });
+        res(stream);
+        return;
+      }
       navigator.mediaDevices.getUserMedia(opts).then(function(media) {
         res(media);
       }, function(err) {

@@ -153,8 +153,12 @@ document.addEventListener('click', function(event) {
       return;
     }
     localStorage.terms_accepted = 'true';    
+    room.transfer_tracks = room.other_tracks;
+    room.other_tracks = null;
     room.cleanup();
-    location.href = event.target.closest('a.join').href;
+    setTimeout(function() {
+      location.href = event.target.closest('a.join').href;
+    }, input.compat.mobile ? 200 : 50);
   } else if(event.target.id == 'popout_browser') {
     room.cleanup();
     window.open(location.href, '_system');

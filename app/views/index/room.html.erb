@@ -525,6 +525,7 @@
   if(localStorage.terms_accepted != "true") {
     location.href = location.href + "/join";
   } else {
-    room.start();
+    room.start(room.transfer_tracks);
+    room.transfer_tracks = null;
   }
 </script>

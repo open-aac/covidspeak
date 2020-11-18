@@ -961,7 +961,7 @@ var room = {
 
     room.flush();
   },
-  start: function() {
+  start: function(existing_tracks) {
     if(room.camera === false) {
       room.handle_camera_error();
     }
@@ -1076,7 +1076,7 @@ var room = {
           remote.backend = 'webrtc2';
         }
         var local_tried = false;
-        remote.start_local_tracks(room.input_settings).then(function(tracks) {
+        remote.start_local_tracks(room.input_settings, existing_tracks).then(function(tracks) {
           local_tried = true;
           for(var idx = 0; idx < tracks.length; idx++) {
             tracks[idx].live_content = true;
@@ -1408,6 +1408,17 @@ var room = {
         navigator.mediaDevices.getUserMedia(opts).then(function(stream) {
           stream.getTracks().forEach(function(track) {
             room.other_tracks = room.other_tracks || [];
+            // Stop other tracks of the same type, since
+            // typically you can only do one at a time anyway
+            room.other_tracks = room.other_tracks.filter(function(t) {
+              if(t != track && t.kind == track.kind) {
+                t.enabled = false;
+                t.stop();
+                return false;
+              } else {
+                return true;
+              }
+            }); 
             room.other_tracks.push(track);
           });
           var track = stream.getTracks()[0];
