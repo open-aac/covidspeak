@@ -1410,15 +1410,15 @@ var room = {
             room.other_tracks = room.other_tracks || [];
             // Stop other tracks of the same type, since
             // typically you can only do one at a time anyway
-            room.other_tracks = room.other_tracks.filter(function(t) {
-              if(t != track && t.kind == track.kind) {
-                t.enabled = false;
-                t.stop();
-                return false;
-              } else {
-                return true;
-              }
-            }); 
+            // room.other_tracks = room.other_tracks.filter(function(t) {
+            //   if(t != track && t.kind == track.kind) {
+            //     t.enabled = false;
+            //     t.stop();
+            //     return false;
+            //   } else {
+            //     return true;
+            //   }
+            // }); 
             room.other_tracks.push(track);
           });
           var track = stream.getTracks()[0];
