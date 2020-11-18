@@ -384,8 +384,9 @@ remote.webrtc2 = remote.webrtc2 || {};
         log(true, "ice gather change", e.target.iceGatheringState);
         if(pc.iceGatheringState == 'gathering') {
           var pc_ref = remote.webrtc2.neg.pc_ref(subroom, pc);
+          log(true, "checking for early candidates", pc_ref, pc_ref && pc_ref.early_candidates);
           if(pc_ref && pc_ref.early_candidates) {
-            log(true, "adding already-received candidates");
+            log(true, "adding already-received early candidates");
             pc_ref.early_candidates.forEach(function(msg) {
               subroom.candidate_received(msg);
             });
@@ -751,26 +752,30 @@ remote.webrtc2 = remote.webrtc2 || {};
               }
             }
           };
-          if(pc.connectionState == 'closed' || pc.iceGatheringState == 'complete' || ['completed', 'failed', 'disconnected', 'closed'].indexOf(pc.iceConnectionState) != -1) {
+          if(pc.connectionState == 'closed' || ['completed', 'failed', 'disconnected', 'closed'].indexOf(pc.iceConnectionState) != -1) {
             // do nothing
             handle({error: 'connection closed'});
+          // } else if(pc.iceGatheringState == 'complete' && false) {
+          //   log(true, 'candidate received after gathering comppleted');
           } else {
             if(!msg.candidate || msg.candidate == '') {
               return handle();
             }
             if(pc.iceGatheringState == 'new') {
-              log(true, "candidate too early! queueing...");
               var pc_ref = remote.webrtc2.neg.pc_ref(subroom, pc);
-              if(pc_ref && pc_ref.early_candidates) {
+              if(pc_ref) {
+                log(true, "candidate too early! queueing...", pc_ref.id);
                 pc_ref.early_candidates = pc_ref.early_candidates || [];
                 pc_ref.early_candidates.push(msg);
+              } else {
+                log(true, "NO PCREF TO ADD CANDIDATE TO");
               }
               return;
             }
             pc.addIceCandidate(msg.candidate || '').then(function() {
               log(true, "  candidate received & added");
             }, function(err) {
-              if(!msg.candidate != null) {
+              if(!msg.candidate != null && pc.iceGatheringState != 'complete') {
                 // handle(err || {});
                 console.error("candidate add error", err.name, pc.iceGatheringState, err, msg);
               }
