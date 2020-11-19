@@ -3022,7 +3022,10 @@ if(video_elem.captureStream || video_elem.mozCaptureStream) {
 if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
   room.screen_sharing = true;
 }
-document.addEventListener("turbolinks:load", function() {
+document.addEventListener("beforeunload", function() {
+  room.cleanup();
+})
+document.addEventListener("turbolinks:before-render", function() {
   room.cleanup();
 })
 
