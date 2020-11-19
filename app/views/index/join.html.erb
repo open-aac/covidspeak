@@ -152,23 +152,32 @@ document.addEventListener('click', function(event) {
       document.querySelector('#accept_reminder').style.visibility = 'visible';
       return;
     }
+    var tracks = [];
     var elems = document.querySelector('#middle').querySelectorAll('audio,video');
     for(var idx = 0; idx < elems.length; idx++) {
       if(elems[0].srcObject) {
         elems[0].srcObject.getTracks().forEach(function(track) {
+          tracks.push(track);
           track.enabled = false;
           track.stop();
         });
+        elems[0].srcObject = null;
       }
     }
 
     localStorage.terms_accepted = 'true';    
     // room.transfer_tracks = room.other_tracks;
     // room.other_tracks = null;
-    room.cleanup();
-    setTimeout(function() {
-      location.href = event.target.closest('a.join').href;
-    }, input.compat.mobile ? 500 : 50);
+    var now = (new Date()).getTime();
+    var ready = function() {
+      var full_wait = input.compat.mobile ? 500 : 50;
+      var new_now = (new Date()).getTime();
+      var actual_wait = Math.max(50, full_wait - (new_now - now));
+      setTimeout(function() {
+        location.href = event.target.closest('a.join').href;
+      }, actual_wait);  
+    };
+    room.cleanup(tracks).then(ready, ready);
   } else if(event.target.id == 'popout_browser') {
     room.cleanup();
     window.open(location.href, '_system');
