@@ -1400,10 +1400,10 @@ var room = {
       var type = elem.tagName.toLowerCase();
       opts[type] = {deviceId: value};
       var local = remote.local_track(type);
-      // if(input.compat.mobile && local && local.mediaStreamTrack && local.mediaStreamTrack.getSettings().deviceId != value) {
-      //   local.mediaStreamTrack.enabled = false;
-      //   local.mediaStreamTrack.stop();
-      // }
+      if(input.compat.mobile && local && local.mediaStreamTrack && local.mediaStreamTrack.getSettings().deviceId != value) {
+        local.mediaStreamTrack.enabled = false;
+        local.mediaStreamTrack.stop();
+      }
       setTimeout(function() {
         navigator.mediaDevices.getUserMedia(opts).then(function(stream) {
           stream.getTracks().forEach(function(track) {
@@ -1431,7 +1431,7 @@ var room = {
             }, input.compat.mobile ? 200 : 50);
           }
         }, function(err) {
-          // TODO: err...
+          console.error("media switch error", err);
         });  
       }, input.compat.mobile ? 200 : 50);
     }
