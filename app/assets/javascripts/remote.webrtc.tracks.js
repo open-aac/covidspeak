@@ -716,6 +716,7 @@ remote.webrtc2 = remote.webrtc2 || {};
               check_done({error: 'no active tracks found to replace'});
             }
           });
+          if(active_subs.length == 0) { check_done(); }
         } else {
           rej({error: 'failed to replace'});
         }
@@ -786,6 +787,7 @@ remote.webrtc2 = remote.webrtc2 || {};
     validate_tracks: function(subroom, pc) {
       var pc_ref = remote.webrtc2.neg.pc_ref(subroom, pc);
       var valid = true;
+      var known_issue = false;
       if(pc_ref && pc_ref.pc && pc_ref.pc.connectionState != 'disconnected' && pc_ref.pc.connectionState != 'closed' && pc_ref.pc.connectionState != 'failed' && !subroom.stale_data) {
         if(pc_ref.pc.connectionState == 'connected') {
           // Sometimes we get in a state where we think we're
@@ -804,14 +806,27 @@ remote.webrtc2 = remote.webrtc2 || {};
             if(!subroom.local_issue_ids[track_ids]) {
               valid = false;
               subroom.local_issue_ids[track_ids] = true;
+            } else {
+              if(!known_issue) {
+                subroom.known_issue = true;
+                room.local_error('mic-mute.svg', "Your microphone is not working as expected, try reloading the page");
+              }
+              known_issue = true;
             }
           }
           if(!room.mute_audio && !senders.find(function(r) { return r.track && r.track.kind == 'audio' && r.track.enabled && !r.track.muted; })) {
+            // TODO: show a note that audio is missing, and you may need to reload
             console.error("Expected to be sending local audio but none attached to the stream");
             if(!subroom.local_issue_ids[track_ids]) {
               valid = false;
               subroom.local_issue_ids[track_ids] = true;
-            }  
+            } else {
+              if(!known_issue) {
+                subroom.known_issue = true;
+                room.local_error('camera-video.svg', "Your camera is not working as expected, try reloading the page");
+              }
+              known_issue = true;
+            }
           }
 
           room.state_for = room.state_for || {};
@@ -824,6 +839,12 @@ remote.webrtc2 = remote.webrtc2 || {};
               if(!subroom.remote_issue_ids[room.state_for.track_ids]) {
                 valid = false;
                 subroom.remote_issue_ids[room.state_for.track_ids] = true;
+              } else {
+                if(!known_issue) {
+                  subroom.known_issue = true;
+                  room.local_error('camera-video.svg', "Your partner's camera is not working as expected, you may need to both reload");
+                }
+                known_issue = true;
               }
             }
           }
@@ -833,10 +854,32 @@ remote.webrtc2 = remote.webrtc2 || {};
               if(!subroom.remote_issue_ids[room.state_for.track_ids]) {
                 valid = false;
                 subroom.remote_issue_ids[room.state_for.track_ids] = true;
+              } else {
+                if(!known_issue) {
+                  subroom.known_issue = true;
+                  room.local_error('mic-mute.svg', "Your partner's microphone is not working as expected, you may need to both reload");
+                }
+                known_issue = true;
               }
             }
           }
-          if(valid && subroom.started < (new Date()).getTime() - (30 * 1000)) {
+          if(valid && !known_issue && subroom.started < (new Date()).getTime() - (30 * 1000)) {
+            // If no active subrooms have a known issue
+            // then you can clear the error icon
+            var any_subroom_issue = false;
+            for(var key in remote.webrtc2.rooms) {
+              if(remote.webrtc2.rooms[key] && remote.webrtc2.rooms[key].subrooms) {
+                var subs = remote.webrtc2.rooms[key].active_subrooms();
+                subs.forEach(function(sub) {
+                  if(sub.known_issue) {
+                    any_subroom_issue = true;
+                  }
+                });
+              }
+            }
+            if(!any_subroom_issue) {
+              room.local_error(null);
+            }
             // If we have sustained a connection for at
             // least 30 second and it's not missing
             // anything, clear issue_ids;
@@ -845,7 +888,7 @@ remote.webrtc2 = remote.webrtc2 || {};
           }
         }
       }
-      return valid;
+      return valid || known_issue;
     },
     refresh_tracks: function(main_room) {
       if(main_room && main_room.subrooms) {

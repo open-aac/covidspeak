@@ -213,6 +213,55 @@ var room = {
       });  
     }
   },
+  local_error: function(img, message) {
+    var err = document.querySelector('.grid .mid .preview #local_error');
+    // clear any existing errors unless they match
+    if(img) {
+      err.style.display = 'block';      
+      err.querySelector('img').src = "/icons/" + img;
+      if(!room.local_error.message) {
+        room.local_error.message = message;
+        err.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          room.flash(room.local_error.message);
+        });
+      }
+      err.message = message;
+      // stick to top right of video feed if present
+    } else {
+      err.style.display = 'none';      
+    }
+  },
+  flash: function(elem) {
+    // show a flash message temporarily
+    document.querySelectorAll('.flash').forEach(function(e) { e.parentNode.removeChild(e); });
+    var flash = document.createElement('div');
+    flash.id = 'flash';
+    flash.classList.add('flash')
+    if(!elem.querySelector) {
+      var div = document.createElement('div');
+      div.innerText = elem;
+      elem = div;
+    }
+    flash.appendChild(elem);
+    document.body.appendChild(flash);
+    flash.addEventListener('click', function(e) {
+      e.preventDefault();
+      flash.parentNode.removeChild(flash);
+    });
+    setTimeout(function() {
+      flash.classList.add('fade-in');
+    }, 10);
+    setTimeout(function() {
+      flash.classList.add('fade-out');
+      setTimeout(function() {
+        if(flash.parentNode) {
+          flash.parentNode.removeChild(flash);
+        }
+      }, 5000);
+    }, 5000)
+  },
   status: function(str, opts) {
     document.querySelector('#status_invite').style.display = 'none';
     document.querySelector('#status_leave').style.display = 'none';
@@ -1028,7 +1077,9 @@ var room = {
     
     room.room_id = room_id;
     room.load_settings();
-    room.check_inputs();
+    room.check_inputs().then(function() {
+      room.update_video_icon();
+    });
     
     // TODO: show an intro video option (always for communicator, once for visitors)
     // TODO: if not over https and not on localhost, pre-empt error
@@ -1078,6 +1129,7 @@ var room = {
         var local_tried = false;
         remote.start_local_tracks(room.input_settings, existing_tracks).then(function(tracks) {
           local_tried = true;
+          room.update_video_icon();
           for(var idx = 0; idx < tracks.length; idx++) {
             tracks[idx].live_content = true;
             tracks[idx].mediaStreamTrack.live_content = true;
@@ -1254,6 +1306,25 @@ var room = {
     }
     if(text) {      
       if(window.speechSynthesis && room.settings.tts && room.settings.tts != 'none' && !button.load_id) {
+        if(true || input.compat.system == 'iOS' || input.compat.system == 'iPadOS') {
+          var elem = document.createElement('div');
+          elem.innerText = "\"" + text + "\"";
+          var sub = document.createElement('div');
+          sub.style.marginTop = '10px';
+          sub.style.fontStyle = 'italic';
+          sub.style.fontSize = '13px';
+          sub.innerText = "(iOS doesn't support speech synthesis during calls)";
+          var img = document.createElement('img');
+          img.src = '/icons/chat-right-quote.svg';
+          img.style.height = '25px';
+          img.style.verticalAlign = 'middle';
+          img.style.marginRight = '5px';
+          elem.prepend(img);
+          elem.appendChild(sub);
+          room.flash(elem);
+          // TODO: popup note
+        }
+        
         var elems = document.querySelector('.grid .mid .preview').querySelectorAll('video,audio');
         if(input.compat.system == 'iOS' || input.compat.system == 'iPadOS') {
           elems.forEach(function(elem, idx) {
@@ -1280,7 +1351,7 @@ var room = {
                   elem.play();
                 }, 1000);
               }, 1000);
-              elem.fixed_for_ios_safari = true;
+               // elem.fixed_for_ios_safari = true;
             }  
           });
         }
@@ -1310,6 +1381,39 @@ var room = {
           room[input.type + '_inputs'].push(input);
         }
       });
+
+      var video_track = remote.local_track('video');
+      var current_video_id = room.temp_video_device_id || (video_track && video_track.device_id);
+      var video_list = (room.video_inputs || []);
+      var video_ids = [];
+      var group_ids = {};
+      var facing_modes = {};
+      if(current_video_id && current_video_id != 'none') { 
+        var track = video_list.find(function(t) { return t.deviceId == current_video_id});
+        if(track && !room.first_video) {
+          room.first_video = {device_id: track.deviceId, group_id: track.groupId || track.deviceId, facing_mode: track.facingMode};
+        }
+      }
+      // Limiting to one per groupId/facingMode for video swap
+      // (you can still go to settings for the full list)
+      if(room.first_video) {
+        video_ids.push(room.first_video.device_id);
+        group_ids[room.first_video.group_id] = true;
+        if(room.first_video.facing_mode) {
+          facing_modes[room.first_video.facing_mode] = true;
+        }
+      }
+      video_list.forEach(function(d) {
+        var facing = d.facingMode;
+        var group_id = d.groupId || d.deviceId;
+        if(!group_ids[group_id] && (!facing || !facing_modes[facing])) {
+          video_ids.push(d.deviceId);
+          group_ids[group_id] = true;
+          facing_modes[facing] = true;
+        }
+      });
+      room.video_device_ids = video_ids;
+
       return list;
     });
   },
@@ -1436,6 +1540,33 @@ var room = {
       }, input.compat.mobile ? 200 : 50);
     }
   },
+  update_video_icon: function() {
+    var video_track = remote.local_track('video');
+    if(video_track && room.video_device_ids) {
+      var device_id = video_track.device_id;
+      if(video_track && video_track.mediaStreamTrack && !video_track.mediaStreamTrack.enabled) {
+        device_id = null;
+      }
+      var vid = document.querySelector('#nav .pres .toggle img.vid');
+      var nxt = document.querySelector('#nav .pres .toggle img.nxt');
+      var video_idx = room.video_device_ids.indexOf(device_id);
+      if(video_idx != -1) {
+        if(video_idx == room.video_device_ids.length - 1) {
+          // show mute camera icon
+          vid.src = "/icons/camera-video-off.svg";
+          nxt.style.display = 'none';
+        } else {
+          // show "next" camera icon
+          vid.src = "/icons/camera-video.svg";
+          nxt.style.display = 'inline';
+        }
+      } else {
+        // currently muted, just show camera icon
+        vid.src = "/icons/camera-video.svg";
+        nxt.style.display = 'none';
+      }
+    }
+  },
   update_from_settings: function() {
     // These are the user-streamed tracks, not any photos
     // or videos that are currently being streamed
@@ -1475,46 +1606,19 @@ var room = {
             // We add to the front of the list so shares don't get interrupted
             room.local_tracks.unshift(track);
             room.update_preview();
+            room.update_video_icon();
           }, function(err) {
             debugger
           });
         }
       }
     });
+    room.update_video_icon();
   },
   swap_video: function() {
     var video_track = remote.local_track('video');
     var current_video_id = room.temp_video_device_id || (video_track && video_track.device_id);
     room.check_inputs().then(function() {
-      var list = (room.video_inputs || []);
-      var ids = [];
-      var group_ids = {};
-      var facing_modes = {};
-      if(current_video_id && current_video_id != 'none') { 
-        var track = list.find(function(t) { return t.deviceId == current_video_id});
-        if(track && !room.first_video) {
-          room.first_video = {device_id: track.deviceId, group_id: track.groupId || track.deviceId, facing_mode: track.facingMode};
-        }
-      }
-      // Limiting to one per groupId/facingMode for video swap
-      // (you can still go to settings for the full list)
-      if(room.first_video) {
-        ids.push(room.first_video.device_id);
-        group_ids[room.first_video.group_id] = true;
-        if(room.first_video.facing_mode) {
-          facing_modes[room.first_video.facing_mode] = true;
-        }
-      }
-      list.forEach(function(d) {
-        var facing = d.facingMode;
-        var group_id = d.groupId || d.deviceId;
-        if(!group_ids[group_id] && (!facing || !facing_modes[facing])) {
-          ids.push(d.deviceId);
-          group_ids[group_id] = true;
-          facing_modes[facing] = true;
-        }
-      });
-      room.video_device_ids = ids;
       var idx = room.video_device_ids.indexOf(current_video_id);
       var new_idx = idx + 1;
       room.temp_video_device_id = room.video_device_ids[new_idx] || 'none';

@@ -500,7 +500,9 @@ remote.webrtc2 = remote.webrtc2 || {};
         }  
 
         // TODO: should we try re-offering on the active pc in this case?
-        remote.webrtc2.neg.ping_user(main_room, subroom.remote_user, reason);
+        if(subroom.remote_user) {
+          remote.webrtc2.neg.ping_user(main_room, subroom.remote_user, reason);
+        }
       }
     },
     offer_and_wait: function(subroom, msg) {

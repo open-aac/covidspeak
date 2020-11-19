@@ -112,6 +112,9 @@
           <img src='/icons/person-square.svg' />
         </div>
       </div>
+      <div id='local_error' style='display: none;'>
+        <img src="/icons/mic-mute.svg"/>
+      </div>
       <div id="status_holder">
         <div id='status'>
           <div id='status_text'>Initializing...</div>
@@ -136,7 +139,10 @@
         <span class='pres'>
           <button class='mute' tabindex='-1'><img src="/icons/mic-mute.svg" alt="mute"/></button>
           <button class='unmute' tabindex='-1'><img src="/icons/mic.svg" alt="unmute"/></button>
-          <button class='toggle' tabindex='-1'><img src="/icons/camera-video.svg" alt="toggle"/></button>
+          <button class='toggle' tabindex='-1'>
+            <img src="/icons/camera-video.svg" alt="toggle" class='vid'/>
+            <img src="/icons/caret-right.svg" class='nxt' style='display: none; position: absolute; right: 0;'/>
+          </button>
         </span>
         <button class='zoom' data-direction='in' tabindex='-1'>+</button>
         <button class='zoom' data-diration='out' tabindex='-1'>-</button><br/>
