@@ -636,12 +636,13 @@ remote.webrtc2 = remote.webrtc2 || {};
           var track_ref = remote.webrtc2.track_ref(track, null, 0);
           var finished = 0, errors = [];
           var ended_tracks = [];
+          var active_subs = main_room.active_subrooms();
           var check_done = function(error) {
             finished++;
             if(error) {
               errors.push(error);
             }
-            if(finished >= main_room.subrooms.length) {
+            if(finished >= active_subs.length) {
               remote.webrtc2.local_tracks = remote.webrtc2.local_tracks || [];
               // When all subrooms are updated or errored,
               // remove the ended tracks from the list
@@ -664,7 +665,7 @@ remote.webrtc2 = remote.webrtc2 || {};
               }
             }
           };
-          main_room.active_subrooms().forEach(function(subroom) {
+          active_subs.forEach(function(subroom) {
             var pc_ref = remote.webrtc2.neg.pc_ref(subroom);
             var pc = pc_ref && pc_ref.pc;
             var sender = null;
