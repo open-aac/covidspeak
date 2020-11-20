@@ -5,7 +5,7 @@ Co-VidSpeak was created from discussions by Bill Binko and
 Brian Whitmer. We realized during the Covid-19 pandemic that
 people on a breathing tube in the ICU are being physically 
 isolated from family, but that a video call wouldn't be enough
-to help the communicate.
+to help them communicate.
 
 We have family members and friends
 who have been intubated in intensive care situations, and
@@ -40,7 +40,7 @@ with a framework, but didn't). We run it in Heroku so I
 assume other container frameworks shouldn't be too bad.
 
 Check out `.env.example` for configuration settings. Also 
-keep in mind Redis and Postgres (other other db) are 
+keep in mind Redis and Postgres (or other db) are 
 required (see `config/database.yml` and `config/cable.yml`)
 
 If you are not using Twilio Video as your delivery system,
@@ -66,7 +66,7 @@ allow you to start a two-person room:
 
 ```
 bundle exec rails console
-# To make a join code that will use Twilio Video (easiest)
+# To make a join code that will use Twilio Video (easiest, but currently broken)
 a = Account.new(code: 'my_join_code')
 a.settings = {"type"=>"twilio"}
 a.save!
@@ -80,6 +80,7 @@ a.save!
 a = Account.new(code: 'my_join_code')
 a.settings = {"address"=>"my.turnserver.org", "verifier"=>"hmac_sha1"}
 # If auth is disabled for the TURN server, this can be whatever
+# otherwise it will need to match the config to start rooms
 a.verifier = "SHARED_SECRET"
 a.save!
 ```
@@ -117,7 +118,8 @@ identifiers, photos, etc.
 then (in theory) it can leverage the 
 <b>conduit exception rule</b>, and 
 does not need to enter into a Business Asssociate 
-Agreement with the health provider.
+Agreement with the health provider. With proper configuration
+this should be possible with a Co-VidSpeak setup.
 
 https://www.hipaajournal.com/hipaa-conduit-exception-rule/
 
@@ -125,11 +127,8 @@ https://www.hipaajournal.com/hipaa-conduit-exception-rule/
 (Contributions welcome!)
 - Backend specs
 - Frontend specs
-- Track down issue with Twilio TURN server sessions not loading if parter waits more than 10 minutes to join
 - Throttling (rack-attack?)
-- Optional speech output (maybe just from the communicator?)
-- Turn off video rendering on page blur (Google Meet des this, saves battery?)
-- Way to send invite links before starting a room (while still enforcing usage limits)
+- Turn off video rendering on page blur (Google Meet does this, saves battery?)
 - Page to list suggested alternative layout sets
 - Support for Multiple visitors
 - Options for longer highlight, auditory cues, etc.
@@ -138,6 +137,6 @@ https://www.hipaajournal.com/hipaa-conduit-exception-rule/
 
 ## License
 
-Copyright 2020 CoughDrop, Inc.
+Copyright 2020 OpenAAC.
 
-Released under GPLv3 License or later.
+Released under MIT License.
