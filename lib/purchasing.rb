@@ -62,7 +62,7 @@ module Purchasing
               end
             end
           end
-        elsif subscription['status'] == 'active'
+        elsif subscription['status'] == 'active' && !subscription['cancel_at_period_end']
           if valid
             valid = Account.confirm_subscription({
               state: 'active',
