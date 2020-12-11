@@ -1306,7 +1306,7 @@ var room = {
     }
     if(text) {      
       if(window.speechSynthesis && room.settings.tts && room.settings.tts != 'none' && !button.load_id) {
-        if(true || input.compat.system == 'iOS' || input.compat.system == 'iPadOS') {
+        if(input.compat.system == 'iOS' || input.compat.system == 'iPadOS') {
           var elem = document.createElement('div');
           elem.innerText = "\"" + text + "\"";
           var sub = document.createElement('div');
