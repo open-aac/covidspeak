@@ -429,6 +429,7 @@ var room = {
     if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
       navigator.mediaDevices.getDisplayMedia({
         video: true,
+        audio: true,
         cursor: 'motion',
         displaySurface: 'monitor'
       }).then(function(stream) {
