@@ -2449,6 +2449,7 @@ var room = {
     }
   },
   cleanup: function(more_tracks) {
+    // This method must remain idempotent
     return new Promise(function(resolve, reject) {
       var all_tracks = [].concat(more_tracks || []);
       // turbolinks...
@@ -2485,7 +2486,6 @@ var room = {
         }
       };
       check();
-
     });
   },
   simple_button: function(btn, comp) {
@@ -3130,6 +3130,9 @@ if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
 document.addEventListener("beforeunload", function() {
   room.cleanup();
 })
+window.addEventListener('pagehide', function() {
+  room.cleanup();
+});
 document.addEventListener("turbolinks:before-render", function() {
   room.cleanup();
 })

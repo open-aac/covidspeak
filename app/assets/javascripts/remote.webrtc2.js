@@ -44,6 +44,7 @@ var remote = remote || {};
         if(track.kind == 'audio' || track.kind == 'video') {
           var elem = document.createElement(track.kind);
           elem.srcObject = stream;
+          elem.setAttribute('playsinline', true);
           elem.onloadedmetadata = function(e) {
             elem.play();
           };        

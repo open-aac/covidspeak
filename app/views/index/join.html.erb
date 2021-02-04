@@ -21,6 +21,13 @@
       </div>
     </div>
   </div>
+  <div id='ios_warning' style='display: none; margin: 0 20px; color: #800;'>
+    NOTE: There are some known reliability
+    issues with iOS video calling in the browser, we work 
+    to stay on top of them. If you are
+    having problems, you may want to try using Chrome on a
+    desktop computer instead.
+  </div>
   <div class='big_checkbox' style='margin: 10px 0; padding-left: 52px; text-align: left; padding-top: 0; font-size: 14px;'>
     <label>
       <input type='checkbox' id='accept' style='margin-top: -5px;'/>
@@ -327,5 +334,8 @@ function getMedia() {
     room.handle_camera_error(null, status);
   }
 };
+if(window.input && window.input.compat && (window.input.compat.system == 'iOS' || window.input.compat.system == 'iPadOS')) {
+  document.querySelector('#ios_warning').style.display = 'block';
+}
 
 </script>
