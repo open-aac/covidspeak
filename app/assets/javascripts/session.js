@@ -17,13 +17,31 @@ var session = {
       opts.channel = 'RoomChannel';
       var subscription = session.cable.subscriptions.create(opts, {
         received: function(data) {
-          callback(data);
+          if(window.input && window.input.compat && (window.input.compat.system == 'iOS' || window.input.compat.system == 'iPadOS')) {
+            setTimeout(function() {
+              callback(data);
+            }, 10);
+          } else {
+            callback(data);
+          }
         },
         connected: function() {
-          res();
+          if(window.input && window.input.compat && (window.input.compat.system == 'iOS' || window.input.compat.system == 'iPadOS')) {
+            setTimeout(function() {
+              res();
+            }, 10);
+          } else {
+            res();
+          }
         },
         rejected: function() {
-          rej();
+          if(window.input && window.input.compat && (window.input.compat.system == 'iOS' || window.input.compat.system == 'iPadOS')) {
+            setTimeout(function() {
+              rej();
+            }, 10);
+          } else {
+            rej();
+          }
         }
       });
       session.subscriptions[opts.room_id] = subscription;  

@@ -27,7 +27,7 @@ remote.webrtc2 = remote.webrtc2 || {};
           } else if(local_data.readyState == 'connecting') {
             setTimeout(check_channel, 200);
           } else if(local_data.readyState == 'open') {
-            resolve();            
+            resolve(local_data);            
           } else if(local_data.readyState == 'closing' || local_data.readyState == 'closed') {
             reject({error: 'channel closed without opening'});
           }
@@ -114,7 +114,13 @@ remote.webrtc2 = remote.webrtc2 || {};
         data.addEventListener('message', function(e) {
           // Ensure you're using the latest active connection for mapping tracks
           subroom.stale_data = false;
-          remote.webrtc2.tracks.process_message(subroom, pc, e.data);
+          if(window.input && window.input.compat && (window.input.compat.system == 'iOS' || window.input.compat.system == 'iPadOS')) {
+            setTimeout(function() {
+              remote.webrtc2.tracks.process_message(subroom, pc, e.data);
+            }, 10);
+          } else {
+            remote.webrtc2.tracks.process_message(subroom, pc, e.data);
+          }
         });
       };
       // Listen for events on locally-created channel
@@ -147,7 +153,13 @@ remote.webrtc2 = remote.webrtc2 || {};
         var rtcpc = (event.target && event.target.id) ? event.target : pc;
         if((event.streams || []).length > 0) {
           log(true, 'track add event', event.track.id, event.track);
-          remote.webrtc2.tracks.process_track(subroom, pc, event.track, (event.streams || [])[0]);
+          if(window.input && window.input.compat && (window.input.compat.system == 'iOS' || window.input.compat.system == 'iPadOS')) {
+            setTimeout(function() {
+              remote.webrtc2.tracks.process_track(subroom, pc, event.track, (event.streams || [])[0]);
+            }, 10);
+          } else {
+            remote.webrtc2.tracks.process_track(subroom, pc, event.track, (event.streams || [])[0]);
+          }
 //          main_room.add_track(event.track, (event.streams || [])[0], rtcpc.id || pc.id || pc_id);
         }
       });

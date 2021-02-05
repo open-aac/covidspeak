@@ -111,8 +111,12 @@ remote.webrtc2 = remote.webrtc2 || {};
         msg.list.forEach(function(remote_user) {
           remote.webrtc2.neg.ping_user(main_room, remote_user, "not in room yet");
         });
+        var cnt = 0;
         (main_room.pending_messages || []).forEach(function(msg) {
-          main_room.onmessage(msg);
+          cnt++
+          setTimeout(function() {
+            main_room.onmessage(msg);
+          }, cnt * 20);
         });
         main_room.pending_messages = [];
       }
@@ -241,8 +245,19 @@ remote.webrtc2 = remote.webrtc2 || {};
       subroom.pending.promise = promise;
       return promise;
     },
-    connection_ready: function(subroom, pc) {
+    connection_ready: function(subroom, pc, attempts) {
       var pc_ref = remote.webrtc2.neg.pc_ref(subroom, pc);
+      if(!pc_ref) {
+        attempts = attempts || 0;
+        if(attempts > 10) {
+          console.error("RTC: connection failed to materialize", pc, subroom);
+          return;
+        }
+        setTimeout(function() {
+          remote.webrtc2.neg.connection_ready(subroom, pc, attempts + 1);
+        }, 100)
+        return;
+      }
       if(subroom.id && pc_ref.local_data_channel) {
         pc_ref.local_data_channel.subroom_id = subroom.id;
       }
@@ -824,7 +839,7 @@ remote.webrtc2 = remote.webrtc2 || {};
               var needs_refresh = false;
               if(subroom.active || subroom.pending) {
                 any_connections_found = true;
-                if(subroom.active.pc && subroom.active.pc.connectionState == 'connected') {
+                if(subroom.active && subroom.active.pc && subroom.active.pc.connectionState == 'connected') {
                   all_connections_ended = false;
                   // For an active connection, validate all expected tracks are live
                   subroom.updated = now;
