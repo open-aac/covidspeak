@@ -18,7 +18,16 @@ remote.webrtc2 = remote.webrtc2 || {};
     attach_data_channel: function(subroom, pc) {
       return new Promise(function(resolve, reject) {
         var uid = Math.random().toString();
-        var local_data = pc.createDataChannel('data-channel.' + uid);
+        // TODO: if the pc is closed, this will raise an error
+        if(pc.connectionState == 'closed') {
+          return reject({error: "closed connection", state: pc.connectionState});
+        }
+        var local_data = null;
+        try {
+          local_data = pc.createDataChannel('data-channel.' + uid);
+        } catch(e) {
+          return reject({error: "channel failed", state: pc.connectionState, error: e.toString()});
+        }
         var check_channel = function() {
           check_channel.attempts = (check_channel.attempts || 0) + 1;
           if(check_channel.attempts > 50) {
@@ -821,13 +830,13 @@ remote.webrtc2 = remote.webrtc2 || {};
             } else {
               if(!known_issue) {
                 subroom.known_issue = true;
-                room.local_error('mic-mute.svg', "Your microphone is not working as expected, try reloading the page");
+                room.local_error('camera-video.svg', "Your camera is not working as expected, try reloading the page");
               }
               known_issue = true;
             }
           }
           if(!room.mute_audio && !senders.find(function(r) { return r.track && r.track.kind == 'audio' && r.track.enabled && !r.track.muted; })) {
-            // TODO: show a note that audio is missing, and you may need to reload
+            // TODO: is there a way to recover from this???
             console.error("Expected to be sending local audio but none attached to the stream");
             if(!subroom.local_issue_ids[track_ids]) {
               valid = false;
@@ -835,7 +844,7 @@ remote.webrtc2 = remote.webrtc2 || {};
             } else {
               if(!known_issue) {
                 subroom.known_issue = true;
-                room.local_error('camera-video.svg', "Your camera is not working as expected, try reloading the page");
+                room.local_error('mic-mute.svg', "Your microphone is not working as expected, try reloading the page");
               }
               known_issue = true;
             }

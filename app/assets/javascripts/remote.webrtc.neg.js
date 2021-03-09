@@ -365,6 +365,11 @@ remote.webrtc2 = remote.webrtc2 || {};
       config.iceTransportPolicy = 'all';
       config.iceCandidatePoolSize = 2;  
       var ref_id = (new Date()).getTime() + "." + Math.random();
+
+      subroom.pcs = subroom.pcs || {};
+      // Prune old connections
+      remote.webrtc2.neg.prune_pcs(subroom);
+
       try {
         pc = new RTCPeerConnection(config);
         pc.ref_id = ref_id;
@@ -374,15 +379,14 @@ remote.webrtc2 = remote.webrtc2 || {};
         remote.connection_error(main_room.ref, subroom.remote_user, 'failed');
         return null;
       }
-      subroom.pcs = subroom.pcs || {};
-      // Prune old connections
-      remote.webrtc2.neg.prune_pcs(subroom);
       subroom.pcs[ref_id] = {
         pc: pc,
         id: ref_id,
         started: pc.started
       };
       if(subroom.owner_id == main_room.user_id) {
+        // TODO: how can the connection be closed already???
+        // Maybe it's just not yet open?
         remote.webrtc2.tracks.attach_data_channel(subroom, pc);
       }
       remote.webrtc2.tracks.listen_for_tracks(subroom, pc);
