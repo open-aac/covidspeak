@@ -50,7 +50,7 @@ var access = null;
                 var hover = null;
                 var cell_id = null;
                 if(room.buttons.length == 8) {
-                  if(e.extras && (e.extras.tilt_x || e.extras.tilt_y)) {
+                  if(e.extras && (e.extras.tilt_x != null || e.extras.tilt_y != null)) {
                     if(e.extras.tilt_x > -5 && e.extras.tilt_x < 5 && e.extras.tilt_y > 3) {
                       cell_id = 6;
                     } else if(e.extras.tilt_x > -5 && e.extras.tilt_x < 5 && e.extras.tilt_y < -3) {
@@ -96,7 +96,7 @@ var access = null;
                     }
                   }
                 } else if(room.buttons.length == 6) {
-                  if(e.extras && (e.extras.tilt_x || e.extras.tilt_y)) {
+                  if(e.extras && (e.extras.tilt_x != null || e.extras.tilt_y != null)) {
                     if(e.extras.tilt_x > -1 && e.extras.tilt_x < 1 && e.extras.tilt_y > 3) {
                       cell_id = 6;
                     } else if(e.extras.tilt_x > -1 && e.extras.tilt_x < 1 && e.extras.tilt_y < -3) {
@@ -134,7 +134,7 @@ var access = null;
                     }
                   }
                 } else if(room.buttons.length == 4) {
-                  if(e.extras && (e.extras.tilt_x || e.extras.tilt_y)) {
+                  if(e.extras && (e.extras.tilt_x != null || e.extras.tilt_y != null)) {
                     if(e.extras.tilt_x > -1 && e.extras.tilt_x < 1 && e.extras.tilt_y > 3) {
                       cell_id = 6;
                     } else if(e.extras.tilt_x > -1 && e.extras.tilt_x < 1 && e.extras.tilt_y < -3) {
