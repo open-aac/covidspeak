@@ -112,6 +112,9 @@
           <img src='/icons/person-square.svg' />
         </div>
       </div>
+      <div id='alt_access_icon' style='display: none;'>
+        <img src="/icons/person.svg"/>
+      </div>
       <div id='local_error' style='display: none;'>
         <img src="/icons/mic-mute.svg"/>
       </div>
@@ -178,6 +181,43 @@
     <a href='#' class='cell' data-idx='7'>
       <div class='text'></div><img />
     </a>
+  </div>
+</div>
+<div id="alt_access_modal" class="content">
+  <div>
+    <h2>Tracking Type</h2>
+    <select id='tracking_type'>
+      <option value='none'>No Tracking</option>
+      <option value='head'>Head Tracking</option>
+      <option value='gaze'>Eye Gaze Tracking</option>
+    </select>
+  </div>
+  <div class='option head'>
+    <h2>Head Tilt Sensitivity</h2>
+    <select id='head_sensitivity'>
+      <option value='1.0'>Normal</option>
+      <option value='2.0'>More Sensitive</option>
+      <option value='0.5'>Less Sensitive</option>
+      <option value='3.0'>Extra Sensitive</option>
+    </select>
+  </div>
+  <div class='option head gaze'>
+    <h2>Target Dwell Time</h2>
+    <select id='dwell_time'>
+      <option value='1000'>1 second</option>
+      <option value='1500'>1.5 seconds</option>
+      <option value='2000'>2 seconds</option>
+      <option value='3000'>3 seconds</option>
+      <option value='500'>0.5 seconds</option>
+    </select>
+  </div>
+  <div style='display: none;'>
+    <h2>Selection Type</h2>
+    <select id='selection_type'>
+      <option value='dwell'>Dwelling on Target</option>
+      <option value='keypress'>Pressing the Return or Space Key</option>
+      <option value='expression'>Smiling or Opening Mouth</option>
+    </select>
   </div>
 </div>
 <div id="share_modal" class="content">
@@ -492,6 +532,10 @@
   <div class='half' style='clear: left;'>
     <h2>Audio Input</h2>
     <select id='audio_select'></select>
+  </div>
+  <div class='half'>
+    <h2>Alternative Access</h2>
+    <button id='alt_access' style='height: 40px; border: 1px solid #888;'>Configure Access</button>
   </div>
   <div style='clear: both;'></div>
   <div class='preview_container'>

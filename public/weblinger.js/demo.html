@@ -1,0 +1,249 @@
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <script src='weblinger.js'></script>
+    <!-- script src='lib/jeelizWeboji/jeelizFaceTransfer.js'></script>
+    <script src='lib/jeelizWeboji/jeelizFaceTransferNNC.json.js'></script -->
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      button, select {
+        height: 80px;
+        min-width: 100px;
+        margin-bottom: 5px;
+      }
+      #expression {
+        display: inline-block;
+        width: 60px;
+        height: 60px;
+        margin: 5px 0;
+        padding: 10px 2px;
+        text-align: center;
+        font-size: 30px;
+        color: #aaa;
+        border: 1px solid #888;
+        vertical-align: middle;
+        transition: color 1s ease-out, text-shadow 1s ease-out, background-color 1s ease-out, opacity 1s ease-out;
+        opacity: 0.5;
+      }
+      #expression.highlight {
+        color: #000;
+        text-shadow: 4px 4px 5px #ff0, -4px -4px 5px #ff0, -4px 4px 5px #ff0, 4px -4px 5px #ff0;
+        background-color: #c9ddff;
+        opacity: 1.0;
+      }
+      #screen {
+        height: 80px;
+        width: 107px;
+        border: 1px solid #888;
+        margin-right: 5px;
+        display: inline-block;
+        position: relative;
+        vertical-align: middle;
+        overflow: hidden;
+      }
+      #screen .preview {
+        position: absolute;        
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        transform: scaleX(-1);
+      }
+      #screen .dot {
+        position: absolute;
+        left: calc(50% - 3px);
+        top: calc(50% - 3px);
+        width: 6px;
+        height: 6px;
+        border: 1px solid #fff;
+        box-shadow: 1px 1px 3px #fff, -1px -1px 3px #fff, 1px -1px 3px #fff, -1px 1px 3ppx #fff;
+        background: #f00;
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h1 style='width: 300px; display: inline-block;'>WebLinger.js</h1>
+      <span id='active' style='display: none;'>
+        <span id='screen'>
+          <canvas width='640' height='480' class='preview'></canvas>
+          <span class='dot'></span>
+        </span>
+        <button id="stop">Stop</button>
+        <button id="calibrate">Re-Calibrate</button>
+        <span id="expression">
+          &#x1F610;
+        </span>
+      </span>
+      <span id='inactive'>
+        <select id='track_type'>
+          <option value='head'>Head Pointing</option>
+          <option value='head_steer'>Head as a Joystick</option>
+          <option value='gaze'>Eye Gaze Tracking</option>
+          <option value='cursor'>Cursor</option>
+        </select>
+        <select id='selection_type' style='width: 150px;'>
+          <option value='linger'>Select via Dwell</option>
+          <option value='expression'>Select via Expression (open-mouth, smile or raise eyebrows)</option>
+          <option value='keyboard'>Select via Keyboard (spacebar or enter key)</option>
+        </select>
+        <button id="start">Start</button>
+      </span>
+    </div>
+    <div id='status' style='font-weight: bold; padding: 10px; text-align: center; position: fixed; top: 0; width: 400px; margin: 0 calc(50vw - 220px); background: #eee; border-bottom: 1px solid #888; opacity: 0; transition: opacity 0.5s; display: none; box-shadow: 0 5px 10px #000;'>
+      You did it!
+    </div>
+    <canvas id='face_canvas' width='640' height='480' style='width: 640px; height: 480px; border: 1px solid #000; position: absolute; left: -1000px;'></canvas>
+    <button id='button' style='width: 40%; max-width: 300px; height: 200px;'>Button Target</button>
+    <img src="https://www.openaac.org/openaac.svg" id='img' style='vertical-align: top; border: 1px solid #888; width: 40%; max-width: 300px; height: 200px;' tabindex=2/>
+    <div style='margin-top: 100vh;'>
+      <button id='scrolled_button' style='width: 40%; max-width: 300px; margin-left: calc(100% - 300px); height: 200px;'>Scrolled Target</button>
+
+    </div>
+    <script>
+      var update_status = function(str) {
+        var dom = document.querySelector('#status');
+        dom.innerText = str;
+        dom.style.display = 'block';
+        setTimeout(function() {
+          dom.style.opacity = 1.0;
+        });
+        var key = Math.random();
+        dom.show_key = key;
+        setTimeout(function() {
+          if(dom.show_key == key) {
+            dom.style.opacity = 0.0;
+            setTimeout(function() {
+              if(dom.show_key == key) {
+                dom.style.display = 'none';
+              }
+            }, 500);
+          }
+        }, 5000);
+      };
+      var toggle = function(e) {
+        if(weblinger.state.active) {
+          weblinger.stop({teardown: true});
+          document.querySelector('#active').style.display = 'none';
+          document.querySelector('#inactive').style.display = 'inline';
+        } else {
+          var type = document.querySelector('#track_type');
+          var selection = document.querySelector('#selection_type');
+          var selection_type = selection.selectedOptions[0].value;
+          var source = type.selectedOptions[0].value;
+          var mode = 'pointer';
+          var linger_type = 'maintain';
+          var show_emoji = false;
+          if(source == 'head_steer') {
+            source = 'head';
+            mode = 'joystick';
+            linger_type = 'rest';
+          }
+          if(source == 'cursor') {
+            linger_type = 'rest';
+          }
+          if(source == 'head_steer' || source == 'head' || selection_type == 'expression') {
+            show_emoji = true;          
+          }
+          document.querySelector('#expression').style.display = show_emoji ? 'inline-block' : 'none';
+          if(selection_type == 'expression') {
+
+          } else if(selection_type == 'keyboard') {
+            selection_type = {keycodes: [32, 13]};
+          }
+          var dot = document.querySelector('#screen .dot');
+          var canvas = document.querySelector('#screen .preview');
+          var context = canvas.getContext('2d');
+          weblinger.start({
+            source: source,
+            selection_type: selection_type,
+            selection_expressions: ['eyebrows', 'smile', 'mouth-open'],
+            linger_type: linger_type,
+            cursor: source == 'cursor' ? 'none' : 'red_circle',
+            mode: mode,
+            event_callback: function(e) {
+              var animating = false;
+              if(e.type == 'linger') {
+                if(e.tilt) {
+                  
+                }
+                var pct_x = (e.x / window.innerWidth);
+                var pct_y = (e.y / window.innerHeight);
+                dot.style.left = "calc(" + Math.round(pct_x  * 100) + "% - 3px)";
+                dot.style.top = "calc(" + Math.round(pct_y  * 100) + "% - 3px)";
+              } else if(e.type == 'ready') {
+                var video = e.source_video;
+                if(video) {
+                  animating = true;
+                  var check_video = function() {
+                    if(video.paused || video.ended) {
+                      setTimeout(check_video, 500);
+                    } else {
+                      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                      window.requestAnimationFrame(check_video);
+                    }
+                  };
+                  requestAnimationFrame(check_video);
+                }
+              } else if(e.type == 'stop') {
+                animating = false;
+              } else if(e.type == 'expression') {
+                var confirmed_action = e.expression;
+                var lookups = {
+                  'mouth-open': "&#x1F62E;",
+                  'smile': "&#x1F642;",
+                  'wink': "&#x1F609;",
+                  'kiss': "&#x1F618;",
+                  'eyebrows': "&#x1F928;",
+                  'smirk': "&#x1F60F;",
+                  'blink': "&#x1F61D;"
+                };
+
+                var expr = document.querySelector('#expression');
+                var ref_id = Math.random() + "." + (new Date()).getTime();
+                expr.ref_id = ref_id;
+                expr.innerHTML = lookups[confirmed_action] || "&#x1F610;";
+                expr.classList.add('highlight');
+                setTimeout(function() {
+                  if(ref_id == expr.ref_id) {
+                    expr.classList.remove('highlight');
+                    setTimeout(function() {
+                      if(ref_id == expr.ref_id) {
+                        expr.innerHTML = "&#x1F610;";
+                      }  
+                    }, 1500);
+                  }
+                }, 1000);
+
+              }
+            }
+          });
+          document.querySelector('#active').style.display = 'inline';
+          document.querySelector('#inactive').style.display = 'none';
+        }
+      };
+      document.querySelectorAll('#start,#stop').forEach(function(elem) {
+        elem.addEventListener('click', toggle);
+      });
+      document.querySelector('#calibrate').addEventListener('click', function(e) {
+        if(weblinger.state.active) {
+          weblinger.calibrate();
+        }
+      });
+      document.querySelector('#button').addEventListener('click', function(e) {
+        update_status("You Clicked the Button!");
+      });
+      document.querySelector('#scrolled_button').addEventListener('click', function(e) {
+        update_status("You Clicked the Scrolled Button!");
+      });
+      document.querySelector('#img').addEventListener('click', function(e) {
+        update_status("You Clicked the Image!");
+      });
+    </script>
+  </body>
+</html>

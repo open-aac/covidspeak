@@ -2985,6 +2985,65 @@ document.addEventListener('click', function(event) {
             room.assert_grid(room.buttons, room.grid_id, room.board_locale);
           }
         });
+        content.querySelector('#alt_access').addEventListener('click', function(e) {
+          e.preventDefault();
+          var elem = document.getElementById('alt_access_modal');
+          elem.onattached = function(dom) {
+            // change visible settings based on type dropdown
+            var refresh = function() {
+              var type = dom.querySelector('#tracking_type').value;
+              dom.querySelectorAll('.option').forEach(function(elem) {
+                elem.style.display = 'none';
+              });
+              dom.querySelectorAll('.option.' + type).forEach(function(elem) {
+                elem.style.display = 'block';
+              });
+              var type = dom.querySelector('#tracking_type').value;
+              var dwell = dom.querySelector('#dwell_time').value;
+              var sensitivity = dom.querySelector('#head_sensitivity').value;
+              room.alt_access = {
+                type: type,
+                dwell_time: dwell,
+                head_sensitivity: sensitivity
+              }
+
+            };
+    
+            dom.querySelector('#tracking_type').addEventListener('change', function(e) {
+              refresh();
+            });
+            dom.querySelector('#head_sensitivity').addEventListener('change', function(e) {
+              refresh();
+            });
+            dom.querySelector('#dwell_time').addEventListener('change', function(e) {
+              refresh();
+            });
+            dom.querySelector('#selection_type').addEventListener('change', function(e) {
+              refresh();
+            });
+            if(room.alt_access) {
+              dom.querySelector('#tracking_type').value = room.alt_access.type;
+              dom.querySelector('#head_sensitivity').value = room.alt_access.head_sensitivity;
+              dom.querySelector('#dwell_time').value = room.alt_access.dwell_time;
+            }
+            refresh();
+          };
+          access.stop();
+          modal.open("Alternative Access", elem, [
+            {label: "Confirm", action: 'confirm', callback: function() {
+              modal.close();
+              debugger
+              access.start({
+                type: room.alt_access.type,
+                dwell_time: room.alt_access.dwell_time,
+                head_sensitivity: room.alt_access.head_sensitivity
+              });
+            }}
+          ]).then(function() {
+            access.start();
+          }, function() {
+          });
+        })
         var select = content.querySelector('#symbol_select');
         var event = new Event('change');
         select.dispatchEvent(event);

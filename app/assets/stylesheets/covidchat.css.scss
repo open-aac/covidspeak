@@ -591,14 +591,23 @@ strong {
         margin: 5px;
         box-shadow: inset 0 0 2px #000;
       }
+      &.hover {
+        background: #b0ceff;
+        border-width: 2px;
+        border-color: #50617c;
+        margin: 5px;
+        box-shadow: inset 0 0 30px #50617c;
+      }
       &.my_highlight {
         background: #ffffcc;
+        border-color: #444;
         border-width: 2px;
         margin: 5px;
         box-shadow: inset 0 0 3px #000;
       }
       &.highlight {
         background: #ffff00;
+        border-color: #444;
         border-width: 2px;
         margin: 5px;
         box-shadow: inset 0 0 5px #000;
@@ -682,6 +691,22 @@ strong {
         border-radius: 10px; 
         text-align: center;
         img {
+          height: 30px; 
+          margin-top: 5px;
+        }
+      }
+      #alt_access_icon {
+        position: absolute; 
+        bottom: 20px; 
+        left: 20px; 
+        background: #555; 
+        z-index: 6; 
+        width: 40px; 
+        height: 40px; 
+        border-radius: 10px; 
+        text-align: center;
+        img {
+          filter: invert(1);
           height: 30px; 
           margin-top: 5px;
         }
@@ -1343,6 +1368,19 @@ strong {
   width: 0;
   opacity: 0.7;
   transition: width 0.2s linear;
+}
+#alt_access_modal {
+  h2 {
+    font-size: 14px;
+  }
+  select {
+    height: 40px;
+    width: 100%;
+    font-size: 20px;
+    border: 1px solid #888;
+    border-radius: 5px;
+    margin-bottom: 15px;
+  }
 }
 #settings_modal {
   select {
