@@ -1193,12 +1193,14 @@ H&&(H=D,T=b)}}P=0;for(b=N+1;b<=N+o;b+=1)P+=g[b]*g[b];if(Math.abs(P)<=U){if(q)ret
             var inputShapesDescription = '';
             for (var name_1 in inputs) {
                 var input = inputs[name_1];
-                // The input might be a non-tensor (e.g HTMLImageElement), in which case
-                // we claim the output shape as input shape.
-                var inputShape = input.shape || result.shape;
-                var inputRank = inputShape.length;
-                inputShapesDescription +=
-                    name_1 + ": " + inputRank + "D " + (inputRank > 0 ? inputShape : '') + " ";
+                if(input) {
+                    // The input might be a non-tensor (e.g HTMLImageElement), in which case
+                    // we claim the output shape as input shape.
+                    var inputShape = input.shape || result.shape;
+                    var inputRank = inputShape.length;
+                    inputShapesDescription +=
+                        name_1 + ": " + inputRank + "D " + (inputRank > 0 ? inputShape : '') + " ";
+                }
             }
             console.log("%c" + paddedName + "\t%c" + time + "\t%c" + rank + "D " + shape + "\t%c" + size + "\t%c" + inputShapesDescription + "\t%c" + extraInfo, 'font-weight:bold', 'color:red', 'color:blue', 'color: orange', 'color: green', 'color: steelblue');
         };
@@ -1242,14 +1244,16 @@ H&&(H=D,T=b)}}P=0;for(b=N+1;b<=N+o;b+=1)P+=g[b]*g[b];if(Math.abs(P)<=U){if(q)ret
             var nodeInputs = node.inputs;
             for (var inputName in nodeInputs) {
                 var input = nodeInputs[inputName];
-                var anyInputFromX = false;
-                for (var j = 0; j < xs.length; j++) {
-                    if (tensorsFromX[input.id]) {
-                        node.outputs.forEach(function (output) { return tensorsFromX[output.id] = true; });
-                        anyInputFromX = true;
-                        nodesFromX[node.id] = true;
-                        break;
-                    }
+                if(input) {
+                    var anyInputFromX = false;
+                    for (var j = 0; j < xs.length; j++) {
+                        if (tensorsFromX[input.id]) {
+                            node.outputs.forEach(function (output) { return tensorsFromX[output.id] = true; });
+                            anyInputFromX = true;
+                            nodesFromX[node.id] = true;
+                            break;
+                        }
+                    }    
                 }
                 if (anyInputFromX) {
                     break;
@@ -1267,8 +1271,10 @@ H&&(H=D,T=b)}}P=0;for(b=N+1;b<=N+o;b+=1)P+=g[b]*g[b];if(Math.abs(P)<=U){if(q)ret
             for (var j = 0; j < node.outputs.length; j++) {
                 if (tensorsLeadToY[node.outputs[j].id]) {
                     for (var inputName in nodeInputs) {
-                        tensorsLeadToY[nodeInputs[inputName].id] = true;
-                        nodesToY[node.id] = true;
+                        if(nodeInputs[inputName]) {
+                            tensorsLeadToY[nodeInputs[inputName].id] = true;
+                            nodesToY[node.id] = true;    
+                        }
                     }
                     break;
                 }
@@ -1283,7 +1289,7 @@ H&&(H=D,T=b)}}P=0;for(b=N+1;b<=N+o;b+=1)P+=g[b]*g[b];if(Math.abs(P)<=U){if(q)ret
                 var prunedInputs = {};
                 for (var inputName in node.inputs) {
                     var nodeInput = node.inputs[inputName];
-                    if (tensorsFromX[nodeInput.id]) {
+                    if (nodeInput && tensorsFromX[nodeInput.id]) {
                         prunedInputs[inputName] = nodeInput;
                     }
                 }
@@ -1351,7 +1357,9 @@ H&&(H=D,T=b)}}P=0;for(b=N+1;b<=N+o;b+=1)P+=g[b]*g[b];if(Math.abs(P)<=U){if(q)ret
                 }
             };
             for (var inputName in node.inputs) {
-                _loop_2(inputName);
+                if(node.inputs[inputName]) {
+                    _loop_2(inputName);
+                }
             }
         };
         // Walk the tape backward and keep a map of Tensor to its gradient.
@@ -2797,7 +2805,7 @@ H&&(H=D,T=b)}}P=0;for(b=N+1;b<=N+o;b+=1)P+=g[b]*g[b];if(Math.abs(P)<=U){if(q)ret
         var iterable = container;
         for (var k in iterable) {
             var val = iterable[k];
-            if (!seen.has(val)) {
+            if (val && !seen.has(val)) {
                 seen.add(val);
                 walkTensorContainer(val, list, seen);
             }
@@ -2860,7 +2868,9 @@ H&&(H=D,T=b)}}P=0;for(b=N+1;b<=N+o;b+=1)P+=g[b]*g[b];if(Math.abs(P)<=U){if(q)ret
         }
         EngineState.prototype.dispose = function () {
             for (var variableName in this.registeredVariables) {
-                this.registeredVariables[variableName].dispose();
+                if(this.registeredVariables[variableName]) {
+                    this.registeredVariables[variableName].dispose();
+                }
             }
         };
         return EngineState;
@@ -3497,8 +3507,10 @@ H&&(H=D,T=b)}}P=0;for(b=N+1;b<=N+o;b+=1)P+=g[b]*g[b];if(Math.abs(P)<=U){if(q)ret
         };
         Engine.prototype.disposeVariables = function () {
             for (var varName in this.state.registeredVariables) {
-                var v = this.state.registeredVariables[varName];
-                this.disposeVariable(v);
+                if(this.state.registeredVariables) {
+                    var v = this.state.registeredVariables[varName];
+                    this.disposeVariable(v);    
+                }
             }
         };
         Engine.prototype.disposeVariable = function (v) {
@@ -3766,9 +3778,11 @@ H&&(H=D,T=b)}}P=0;for(b=N+1;b<=N+o;b+=1)P+=g[b]*g[b];if(Math.abs(P)<=U){if(q)ret
             this.ENV.reset();
             this.state = new EngineState();
             for (var backendName in this.registry) {
-                this.disposeRegisteredKernels(backendName);
-                this.registry[backendName].dispose();
-                delete this.registry[backendName];
+                if(this.registry[backendName]) {
+                    this.disposeRegisteredKernels(backendName);
+                    this.registry[backendName].dispose();
+                    delete this.registry[backendName];    
+                }
             }
             this.backendName = null;
             this.backendInstance = null;
@@ -9258,7 +9272,9 @@ H&&(H=D,T=b)}}P=0;for(b=N+1;b<=N+o;b+=1)P+=g[b]*g[b];if(Math.abs(P)<=U){if(q)ret
             // Get all of the trainable variables.
             varList = [];
             for (var varName in ENGINE.registeredVariables) {
-                varList.push(ENGINE.registeredVariables[varName]);
+                if(ENGINE.registeredVariables[varName]) {
+                    varList.push(ENGINE.registeredVariables[varName]);
+                }
             }
         }
         var specifiedNonTrainable = specifiedVarList ? varList.filter(function (variable) { return !variable.trainable; }) : null;
@@ -15723,14 +15739,18 @@ H&&(H=D,T=b)}}P=0;for(b=N+1;b<=N+o;b+=1)P+=g[b]*g[b];if(Math.abs(P)<=U){if(q)ret
                 return;
             }
             for (var texShape in this.freeTextures) {
-                this.freeTextures[texShape].forEach(function (tex) {
-                    _this.gpgpu.deleteMatrixTexture(tex);
-                });
+                if(this.freeTextures[texShape]) {
+                    this.freeTextures[texShape].forEach(function (tex) {
+                        _this.gpgpu.deleteMatrixTexture(tex);
+                    });    
+                }
             }
             for (var texShape in this.usedTextures) {
-                this.usedTextures[texShape].forEach(function (tex) {
-                    _this.gpgpu.deleteMatrixTexture(tex);
-                });
+                if(this.usedTextures[texShape]) {
+                    this.usedTextures[texShape].forEach(function (tex) {
+                        _this.gpgpu.deleteMatrixTexture(tex);
+                    });    
+                }
             }
             this.freeTextures = null;
             this.usedTextures = null;
@@ -41856,13 +41876,15 @@ H&&(H=D,T=b)}}P=0;for(b=N+1;b<=N+o;b+=1)P+=g[b]*g[b];if(Math.abs(P)<=U){if(q)ret
         GraphExecutor.prototype.mapInputs = function (inputs) {
             var result = {};
             for (var inputName in inputs) {
-                if (this._signature != null && this._signature.inputs != null &&
-                    this._signature.inputs[inputName] != null) {
-                    var tensor = this._signature.inputs[inputName];
-                    result[tensor.name] = inputs[inputName];
-                }
-                else {
-                    result[inputName] = inputs[inputName];
+                if(inputs[inputName]) {
+                    if (this._signature != null && this._signature.inputs != null &&
+                        this._signature.inputs[inputName] != null) {
+                        var tensor = this._signature.inputs[inputName];
+                        result[tensor.name] = inputs[inputName];
+                    }
+                    else {
+                        result[inputName] = inputs[inputName];
+                    }    
                 }
             }
             return result;
@@ -44675,7 +44697,9 @@ function supports_ogg_theora_video() {
     function debugBoxWrite(para, stats) {
         var str = '';
         for (var key in stats) {
-            str += key + ': ' + stats[key] + '\n';
+            if(stats[key]) {
+                str += key + ': ' + stats[key] + '\n';
+            }
         }
         para.innerText = str;
     }
@@ -45095,9 +45119,9 @@ function store_points(x, y, k) {
             console.log('regression not set, call setRegression()');
             return null;
         }
-        for (var reg in regs) {
-            predictions.push(regs[reg].predict(latestEyeFeatures));
-        }
+        (regs || []).forEach(function(reg) {
+            predictions.push(reg.predict(latestEyeFeatures));
+        });
         if (regModelIndex !== undefined) {
             return predictions[regModelIndex] === null ? null : {
                 'x' : predictions[regModelIndex].x,
@@ -45164,8 +45188,10 @@ function store_points(x, y, k) {
                 var y = 0;
                 var len = smoothingVals.length;
                 for (var d in smoothingVals.data) {
-                    x += smoothingVals.get(d).x;
-                    y += smoothingVals.get(d).y;
+                    if(smoothingVals.get(d)) {
+                        x += smoothingVals.get(d).x;
+                        y += smoothingVals.get(d).y;    
+                    }
                 }
 
                 var pred = webgazer.util.bound({'x':x/len, 'y':y/len});
@@ -45209,10 +45235,10 @@ function store_points(x, y, k) {
             console.log('regression not set, call setRegression()');
             return null;
         }
-        for (var reg in regs) {
+        (regs || []).forEach(function(reg) {
             if( latestEyeFeatures )
-                regs[reg].addData(latestEyeFeatures, [x, y], eventType);
-        }
+                reg.addData(latestEyeFeatures, [x, y], eventType);
+        });
     };
 
     /**
@@ -45288,9 +45314,9 @@ function store_points(x, y, k) {
         data = loadData;
 
         // Load data into regression model(s)
-        for (var reg in regs) {
-            regs[reg].setData(loadData);
-        }
+        (regs || []).forEach(function(reg) {
+            reg.setData(loadData);
+        });
 
         console.log("loaded stored data into regression model");
     }
@@ -45317,9 +45343,9 @@ function store_points(x, y, k) {
         localforage.clear();
 
         // Removes data from regression model
-        for (var reg in regs) {
-            regs[reg].init();
-        }
+        (regs || []).forEach(function(reg) {
+            reg.init();
+        });
     }
 
     /**
