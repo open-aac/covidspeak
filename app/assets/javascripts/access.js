@@ -236,7 +236,7 @@ var access = null;
       if(icon) {
         icon.style.display = 'none';
       }
-      weblinger.stop(true);
+      weblinger.stop({teardown: true});
     }
   };
 })();

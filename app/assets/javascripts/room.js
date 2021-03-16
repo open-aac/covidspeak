@@ -2508,6 +2508,7 @@ var room = {
   },
   leave_room: function() {
     setTimeout(function() {
+      access.stop();
       room.grid_settings_override = null;
       var thanks_url = "/thanks";
       if(room.demo_room && room.current_room && room.current_room.room_initiator) { 
@@ -3032,7 +3033,6 @@ document.addEventListener('click', function(event) {
           modal.open("Alternative Access", elem, [
             {label: "Confirm", action: 'confirm', callback: function() {
               modal.close();
-              debugger
               access.start({
                 type: room.alt_access.type,
                 dwell_time: room.alt_access.dwell_time,
