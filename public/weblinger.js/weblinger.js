@@ -37,8 +37,15 @@ var weblinger = {};
   };
   var listeners = {};
   weblinger.start = function(opts) {
-    if(opts.source != 'cursor') {
+    // TODO: add timeouts in case things get stuck unexpectedly
+    // (initializing, calibrating, etc.)
+    weblinger.calibrate.halted = false;
+    if(opts.source != 'cursor' && opts.source != 'arrows') {
       overlay("Initializing...");
+      weblinger.calibrate.stop = function() {
+        weblinger.calibrate.halted = true;
+        overlay(null);
+      };
     }
     weblinger.state.status = 'initializing';
     
@@ -62,16 +69,29 @@ var weblinger = {};
         weblinger.state.status = 'ready';
         weblinger._state.active = true;
         var video = (weblinger._assert_video.content || {}).video;
+        var canvas = (weblinger._assert_video.content || {}).canvas;
         for(var id in listeners) {
           listeners[id]({
             type: 'ready',
+            soure_canvas: canvas,
             source_video: video
           });
         }  
         resolve();
       };
+      var halted = function() {
+        overlay(null);
+        for(var id in listeners) {
+          listeners[id]({
+            type: 'fail'
+          });
+        }
+        weblinger.stop({teardown: true});
+      };
       var ready_for_calibration = function() {
-        if(weblinger._config.calibration instanceof Function) {
+        if(weblinger.calibrate.halted) {
+          halted();
+        } else if(weblinger._config.calibration instanceof Function) {
           weblinger._config.calibration(weblinger._config).then(function() {
             fully_started();
           }, function(err) {
@@ -82,6 +102,8 @@ var weblinger = {};
         } else {
           weblinger.calibrate().then(function() {
             fully_started();
+          }, function(err) {
+            halted();
           });
         }
       };
@@ -97,8 +119,15 @@ var weblinger = {};
       if(weblinger._config.source == 'gaze') {
         weblinger.state.tracking = 'gaze';
         var check_for_gazer = function() {
+          check_for_gazer.attempts = (check_for_gazer.attempts || 0) + 1;
           if(window.webgazer) {
-            start_webgazer(ready_for_calibration);
+            start_webgazer().then(function() {
+              ready_for_calibration();
+            }, function(err) {
+              halted();
+            });
+          } else if(check_for_gazer.attempts > 300) {
+            halted();
           } else {
             setTimeout(check_for_gazer, 100);
           }
@@ -114,6 +143,11 @@ var weblinger = {};
         overlay(null);
         fully_started();
         // not much to set up or calibrate
+      } else if(weblinger._config.source == 'arrows') {
+        weblinger.state.tracking = 'arrows';
+        overlay(null);
+        fully_started();
+        // not much to set up or calibrate
       } else { // default is 'head'
         weblinger._config.source = 'head';
         weblinger.state.tracking = 'head';
@@ -122,12 +156,21 @@ var weblinger = {};
 
       if(load_head) {
         var check_for_weboji = function() {
+          check_for_weboji.attempts = (check_for_weboji.attempts || 0) + 1;
           if(window.JEEFACETRANSFERAPI && window.JEEFACETRANSFERAPINNC) {
-            start_weboji(function() {
+            start_weboji().then(function() {
               if(weblinger._config.source == 'head') {
                 ready_for_calibration();
               }
+            }, function(err) {
+              if(weblinger._config.source == 'head') {
+                halted();
+              } else {
+                // TODO: some kind of note that expressions won't work
+              }
             });
+          } else if(check_for_weboji.attempts > 300) {
+            halted();
           } else {
             setTimeout(check_for_weboji, 100);
           }
@@ -261,6 +304,8 @@ var weblinger = {};
       weblinger.state.status = 'stopped';
       weblinger.state.tracking = null;
       weblinger.state.active = false;
+      weblinger.state.calibrating = false;
+      overlay(null);
       if(opts.callback_id) {
         if(listeners[opts.callback_id]) {
           listeners[opts.callback_id]({type: 'stop'});
@@ -279,7 +324,8 @@ var weblinger = {};
     }); 
   };
   document.addEventListener('keydown', function(e) {
-    if(((weblinger._config.selection_type || {}).keycodes || []).indexOf(e.keyCode) != -1)  {
+    var codes = ((weblinger._config.selection_type || {}).keycodes || []);
+    if(codes.indexOf(e.keyCode) != -1 || codes.indexOf(e.code) != -1)  {
       e.preventDefault();
       weblinger._notify_select('keyselect', {trigger: 'keydown'});
     }
@@ -313,7 +359,15 @@ var weblinger = {};
     weblinger._cursor_element.style.top = Math.round(Math.min(window.innerHeight - cursor_width, Math.max(0 - cursor_width + 5, clientY - (weblinger._config.cursor_offset_y || 0)))) + "px";
     var target = targets.target;
     var raw_elem = targets.element || document.body;
-
+    if(target) { weblinger._last_linger.target = target; }
+    weblinger._cursor_element.style.display = 'block';
+    var this_linger = weblinger._last_linger;
+    setTimeout(function() {
+      if(weblinger._last_linger == this_linger) {
+        weblinger._cursor_element.style.display = 'none';
+      }
+    }, 5000);
+    
     // Check if we've been dwelling on the same dwell target
     // and linger selection type
     if(weblinger._config.selection_type == 'linger') {
@@ -441,6 +495,8 @@ var weblinger = {};
                 hide_progress(true);               
               }
             }, weblinger._config.linger_duration - (now - target.dwell_started));
+            // TODO: don't start tracking the dwell in this case until
+            // the cursor speed slows or stops
           }  
         }
       }
@@ -561,8 +617,12 @@ var weblinger = {};
         clientY: clientY
       }, settings || {});
       if(!weblinger.state.calibrating && weblinger._state.active) {
+        var extras = {};
+        if(settings && settings.trigger) {
+          extras.sub_trigger = settings.trigger;
+        }
         for(var id in listeners) {
-          listeners[id]({type: 'select', trigger: type, x: clientX, y: clientY, target: target});
+          listeners[id]({type: 'select', trigger: type, x: clientX, y: clientY, target: target, extras: extras});
         }
         if(window.CustomEvent) {
           var event = new CustomEvent(type, event_settings);
@@ -605,6 +665,7 @@ var weblinger = {};
       var canvas = weblinger._assert_video.canvas;
       if(!canvas) {
         canvas = document.createElement('canvas');
+        canvas.id = 'weblinger_render_canvas';
         canvas.style.width = '300px';
         canvas.style.height = '225px';
         canvas.style.position = 'absolute';
@@ -668,6 +729,11 @@ var weblinger = {};
     var promise = new Promise(function(resolve, reject) {
       if(weblinger._assert_video.content.canvas) {
         return resolve(weblinger._assert_video.content.canvas);
+      } else if(weblinger._config.canvas) {
+        weblinger._assert_video.content = {
+          canvas: weblinger._config.canvas
+        };
+        return resolve(weblinger._assert_video.content.canvas);
       }
       weblinger._assert_video.content.stream = null;
       
@@ -693,10 +759,49 @@ var weblinger = {};
 
   weblinger.calibrate = function() {
     return new Promise(function(resolve, reject) {
-      var sec = 4;
+      var drawing = true;
+      var draw = function() {
+        if(!drawing) { return; }
+        var canvas = weblinger._overlay_element.querySelector('canvas');
+        var context = canvas.getContext('2d');
+        var vid_canvas = weblinger._assert_video && weblinger._assert_video.content && weblinger._assert_video.content.canvas;
+        if(vid_canvas) {
+          if(canvas.width != vid_canvas.width || canvas.height != vid_canvas.height) {
+            canvas.width = vid_canvas.width;
+            canvas.height = vid_canvas.height;
+            var width = canvas.width, max_width = 240;
+            var height = canvas.height, max_height = 200;
+            if(width > max_width) {
+              width = max_width;
+              height = (canvas.height / canvas.width) * width;
+            }
+            if(height > max_height) {
+              height = max_height;
+              width = (canvas.width / canvas.height)  * height;
+            }
+            canvas.style.width = width + 'px';
+            canvas.style.height = height +  'px';
+          }
+          context.drawImage(vid_canvas, 0, 0, canvas.width, canvas.height);
+        }
+        window.requestAnimationFrame(draw);
+      }
+      draw();
+
+      weblinger.calibrate.stop = function() {
+        overlay(null);
+        sec = -1;
+        drawing = false;
+        reject({error: 'manually stopped'});
+      };
+      var sec = 5;
       var next_sec = function() {
         sec--;
-        if(sec == 0) {
+        if(sec < -1) {
+          drawing = false;
+          return;
+        } else if(sec == 0) {
+          drawing = false;
           weblinger.calibrate_without_countdown().then(function(res) {
             resolve(res);
           }, function(err) {
@@ -712,20 +817,49 @@ var weblinger = {};
   };
   weblinger.calibrate_without_countdown = function() {
     return new Promise(function(resolve, reject) {
-      if(weblinger._config.source == 'cursor') {
+      if(weblinger._config.source == 'cursor' || weblinger._config.source == 'arrows') {
         return resolve();
       }
       weblinger.state.calibrating = true;
       weblinger.state.status = 'calibrating';
       var calibration_ready = function() {
+        weblinger.calibrate.stop = null;
+        calib.style.opacity = 0.0;
+        calib.active = false;
         setTimeout(function() {
           weblinger._calibrate_element.style.display = 'none';
         }, 2000);
         weblinger._cursor_element.style.display = '';
-        delete weblinger.state.calibrating;
         overlay(null);
-        resolve();
+        if(weblinger.state.calibrating) {
+          resolve();
+        } else {
+          reject({error: 'calibration canceled'});
+        }
+        delete weblinger.state.calibrating;
       };
+      var calibration_failed = function(err) {
+        weblinger.calibrate.stop = null;
+        if(weblinger._calibrate_element) {
+          weblinger._calibrate_element.style.opacity = 0.0;
+          weblinger._calibrate_element.active = false;
+        }
+        delete weblinger.state.calibrating;
+        reject({error: err});
+        if(weblinger._calibrate_element) {
+          weblinger._calibrate_element.style.display = 'none';
+        }
+      }
+      setTimeout(function() {
+        if(calib.active == calib_key && weblinger.state.calibrating) {
+          calibration_failed('calibration timeout');
+        }
+      }, 5 * 60 * 1000);
+      weblinger.calibrate.stop = function() {
+        overlay(null);
+        calibration_failed('manually stopped')
+      };
+    
       var centering = 17;
       if(!weblinger._calibrate_element) {
         var calib = document.createElement('div');
@@ -748,7 +882,7 @@ var weblinger = {};
       }
       weblinger._calibrate_element.style.background = 'rgba(50, 105, 168, 0.8)';
       weblinger._calibrate_element.style.left = 'calc(50vw - ' + centering + 'px)';
-      weblinger._calibrate_element.style.top = 'calc(50vh - ' + centering + 'px)';
+      weblinger._calibrate_element.style.top = 'calc(' + (weblinger._config.source == 'gaze' ? '55' : '50') + 'vh - ' + centering + 'px)';
       weblinger._calibrate_element.style.display = 'block';
       weblinger._calibrate_element.style.opacity = 1.0;
       weblinger._cursor_element.style.display = 'none';
@@ -766,8 +900,13 @@ var weblinger = {};
       var expressions = [];
       calib.confidence_level = 1;
       calib.gaze_increments = 0;
+      calib.gaze_pulses = 0;
       var throb = function() {
-        if(calib.active) {
+        var now = (new Date()).getTime();
+        if(!weblinger.state.calibrating) {
+          calib.style.display = 'none';
+        }
+        if(calib.active == calib_key) {
           var size = weblinger._config.source == 'gaze' ? 30 : 70;
           var conf_size = size / (1.0 + ((calib.confidence_level - 1) / 2));
           if(weblinger._config.source != 'gaze') {
@@ -775,6 +914,13 @@ var weblinger = {};
             weblinger._calibrate_element.style.top = 'calc(50vh - ' + (conf_size / 2 + 2) + 'px)';  
           }
           if(calib.in || calib.moving) {
+            if(calib.in) {
+              if(weblinger._last_linger && now - weblinger._last_linger.timestamp < 500) {
+                setTimeout(function() {
+                  calib.gaze_pulses++;
+                }, 300);
+              }
+            }
             calib.in = false;
             calib.style.width = conf_size + 'px';
             calib.style.marginLeft = '0';
@@ -791,22 +937,29 @@ var weblinger = {};
         }
       };
       setTimeout(throb, 200);
+      var first_calibration_fail = null;
       var check_position = function() {
         var now = (new Date()).getTime();
         calib.last_move = calib.last_move || now;
+        if(!weblinger.state.calibrating || (first_calibration_fail || now) < now - (30 * 1000)) {
+          calibration_failed('canceled');
+        }
         if(calib.active == calib_key) {
           if(weblinger._config.source == 'gaze') {
             // Check location of the bouncing ball,
             // and use it to train the gaze model
+            var worth_recording = true;
             if(weblinger._last_linger && weblinger._last_linger.source == 'gaze') {
               var now = (new Date()).getTime();
               if(now - weblinger._last_linger.timestamp < 500) {
                 calib.style.background = 'rgba(50, 105, 168, 0.8)';
                 if(!calib.moving) {
                   calib.gaze_increments++;
-                  console.log(calib.gaze_increments);  
                 }
+                first_calibration_fail = null;
               } else {
+                worth_recording = false;
+                first_calibration_fail = first_calibration_fail || now;
                 calib.style.background = 'rgba(168, 50, 50, 0.8)';
               }
             }
@@ -817,15 +970,19 @@ var weblinger = {};
               ctr = 0;
               if(calib.last_move < now - 50) {
                 calib.last_move = now;
-                webgazer.recordScreenPosition(x, y, 'move');
-                log("calib move", bounds.left, bounds.top);                
+                if(worth_recording) {
+                  webgazer.recordScreenPosition(x, y, 'move');
+                  log("calib move", bounds.left, bounds.top);                
+                }
               }
             } else {
               ctr++;
               if(ctr > 30) {
                 ctr = 0;
-                webgazer.recordScreenPosition(x, y, 'click');
-                log("calib click", bounds.left, bounds.top);
+                if(worth_recording) {
+                  webgazer.recordScreenPosition(x, y, 'click');
+                  log("calib click", bounds.left, bounds.top);
+                }
               }
             }
           } else if(weblinger._config.source == 'head') {
@@ -856,6 +1013,7 @@ var weblinger = {};
                   var now = (new Date()).getTime();
                   var diff = now - ((offsets[offsets.length - 1] || {}).timestamp || 0);
                   if(diff > 1000) {
+                    first_calibration_fail = first_calibration_fail || now;
                     calib.style.background = 'rgba(168, 50, 50, 0.8)';
                   } else if(diff > 500) {
                     calib.style.background = 'rgba(50, 105, 168, 0.8)';
@@ -865,7 +1023,7 @@ var weblinger = {};
                   offsets.push(weblinger._last_linger);
                   calib.style.background = 'rgba(168, 152, 50, 0.8)';
                 } else {
-                  // TODO: shrink slightly with each progression
+                  firstt_calibration_fail = null;
                   offsets.push(weblinger._last_linger);
                   if(offsets.length > 2) {
                     calib.style.background = 'rgba(83, 168, 50, 0.8)';                    
@@ -875,6 +1033,7 @@ var weblinger = {};
                   }  
                 }
               } else {
+                first_calibration_fail = first_calibration_fail || now;
                 calib.style.background = 'rgba(168, 50, 50, 0.8)';
                 offsets = offsets.slice(-1);
               }
@@ -895,7 +1054,7 @@ var weblinger = {};
       if(weblinger._config.source == 'gaze') {
         overlay("Follow the Dot with Your Eyes");
         var sequence = [
-          {time: 3000, left: 50, top: 50, increments: 80},
+          {time: 3000, left: 50, top: 55, pulses: 3},
           {left: 5, top: 5},
           {left: 50, top: 5},
           {left: 95, top: 5},
@@ -905,16 +1064,14 @@ var weblinger = {};
           {left: 50, top: 95},
           {left: 95, top: 95}
         ];
-        var incr = 10;
+        var pulses = 0;
         var sequence_index = 0;
         var check_gaze_increments = function() {
-          if(calib.active != calib_key) { return}
-          if(calib.gaze_increments > incr) {
+          if(calib.active != calib_key || !weblinger.state.calibrating) { return}
+          if(calib.gaze_pulses > pulses) {
             var seq = sequence[sequence_index];
             if(!seq) {
               // done!
-              calib.style.opacity = 0.0;
-              calib.active = false;
               calibration_ready();
               return;
             }
@@ -922,10 +1079,10 @@ var weblinger = {};
               calib.moving = true;
               setTimeout(function() { calib.moving = false; }, 2000);  
             }
-            calib.style.left = 'calc(' + seq.left + 'vw - ' + centering + 'px)';
-            calib.style.top = 'calc(' + seq.top + 'vh - ' + centering + 'px)';
+            calib.style.left = 'calc(' + seq.left + '% - ' + centering + 'px)';
+            calib.style.top = 'calc(' + seq.top + '% - ' + centering + 'px)';
 
-            incr = incr + (seq.increments || 135);
+            pulses = pulses + (seq.pulses || 3);
             sequence_index++;
           }
           var seq = sequence[sequence_index];
@@ -937,6 +1094,7 @@ var weblinger = {};
         overlay("Look Here!");
         var drops =  0;
         var check_offsets = function() {
+          if(calib.active != calib_key || !weblinger.state.calibrating) { return}
           if(offsets.length < 12) {
             setTimeout(check_offsets, 200);
           } else {
@@ -978,6 +1136,7 @@ var weblinger = {};
           }
         };
         var offsets_ready = function() {
+          if(calib.active != calib_key || !weblinger.state.calibrating) { return}
           var groups = [];
           expressions.forEach(function(expr) {
             expr.forEach(function(val, idx) {
@@ -1004,72 +1163,85 @@ var weblinger = {};
           if(isNaN(avg_x)) { debugger }
           if(offsets.length == 0) { debugger }
           weblinger.faceapi.tilt_offset = {x: (avg_x / offsets.length) - (window.innerWidth / 2), y: (avg_y / offsets.length) - (window.innerHeight / 2), points: offsets, bank: (avg_bank / tilts.length), attitude: (avg_attitude / tilts.length)};
-          calib.style.opacity = 0.0;
-          calib.active = false;
           calibration_ready();
         };
         setTimeout(check_offsets, 1000);
       }
     });
   };
+  weblinger._joystick_move = function(horizscale, vertscale, source) {
+    if(weblinger.joystick_x == null) {
+      weblinger.joystick_x = (window.innerWidth / 2);
+    }
+    if(weblinger.joystick_y == null) {
+      weblinger.joystick_y = (window.innerHeight / 2);
+    }
+    weblinger.joystick_x = Math.min(Math.max(0, weblinger.joystick_x + (horizscale * (weblinger._config.speed || 1))), window.innerWidth);
+    weblinger.joystick_y = Math.min(Math.max(0, weblinger.joystick_y + (vertscale * (weblinger._config.speed || 1))), window.innerHeight);
+    weblinger._notify_linger(weblinger.joystick_x, weblinger.joystick_y, source, {tilt_y: vertscale, tilt_x: horizscale});
+  };
 
-  var start_webgazer = function(done) {
-    window.applyKalmanFilter = true;
-    window.saveDataAcrossSessions = false;
-    window.webgazer.showVideo(false);
-    window.webgazer.showPredictionPoints(false);
-    window.webgazer.showFaceFeedbackBox(false);
-    window.webgazer.showFaceOverlay(false);
-    window.webgazer.clearData();
-    window.webgazer.removeMouseEventListeners();
-    var check_for_gazer_in_dom = function() {
-      var dot = document.querySelector('#webgazerGazeDot');
-      if(dot) {
-        window.webgazer.showVideo(false);
-        window.webgazer.showPredictionPoints(false);
-        window.webgazer.showFaceFeedbackBox(false);
-        window.webgazer.showFaceOverlay(false);
-        window.webgazer.removeMouseEventListeners();    
-        window.webgazer.clearData();
-        done();
+  var start_webgazer = function() {
+    return new Promise(function(resolve, reject) {
+      window.applyKalmanFilter = true;
+      window.saveDataAcrossSessions = false;
+      window.webgazer.showVideo(false);
+      window.webgazer.showPredictionPoints(false);
+      window.webgazer.showFaceFeedbackBox(false);
+      window.webgazer.showFaceOverlay(false);
+      window.webgazer.clearData();
+      window.webgazer.removeMouseEventListeners();
+      var check_for_gazer_in_dom = function() {
+        var dot = document.querySelector('#webgazerGazeDot');
+        if(dot) {
+          window.webgazer.showVideo(false);
+          window.webgazer.showPredictionPoints(false);
+          window.webgazer.showFaceFeedbackBox(false);
+          window.webgazer.showFaceOverlay(false);
+          window.webgazer.removeMouseEventListeners();    
+          window.webgazer.clearData();
+          resolve();
+        } else {
+          setTimeout(check_for_gazer_in_dom, 100);
+        }
+      };
+      if(weblinger._state.gazer) {
+        resolve();
+        // already running
+      } else if(weblinger._state.gazer_paused) {
+        // already initialized, but paused
+        weblinger._assert_video().then(function(canvas) {        
+          window.webgazer.setVideoElementCanvas(canvas);
+          window.webgazer.resume();
+          resolve();
+        }, function(err) {
+          reject(err);
+        });
       } else {
+        weblinger._assert_video().then(function(canvas) {        
+          window.webgazer.setVideoElementCanvas(canvas);
+          window.webgazer.setGazeListener(function(data, ms) {
+            if(data == null) { return; }
+            gaze_history = (gaze_history || []).slice(-5);
+            gaze_history.push([data.x, data.y]);
+            var avg_x = 0, avg_y = 0;
+            gaze_history.forEach(function(gaze) {
+              avg_x = avg_x + gaze[0];
+              avg_y = avg_y + gaze[1];
+            })
+            avg_x = avg_x / gaze_history.length;
+            avg_y = avg_y / gaze_history.length;
+            weblinger._notify_linger(avg_x, avg_y, 'gaze');
+          });
+          window.webgazer.begin(null, canvas);  
+        }, function(err) {
+          reject(err);
+        });
         setTimeout(check_for_gazer_in_dom, 100);
       }
-    };
-    if(weblinger._state.gazer) {
-      done();
-      // already running
-    } else if(weblinger._state.gazer_paused) {
-      // already initialized, but paused
-      weblinger._assert_video().then(function(canvas) {        
-        window.webgazer.setVideoElementCanvas(canvas);
-        window.webgazer.resume();
-        done();
-      });
-    } else {
-      weblinger._assert_video().then(function(canvas) {        
-        window.webgazer.setVideoElementCanvas(canvas);
-        window.webgazer.setGazeListener(function(data, ms) {
-          if(data == null) { return; }
-          gaze_history = (gaze_history || []).slice(-5);
-          gaze_history.push([data.x, data.y]);
-          var avg_x = 0, avg_y = 0;
-          gaze_history.forEach(function(gaze) {
-            avg_x = avg_x + gaze[0];
-            avg_y = avg_y + gaze[1];
-          })
-          avg_x = avg_x / gaze_history.length;
-          avg_y = avg_y / gaze_history.length;
-          weblinger._notify_linger(avg_x, avg_y, 'gaze');
-        });
-        window.webgazer.begin(null, canvas);  
-      }, function(err) {
-        // TODO: handle error getting video
-      });
-    }
-    weblinger._state.gazer = true;
-    weblinger._state.gazer_paused = false;
-    setTimeout(check_for_gazer_in_dom, 100);
+      weblinger._state.gazer = true;
+      weblinger._state.gazer_paused = false;
+    });
   };
 
   var l9 = 0.45, l8 = 0.4, l7 = 0.35, l6 = 0.3, l5 = 0.25, l4 = 0.2, l3 = 0.15, l2 = 0.10, l1 = 0.05;
@@ -1196,8 +1368,6 @@ var weblinger = {};
         expr_history = [];
         log("ACTION", confirmed_action);
         if(weblinger._config.selection_type == 'expression') {
-          // TODO: if the action is wink and we get blink,
-          // or action is smirk and we get smile, prolly go with it
           var matched = (weblinger._config.selection_expressions || []).indexOf(confirmed_action) != -1;
           if(confirmed_action == 'smile' && (weblinger._config.selection_expressions || []).indexOf('smirk') != -1) {
             matched = true;
@@ -1210,6 +1380,12 @@ var weblinger = {};
           }
         }
         if(!weblinger.state.calibrating && weblinger._state.active) {
+          var extras = {};
+          if(weblinger._last_linger) {
+            extras.last_linger_x = weblinger._last_linger.x;
+            extras.last_linger_y = weblinger._last_linger.y;
+            extras.last_linger_target = weblinger._last_linger.target;
+          }
           for(var id in listeners) {
             listeners[id]({type: 'expression', expression: confirmed_action});
           }
@@ -1287,96 +1463,82 @@ var weblinger = {};
           var start_bank = offset.bank || bank;
           var start_attitude = offset.attitude || attitude;
           var tilt = tilt_scale(start_bank - bank, 2.5 * tilt_factor);
-          var vertscale = (tilt >= 1 || tilt <= -1) ? (weblinger._config.speed || 1) * (window.innerWidth / 250) * tilt : 0;
+          var vertscale = (tilt >= 1 || tilt <= -1) ? (window.innerWidth / 250) * tilt : 0;
           // console.log(Math.round(tilt * 10) / 10);
           tilt = tilt_scale(start_attitude - attitude, 1.0 * tilt_factor)
-          var horizscale = (tilt >= 1 || tilt <= -1) ? (weblinger._config.speed || 1) * (window.innerHeight / 75) * tilt : 0;
+          var horizscale = (tilt >= 1 || tilt <= -1) ? (window.innerHeight / 75) * tilt : 0;
           // console.log("TILT", vertscale, horizscale);
-          if(weblinger.joystick_x == null) {
-            weblinger.joystick_x = (window.innerWidth / 2);
-          }
-          if(weblinger.joystick_y == null) {
-            weblinger.joystick_y = (window.innerHeight / 2);
-          }
-          weblinger.joystick_x = Math.min(Math.max(0, weblinger.joystick_x + horizscale), window.innerWidth);
-          weblinger.joystick_y = Math.min(Math.max(0, weblinger.joystick_y + vertscale), window.innerHeight);
-          weblinger._notify_linger(weblinger.joystick_x, weblinger.joystick_y, 'head', {tilt_y: vertscale, tilt_x: horizscale});
+          weblinger._joystick_move(horizscale, vertscale, 'head');
         }
       }
     }
   };
 
-  var start_weboji = function(done) {
-    weblinger.faceapi = window.JEEFACETRANSFERAPI;
-    weblinger.faceapi.set_size(640, 480);
-    weblinger.faceapi.switch_displayVideo(false);
-    start_weboji.poll = start_weboji.poll || function() {
-      if(start_weboji.poll.timeout) { 
-        clearTimeout(start_weboji.poll.timeout);
-      }
-      poll_weboji();
+  var start_weboji = function() {
+    return new Promise(function(done, reject) {
+      weblinger.faceapi = window.JEEFACETRANSFERAPI;
+      weblinger.faceapi.set_size(640, 480);
+      weblinger.faceapi.switch_displayVideo(false);
+      start_weboji.poll = start_weboji.poll || function() {
+        if(start_weboji.poll.timeout) { 
+          clearTimeout(start_weboji.poll.timeout);
+        }
+        poll_weboji();
+        if(weblinger._state.weboji) {
+          start_weboji.poll.timeout = setTimeout(start_weboji.poll, weblinger._state.weboji ? 50 : 500);
+        }
+      };
       if(weblinger._state.weboji) {
-        start_weboji.poll.timeout = setTimeout(start_weboji.poll, weblinger._state.weboji ? 50 : 500);
-      }
-    };
-    if(weblinger._state.weboji) {
-      // already running
-      start_weboji.poll();
-      done();
-    } else if(weblinger._state.weboji_paused) {
-      // initialized but paused
-      weblinger._assert_video().then(function(canvas) {        
-        weblinger.faceapi.switch_sleep(false);
-        weblinger._state.weboji = true;
-        weblinger._state.weboji_paused = false;
+        // already running
         start_weboji.poll();
         done();
-      });
-    } else {
-      weblinger.faceapi.onContextLost(function()  {
-        debugger
-      });
-      weblinger._assert_video().then(function(canvas) {        
-        var face_canvas = document.querySelector('#face_canvas');
-        if(!face_canvas) {
-          face_canvas = document.createElement('canvas');
-          face_canvas.id = 'face_canvas';
-          face_canvas.width = 640;
-          face_canvas.height = 480;
-          face_canvas.style.width = '640px'; 
-          face_canvas.style.height = '480px'; 
-          face_canvas.style.border = '1px solid #000'; 
-          face_canvas.style.position = 'absolute'; 
-          face_canvas.style.left = '-1000px';
-          document.body.appendChild(face_canvas);
-        }
-
-        weblinger.faceapi.init({
-          canvasId: face_canvas.id,
-          videoSettings: {
-            videoElement: canvas
-          },
-          NNC: window.JEEFACETRANSFERAPINNC,
-          callbackReady: function(code) {
-            if(code) { debugger }
-            weblinger._state.weboji = true;
-            weblinger._state.weboji_paused = false;        
-            start_weboji.poll();
-            done();
-          }
+      } else if(weblinger._state.weboji_paused) {
+        // initialized but paused
+        weblinger._assert_video().then(function(canvas) {        
+          weblinger.faceapi.switch_sleep(false);
+          weblinger._state.weboji = true;
+          weblinger._state.weboji_paused = false;
+          start_weboji.poll();
+          done();
         });
-      }, function(err) {
-        debugger
-      });
-      // canvasId: 'jeefacetransferCanvas',
+      } else {
+        weblinger.faceapi.onContextLost(function()  {
+          debugger
+        });
+        weblinger._assert_video().then(function(canvas) {        
+          var face_canvas = document.querySelector('#face_canvas');
+          if(!face_canvas) {
+            face_canvas = document.createElement('canvas');
+            face_canvas.id = 'face_canvas';
+            face_canvas.width = 640;
+            face_canvas.height = 480;
+            face_canvas.style.width = '640px'; 
+            face_canvas.style.height = '480px'; 
+            face_canvas.style.border = '1px solid #000'; 
+            face_canvas.style.position = 'absolute'; 
+            face_canvas.style.left = '-1000px';
+            document.body.appendChild(face_canvas);
+          }
 
-      // assetsParentPath: './assets/3D/',
-      // NNCPath: './js/dist/',
-  
-      // videoSettings: {
-      //   videoElement: canvas (different than rendering canvas)
-      // },        
-    }
+          weblinger.faceapi.init({
+            canvasId: face_canvas.id,
+            videoSettings: {
+              videoElement: canvas
+            },
+            NNC: window.JEEFACETRANSFERAPINNC,
+            callbackReady: function(code) {
+              if(code) { debugger }
+              weblinger._state.weboji = true;
+              weblinger._state.weboji_paused = false;        
+              start_weboji.poll();
+              done();
+            }
+          });
+        }, function(err) {
+          reject(err);
+        });
+      }
+    });
   };
   var add_script = function(src) {
     var script = document.createElement('script');
@@ -1397,7 +1559,7 @@ var weblinger = {};
       overlay.style.background = 'rgba(255, 255, 255, 0.7)';
       overlay.style.zIndex = 999999;
       overlay.style.opacity = 0.0;
-      overlay.style.paddingTop = 'calc(50vh - 20px - 50px)';
+      overlay.style.paddingTop = 'calc(50vh - 20px - 50px - 50px)';
       overlay.style.fontSize = '25px';
       overlay.style.fontFamily = 'Arial';
       overlay.style.fontWeight = 'bold';
@@ -1405,22 +1567,78 @@ var weblinger = {};
       overlay.style.transition = 'opacity 0.5s';
       weblinger._overlay_element = overlay;
       document.body.appendChild(overlay);
+      var box = document.createElement('div');
+      box.style.background = '#fff';
+      box.style.padding = '10px 30px';
+      box.style.letterSpacing = '1px';
+      box.style.width = '300px';
+      box.style.margin = 'auto';
+      box.style.boxShadow = '0 0 20px 30px #fff';
+      box.style.position = 'relative';
+      overlay.appendChild(box);
       var text = document.createElement('div');
-      text.classList.add('text');
-      text.style.background = '#fff';
-      text.style.padding = '10px 30px';
-      text.style.letterSpacing = '1px';
-      text.style.width = '300px';
-      text.style.margin = 'auto';
-      text.style.boxShadow = '0 0 20px 30px #fff';
-      overlay.appendChild(text);
+      text.classList.add('overlay_text');
+      box.appendChild(text);
+      var cancel = document.createElement('a');
+      cancel.href = "#";
+      cancel.style.textDecoration = 'none';
+      cancel.style.position = 'absolute';
+      cancel.style.top = '5px';
+      cancel.style.right = '5px';
+      cancel.style.color = '#888';
+      cancel.innerText = "✖";
+      box.appendChild(cancel);
+      cancel.addEventListener('click', function(e) {
+        e.preventDefault();
+        if(weblinger.calibrate.stop) {
+          weblinger.calibrate.stop();
+        }
+      });
+      var restart = document.createElement('a');
+      restart.href = "#";
+      restart.style.color = '#aaa';
+      restart.style.textDecoration = 'none';
+      restart.style.position = 'absolute';
+      restart.style.fontSize = '35px';
+      restart.style.top = '35px';
+      restart.style.right = '5px';
+      restart.innerText = "↻";
+      restart.style.display = 'none';
+      restart.addEventListener('click', function(e) {
+        e.preventDefault();
+        alert('restart calibration');
+      });
+      var preview = document.createElement('div');
+      preview.classList.add('overlay_preview');
+      preview.style.position = 'relative';
+      var canvas = document.createElement('canvas');
+      canvas.style.width = '100%';
+      canvas.style.height = '122px';
+      canvas.style.border = '2px solid #888';
+      canvas.style.margin = '0 auto';
+      canvas.style.borderRadius = '5px';
+      var num = document.createElement('div');
+      num.style.position = 'absolute';
+      num.style.width = '100%';
+      num.style.top = 'calc(50% - 20px)';
+      num.style.textShadow = '2px 2px 3px #fff, -2px -2px 3px #fff, 2px -2px 3px #fff, -2px 2px 3px #fff';
+      num.classList.add('overlay_num');
+      preview.appendChild(canvas);
+      preview.appendChild(num);
+      preview.style.display = 'none';
+      box.appendChild(preview);
+      box.appendChild(restart);
     }
     if(str == "Initializing...") {
-      overlay.querySelector('.text').innerHTML = "<img src=\"" + spinner_uri + "\" style=\"width: 30px; padding-right: 10px; vertical-align: middle;\"/>" + str;
+      overlay.querySelector('.overlay_text').innerHTML = "<img src=\"" + spinner_uri + "\" style=\"width: 30px; padding-right: 10px; vertical-align: middle;\"/>" + str;
+      overlay.querySelector('.overlay_preview').style.display = 'none';
     } else if(n) {
-      overlay.querySelector('.text').innerHTML = "<span style='color: #888;'>" + str + "</span><br/><span style='font-size: 30px; font-weight: bold; color: #2b5dad;'>" + n + "</span>";
+      overlay.querySelector('.overlay_text').innerHTML = "<span style='color: #888;'>" + str + "</span>";
+      overlay.querySelector('.overlay_num').innerHTML = "<span style='font-size: 40px; font-weight: bold; color: #2b5dad;'>" + n + "</span>";
+      overlay.querySelector('.overlay_preview').style.display = 'block';
     } else {
-      overlay.querySelector('.text').innerText = str;
+      overlay.querySelector('.overlay_text').innerText = str;
+      overlay.querySelector('.overlay_preview').style.display = 'none';
     }
     var key = Math.random();
     overlay.load_key = key;
@@ -1438,4 +1656,58 @@ var weblinger = {};
       }, 1000);
     }
   };
+  
+  var key_check = function() {
+    if(!key_check.running) { return; }
+    var vertscale = 0;
+    var horizscale = 0;
+    if(down_keys[37] || down_keys['ArrowLeft']) {
+      if((down_keys[37] || down_keys['ArrowLeft']) > (down_keys[39] || down_keys['ArrowRight'] || 0)) {
+        horizscale = -1;
+      }
+    }
+    if(down_keys[39] || down_keys['ArrowRight']) {
+      if((down_keys[39] || down_keys['ArrowRight']) > (down_keys[37] || down_keys['ArrowLeft'] || 0)) {
+        horizscale = 1;
+      }
+    }
+    if(down_keys[38] || down_keys['ArrowUp']) {
+      if((down_keys[38] || down_keys['ArrowUp']) > (down_keys[40] || down_keys['ArrowDown'] || 0)) {
+        vertscale = -1;
+      }
+    }
+    if(down_keys[40] || down_keys['ArrowDown']) {
+      if((down_keys[40] || down_keys['ArrowDown']) > (down_keys[38] || down_keys['ArrowUp'] || 0)) {
+        vertscale = 1;
+      }      
+    }
+    if(vertscale || horizscale) {
+      if(weblinger._config.source == 'arrows' && weblinger._state.active) {
+        weblinger._joystick_move(horizscale * 10, vertscale * 10, 'arrows');
+      }
+    }
+    setTimeout(key_check, 50);
+  };
+  var down_keys = {};
+  var arrow_keys = [37, 38, 39, 40, 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+  document.addEventListener('keydown', function(e) {
+    if(weblinger._config.source == 'arrows' && weblinger._state.active) {
+      if(arrow_keys.indexOf(e.code || e.keyCode) != -1) {
+        e.preventDefault();
+        down_keys[e.code || e.keyCode] = (new Date()).getTime();
+        if(!key_check.running) {
+          key_check.running = true;
+          key_check();
+        }
+      }
+    }
+  });
+  document.addEventListener('keyup', function(e) {
+    if(arrow_keys.indexOf(e.code || e.keyCode) != -1) {
+      delete down_keys[e.code || e.keyCode];
+      if(Object.keys(down_keys).length == 0) {
+        key_check.running = false;
+      }
+    }
+  });
 })();
