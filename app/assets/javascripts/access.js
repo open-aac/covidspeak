@@ -50,22 +50,25 @@ var access = null;
                 var hover = null;
                 var cell_id = null;
                 if(room.buttons.length == 8) {
+                  // Need to factor in opts.head_sensitivity
+                  // to make more room for the middle side buttons
+                  var middle_box_sens = Math.max(1.0, opts.head_sensitivity);
                   if(e.extras && (e.extras.tilt_x != null || e.extras.tilt_y != null)) {
-                    if(e.extras.tilt_x > -5 && e.extras.tilt_x < 5 && e.extras.tilt_y > 3) {
+                    if(e.extras.tilt_x > -5 && e.extras.tilt_x < 5 && e.extras.tilt_y > (3 * middle_box_sens)) {
                       cell_id = 6;
-                    } else if(e.extras.tilt_x > -5 && e.extras.tilt_x < 5 && e.extras.tilt_y < -3) {
+                    } else if(e.extras.tilt_x > -5 && e.extras.tilt_x < 5 && e.extras.tilt_y < (-3 * middle_box_sens)) {
                       cell_id = 1;
-                    } else if(e.extras.tilt_x < -3 && e.extras.tilt_y > -9 && e.extras.tilt_y < 5) {
+                    } else if(e.extras.tilt_x < -3 && e.extras.tilt_y > (-9 * middle_box_sens) && e.extras.tilt_y < (5 * middle_box_sens)) {
                       cell_id = 3;
-                    } else if(e.extras.tilt_x > 3 && e.extras.tilt_y > -9 && e.extras.tilt_y < 5) {
+                    } else if(e.extras.tilt_x > 3 && e.extras.tilt_y > (-9 * middle_box_sens) && e.extras.tilt_y < (5 * middle_box_sens)) {
                       cell_id = 4;
-                    } else if(e.extras.tilt_x < -3 && e.extras.tilt_y < -3) {
+                    } else if(e.extras.tilt_x < -3 && e.extras.tilt_y < (-3 * middle_box_sens)) {
                       cell_id = 0;
-                    } else if(e.extras.tilt_x > 3 && e.extras.tilt_y < -3) {
+                    } else if(e.extras.tilt_x > 3 && e.extras.tilt_y < (-3 * middle_box_sens)) {
                       cell_id = 2;
-                    } else if(e.extras.tilt_x < -3 && e.extras.tilt_y > 3) {
+                    } else if(e.extras.tilt_x < -3 && e.extras.tilt_y > (3 * middle_box_sens)) {
                       cell_id = 5;
-                    } else if(e.extras.tilt_x > 3 && e.extras.tilt_y > 3) {
+                    } else if(e.extras.tilt_x > 3 && e.extras.tilt_y > (3 * middle_box_sens)) {
                       cell_id = 7;
                     }
                   } else {
