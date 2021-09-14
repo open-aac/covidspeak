@@ -68,6 +68,7 @@ remote.addEventListener('track_removed', function(data) {
 });
 remote.addEventListener('room_empty', function(data) {
   room.empty = true;
+  // TODO: one time the room was active but this message hadn't gone away
   room.status('No One is Here', {invite: true, leave: true});
   room.active = false;
 });

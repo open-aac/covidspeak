@@ -29,6 +29,8 @@ remote.webrtc2 = remote.webrtc2 || {};
         return list;
       };
       main_room.ice = access.ice_servers;
+      // TODO: https://github.com/twilio/twilio-video.js/issues/101
+      // "Using more than two STUN/TURN servers slows down discovery"
       var room_ref = {
         id: room_key
       }
@@ -811,6 +813,8 @@ remote.webrtc2 = remote.webrtc2 || {};
         if(subroom.active && subroom.active.pc == subroom.pcs[ref_id].pc) {
         } else if(subroom.pending && subroom.pending.pc == subroom.pcs[ref_id].pc) {
         } else {
+          // TODO: It looks like on some devices this is cleaning
+          // up the just-created PC for a new connection
           log("pruning non-active, non-pending connection");
           if(subroom.pcs[ref_id].cleanup) {
             subroom.pcs[ref_id].cleanup();
@@ -892,9 +896,12 @@ remote.webrtc2 = remote.webrtc2 || {};
                 // Delete rooms that have been dormant more than 10 minutes
                 delete room.subrooms[jey];
               } else {
+                // TODO: only log these if there is not currently an active connection
+                // TODO: don't log if you have never gotten a response for this subroom
                 if(!subroom.refresh_count || subroom.refresh_count % 5 == 0) {
                   log("no connections in place for", subroom);
                 }
+                // TODO: doesn't need refresh if there's another active connection on a different subroom for the right user pairing
                 needs_refresh = true;
               }
               if(needs_refresh) {
